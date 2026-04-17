@@ -196,15 +196,6 @@
     .bg-tab.on { background: #7c3aed; color: #fff; }
     .bg-tab.off { background: transparent; color: #A78BFA; }
 
-    /* ── UNSPLASH GRID ── */
-    .unsplash-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; max-height: 150px; overflow-y: auto; }
-    .unsplash-thumb {
-      cursor: pointer; border-radius: 5px; overflow: hidden; aspect-ratio: 1;
-      border: 2px solid transparent; transition: border-color .1s;
-    }
-    .unsplash-thumb:hover { border-color: #7c3aed; }
-    .unsplash-thumb.selected { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,.3); }
-    .unsplash-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 
     /* ── COLOR PICKER ── */
     .color-row { display: flex; align-items: center; gap: 8px; }
@@ -424,36 +415,6 @@
           <button class="proposal-close" onclick="closeDesignProposal()">×</button>
         </div>
         <div class="proposal-body">
-          <!-- 배경 탭 -->
-          <div>
-            <span class="proposal-field-label">🖼 배경 이미지 (C탭 포토오버레이형)</span>
-            <div class="bg-tab-bar" style="margin-bottom:7px">
-              <button id="bgTabUnsplash" class="bg-tab on" onclick="switchBgTab('unsplash')">Unsplash 검색</button>
-              <button id="bgTabGemini" class="bg-tab off" onclick="switchBgTab('gemini')">Gemini 생성</button>
-            </div>
-            <div id="bgPanelUnsplash">
-              <div style="display:flex;gap:5px;margin-bottom:6px">
-                <input id="unsplashQuery" type="text" class="proposal-input" style="padding:7px 10px"
-                  placeholder="예: professional office study"
-                  onkeydown="if(event.key==='Enter')searchUnsplash()" />
-                <button onclick="searchUnsplash()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">검색</button>
-              </div>
-              <div id="unsplashGrid" class="unsplash-grid"></div>
-              <div id="unsplashMsg" style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0;display:none"></div>
-            </div>
-            <div id="bgPanelGemini" style="display:none;background:rgba(124,58,237,0.08);border-radius:8px;padding:12px;text-align:center">
-              <div style="font-size:20px;margin-bottom:5px">🔮</div>
-              <div style="font-size:11px;color:#A78BFA;font-weight:700">Gemini 이미지 생성</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:3px">GEMINI_API_KEY 설정 후 사용 가능</div>
-            </div>
-            <div id="selectedBgPreview" style="display:none;margin-top:6px;position:relative;border-radius:8px;overflow:hidden">
-              <img id="selectedBgImg" style="width:100%;height:60px;object-fit:cover;display:block" />
-              <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:space-between;padding:0 10px">
-                <span style="font-size:11px;color:#fff;font-weight:700">✓ 선택됨</span>
-                <button onclick="clearSelectedBg()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
-              </div>
-            </div>
-          </div>
 
           <!-- 카피 톤 -->
           <div>
@@ -1158,7 +1119,6 @@
       if (!res.ok) throw new Error(data.error || 'AI 제안 실패');
       applyDesignSuggestion(data);
       document.getElementById('designProposalCard').style.display = 'block';
-      if (data.bg_keywords_en) { document.getElementById('unsplashQuery').value = data.bg_keywords_en; searchUnsplash(); }
     } catch (e) { alert('❌ ' + e.message); }
     finally {
       document.getElementById('suggestBtnIcon').textContent = '💡';
@@ -1207,68 +1167,6 @@
     startGeneration();
   }
 
-  /* ════════════════════════════════════════
-     BG TAB
-  ════════════════════════════════════════ */
-  function switchBgTab(tab) {
-    const isU = tab === 'unsplash';
-    document.getElementById('bgTabUnsplash').className = 'bg-tab ' + (isU ? 'on' : 'off');
-    document.getElementById('bgTabGemini').className   = 'bg-tab ' + (isU ? 'off' : 'on');
-    document.getElementById('bgPanelUnsplash').style.display = isU ? 'block' : 'none';
-    document.getElementById('bgPanelGemini').style.display   = isU ? 'none'  : 'block';
-  }
-
-  /* ════════════════════════════════════════
-     UNSPLASH  (CORS fix: proxy 사용)
-  ════════════════════════════════════════ */
-  async function searchUnsplash() {
-    const q = document.getElementById('unsplashQuery').value.trim(); if (!q) return;
-    const grid = document.getElementById('unsplashGrid');
-    const msg  = document.getElementById('unsplashMsg');
-    grid.innerHTML = ''; msg.style.display = 'block'; msg.textContent = '검색 중...';
-    try {
-      const res = await fetch(`/api/search-unsplash?q=${encodeURIComponent(q)}&per_page=12`);
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.setup_required) {
-          msg.innerHTML = `<span style="color:#ef4444;font-weight:700">UNSPLASH_ACCESS_KEY 필요</span><br><span style="font-size:10px;color:var(--muted)">unsplash.com/developers 에서 발급 후 .env에 추가</span>`;
-          return;
-        }
-        throw new Error(data.error);
-      }
-      if (!data.photos?.length) { msg.textContent = '검색 결과 없음'; return; }
-      msg.style.display = 'none';
-      grid.innerHTML = data.photos.map(p => `
-        <div class="unsplash-thumb" onclick="selectUnsplashPhoto('${p.regular}', this)" title="${(p.alt || p.credit || '').replace(/"/g,'&quot;')}">
-          <img src="${p.thumb}" loading="lazy" />
-        </div>`).join('');
-    } catch (e) { msg.style.display = 'block'; msg.textContent = '검색 실패: ' + e.message; }
-  }
-
-  async function selectUnsplashPhoto(url, el) {
-    document.querySelectorAll('.unsplash-thumb.selected').forEach(t => t.classList.remove('selected'));
-    el.classList.add('selected');
-    // CORS 우회: /api/fetch-image 프록시 사용
-    try {
-      const r = await fetch('/api/fetch-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || '이미지 로드 실패');
-      selectedBgImage = data.dataUrl;
-      document.getElementById('selectedBgImg').src = selectedBgImage;
-      document.getElementById('selectedBgPreview').style.display = 'block';
-    } catch (e) { alert('이미지 로드 실패: ' + e.message); el.classList.remove('selected'); }
-  }
-
-  function clearSelectedBg() {
-    selectedBgImage = null;
-    document.getElementById('selectedBgPreview').style.display = 'none';
-    document.getElementById('selectedBgImg').src = '';
-    document.querySelectorAll('.unsplash-thumb.selected').forEach(t => t.classList.remove('selected'));
-  }
 
   /* ════════════════════════════════════════
      PROPOSAL COLOR
