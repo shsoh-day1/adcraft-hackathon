@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AdCraft — AI 광고소재 자동화</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1c1e21; min-height: 100vh; }
+
+    nav {
+      background: #1877f2; color: white;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 56px; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .logo { font-size: 18px; font-weight: 700; }
+    .logo span { opacity: .7; font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .nav-badge { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .nav-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+
+    .container { max-width: 1300px; margin: 0 auto; padding: 28px 24px; display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
+
+    .panel { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.1); overflow: hidden; }
+    .panel-header { padding: 16px 20px 14px; border-bottom: 1px solid #e4e6eb; display: flex; align-items: center; gap: 8px; }
+    .panel-header h2 { font-size: 15px; font-weight: 700; }
+    .step-badge { background: #1877f2; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .panel-body { padding: 20px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #606770; margin-bottom: 5px; }
+    .form-group input, .form-group textarea {
+      width: 100%; border: 1.5px solid #ddd; border-radius: 8px; padding: 9px 12px;
+      font-size: 13px; color: #1c1e21; outline: none; font-family: inherit; transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: #1877f2; }
+    .form-group textarea { resize: vertical; }
+
+    .usp-stack { display: flex; flex-direction: column; gap: 6px; }
+    .usp-stack input { width: 100%; }
+
+    .section-divider { border: none; border-top: 1px solid #e4e6eb; margin: 16px 0; }
+
+    /* 이미지 업로드 */
+    .upload-area { border: 1.5px dashed #d0d0d0; border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; transition: all .15s; background: #fafafa; }
+    .upload-area:hover { border-color: #1877f2; background: #e7f3ff; }
+    .upload-icon { font-size: 22px; margin-bottom: 4px; }
+    .upload-text { font-size: 11px; color: #888; line-height: 1.5; }
+    .upload-text strong { color: #1877f2; }
+    #fileInput { display: none; }
+    .img-previews { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .img-wrap { position: relative; }
+    .img-wrap img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; display: block; }
+    .img-remove { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: #ff4b6e; color: white; border: none; border-radius: 50%; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* 컬러 피커 */
+    .color-picker-wrap { display: flex; align-items: center; gap: 10px; border: 1.5px solid #ddd; border-radius: 8px; padding: 8px 12px; transition: border-color .15s; cursor: pointer; }
+    .color-picker-wrap:focus-within { border-color: #1877f2; }
+    .color-swatch-btn { width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer; padding: 0; flex-shrink: 0; }
+    .hex-input { flex: 1; border: none; outline: none; font-size: 13px; font-family: 'Consolas', monospace; color: #1c1e21; background: transparent; letter-spacing: 1px; }
+    .eyedropper-icon { font-size: 16px; cursor: pointer; opacity: .5; transition: opacity .15s; flex-shrink: 0; }
+    .eyedropper-icon:hover { opacity: 1; }
+    .preset-dots { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .preset-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all .15s; flex-shrink: 0; }
+    .preset-dot:hover { transform: scale(1.15); }
+    .preset-dot.active { border-color: #1877f2; box-shadow: 0 0 0 2px white, 0 0 0 4px #1877f2; }
+
+    .btn-generate { width: 100%; background: #1877f2; color: white; border: none; border-radius: 8px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; font-family: inherit; }
+    .btn-generate:hover { background: #166fe5; }
+    .btn-generate:disabled { background: #b0c4de; cursor: not-allowed; }
+
+    /* 결과 헤더 */
+    .result-header { justify-content: space-between; }
+    .result-actions { display: flex; gap: 8px; }
+    .btn-action { border: 1.5px solid #ddd; background: white; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 5px; }
+    .btn-action:hover { border-color: #1877f2; color: #1877f2; background: #e7f3ff; }
+    .btn-download { background: #1877f2; color: white; border-color: #1877f2; }
+    .btn-download:hover { background: #166fe5; color: white; }
+
+    /* 배리에이션 탭 */
+    .var-tabs { display: flex; gap: 0; border-bottom: 2px solid #e4e6eb; padding: 0 20px; }
+    .var-tab {
+      padding: 12px 20px; font-size: 13px; font-weight: 700; border: none; background: transparent;
+      cursor: pointer; color: #8a8d91; font-family: inherit; position: relative; transition: color .15s;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .var-tab:hover { color: #1877f2; }
+    .var-tab.active { color: #1877f2; border-bottom-color: #1877f2; }
+    .var-tab .tab-label { font-size: 10px; font-weight: 600; display: block; opacity: .7; }
+
+    /* 플레이스홀더 */
+    .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: #bcc0c4; text-align: center; gap: 12px; }
+    .placeholder .ph-icon { font-size: 48px; }
+    .placeholder p { font-size: 14px; line-height: 1.6; }
+
+    /* 로딩 */
+    .loading-wrap { padding: 28px 24px; display: none; }
+    .loading-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .loading-top span { font-size: 13px; font-weight: 700; }
+    .loading-pct { font-size: 13px; font-weight: 700; color: #1877f2; }
+    .progress-track { height: 4px; background: #e4e6eb; border-radius: 99px; margin-bottom: 20px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg,#1877f2,#42a5f5); border-radius: 99px; transition: width .3s ease; width: 0%; }
+    .step-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; background: #f0f2f5; color: #8a8d91; }
+    .step-item.active { background: #e7f3ff; color: #1877f2; }
+    .step-item.done { background: #f0fff4; color: #16a34a; }
+    .step-dot { width: 16px; height: 16px; border-radius: 50%; background: #d0d0d0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+    .step-item.active .step-dot { background: #1877f2; animation: pulse 1.2s infinite; }
+    .step-item.done .step-dot { background: #16a34a; color: white; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(24,119,242,.4)} 50%{box-shadow:0 0 0 6px rgba(24,119,242,0)} }
+
+    /* 에러 */
+    .error-wrap { margin: 20px; background: #fff0f0; border: 1px solid #fecaca; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #b91c1c; display: none; }
+
+    /* 결과 영역 */
+    .result-body { padding: 20px; display: none; }
+
+    /* 배리에이션 레이블 */
+    .var-info { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .var-badge { background: #e7f3ff; color: #1877f2; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
+
+    /* 이미지 미리보기 */
+    .preview-section { margin-bottom: 20px; }
+    .preview-label { font-size: 12px; font-weight: 700; color: #606770; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .preview-container {
+      width: 100%; background: #1c1e21; border-radius: 10px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .preview-scaler { position: relative; width: 540px; height: 540px; flex-shrink: 0; }
+    .preview-scaler iframe {
+      width: 1080px; height: 1080px; border: none;
+      transform: scale(0.5); transform-origin: top left; pointer-events: none;
+    }
+
+    /* 코드 섹션 */
+    .code-section { }
+    .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .code-label { font-size: 12px; font-weight: 700; color: #606770; }
+    .btn-copy-code { font-size: 12px; font-weight: 600; color: #1877f2; background: #e7f3ff; border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .btn-copy-code:hover { background: #cce0ff; }
+    .btn-copy-code.copied { background: #d1fae5; color: #065f46; }
+    .code-box { background: #1c1e21; border-radius: 8px; padding: 14px 16px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; color: #a8d8a8; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+
+    /* Figma 안내 */
+    .figma-guide { margin-top: 16px; background: #f7f8fa; border-radius: 10px; padding: 14px 16px; }
+    .figma-guide-title { font-size: 12px; font-weight: 700; color: #1c1e21; margin-bottom: 8px; }
+    .figma-steps { display: flex; flex-direction: column; gap: 6px; }
+    .figma-step { font-size: 12px; color: #606770; display: flex; gap: 8px; align-items: flex-start; }
+    .figma-step .num { font-weight: 700; color: #1877f2; flex-shrink: 0; }
+
+    @media (max-width: 960px) { .container { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">AdCraft <span>by Claude AI</span></div>
+  <div class="nav-badge"><div class="dot"></div>HTML to Design Ready</div>
+</nav>
+
+<div class="container">
+
+  <!-- 왼쪽: 입력 폼 -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="step-badge">1</div>
+      <h2>소재 정보 입력</h2>
+    </div>
+    <div class="panel-body">
+
+      <div class="form-group">
+        <label>상세페이지 URL *</label>
+        <input type="url" id="urlInput" placeholder="https://example.com/product/..." />
+      </div>
+
+      <div class="form-group">
+        <label>과정 타겟 *</label>
+        <input type="text" id="targetInput" placeholder="예: 30대 직장인 데이터 분석 입문자" />
+      </div>
+
+      <div class="form-group">
+        <label>USP <span style="font-weight:400;color:#aaa">핵심 강점 3가지</span></label>
+        <div class="usp-stack">
+          <input type="text" id="usp1Input" placeholder="USP 1  예: 실무 현업 강사진" />
+          <input type="text" id="usp2Input" placeholder="USP 2  예: 12개월 무제한 수강" />
+          <input type="text" id="usp3Input" placeholder="USP 3  예: 취업 연계 지원" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>광고세트 메시지 *</label>
+        <textarea id="adSetMessageInput" rows="2" placeholder="이 캠페인에서 전달하고자 하는 전체 메시지&#10;예: 지금 당장 데이터 역량을 키워야 하는 이유"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>소재 메시지 *</label>
+        <textarea id="creativeMessageInput" rows="2" placeholder="이 광고소재에서 강조할 핵심 포인트&#10;예: 12개월 무제한 수강 + 실무 프로젝트 중심"></textarea>
+      </div>
+
+      <hr class="section-divider" />
+
+      <div class="form-group">
+        <label>레퍼런스 이미지 <span style="font-weight:400;color:#aaa">(선택, 디자인 스타일 학습용 · 최대 3장)</span></label>
+
+        <div style="display:flex;gap:0;margin-bottom:8px;border:1.5px solid #ddd;border-radius:8px;overflow:hidden">
+          <button id="tabUpload" onclick="switchTab('upload')" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#1877f2;color:#fff;font-family:inherit;transition:all .15s">파일 업로드</button>
+          <button id="tabUrl" onclick="switchTab('url')" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#f0f2f5;color:#606770;font-family:inherit;transition:all .15s">Meta 광고 라이브러리 URL</button>
+        </div>
+
+        <div id="panelUpload">
+          <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">클릭해서 이미지 추가<br><strong>JPG, PNG</strong></div>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" multiple />
+        </div>
+
+        <div id="panelUrl" style="display:none">
+          <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:11px;color:#795548;line-height:1.6">
+            <strong>사용 방법:</strong> facebook.com/ads/library 에서 광고 이미지 우클릭 → "이미지 주소 복사" 후 붙여넣기<br>
+            <span style="color:#9e9e9e">계정 연결 없음 · 공개 이미지만 수집</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <input type="url" id="imgUrlInput" placeholder="https://scontent-*.fbcdn.net/v/..." style="flex:1;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;font-size:12px;outline:none;font-family:inherit" />
+            <button onclick="addImgUrl()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap" id="btnAddUrl">추가</button>
+          </div>
+          <div style="font-size:11px;color:#aaa;margin-top:4px">최대 3장</div>
+        </div>
+
+        <div class="img-previews" id="imgPreviews"></div>
+      </div>
+
+      <div class="form-group">
+        <label>배경 컬러</label>
+        <div class="color-picker-wrap" onclick="document.getElementById('colorPicker').click()">
+          <input type="color" id="colorPicker" value="#1B5BD4"
+            style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+            oninput="onColorPickerChange(this.value)" />
+          <div class="color-swatch-btn" id="colorSwatch" style="background:#1B5BD4"></div>
+          <input class="hex-input" id="hexInput" type="text" value="#1B5BD4" maxlength="7"
+            placeholder="#000000"
+            onclick="event.stopPropagation()"
+            oninput="onHexInput(this.value)"
+            onblur="onHexBlur(this.value)" />
+          <span class="eyedropper-icon" title="컬러 피커 열기">🎨</span>
+        </div>
+        <div class="preset-dots">
+          <div class="preset-dot active" data-color="#1B5BD4" title="블루" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#0A0A1A" title="다크" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#064E3B" title="그린" style="background:#064E3B" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#C2185B" title="코랄" style="background:#C2185B" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#7C3AED" title="퍼플" style="background:#7C3AED" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#B45309" title="골드" style="background:#B45309" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#1E3A5F" title="네이비" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
+          <div class="preset-dot" data-color="#1a1a1a" title="블랙" style="background:#1a1a1a;border:1px solid #ccc" onclick="applyPreset(this)"></div>
+        </div>
+      </div>
+
+      <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
+        ✨ 광고소재 생성하기 (배리에이션 3종)
+      </button>
+
+    </div>
+  </div>
+
+  <!-- 오른쪽: 결과 패널 -->
+  <div class="panel">
+    <div class="panel-header result-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="step-badge">2</div>
+        <h2>생성 결과</h2>
+      </div>
+      <div class="result-actions" id="resultActions" style="display:none">
+        <button class="btn-action btn-download" onclick="downloadHTML()">⬇ HTML 다운로드</button>
+        <button class="btn-action" onclick="copyHTML()" id="btnCopyHTML">📋 HTML 복사</button>
+      </div>
+    </div>
+
+    <!-- 배리에이션 탭 -->
+    <div class="var-tabs" id="varTabs" style="display:none">
+      <button class="var-tab active" onclick="switchVariation(0)">
+        버전 A
+        <span class="tab-label">혜택형</span>
+      </button>
+      <button class="var-tab" onclick="switchVariation(1)">
+        버전 B
+        <span class="tab-label">공감형</span>
+      </button>
+      <button class="var-tab" onclick="switchVariation(2)">
+        버전 C
+        <span class="tab-label">긴박형</span>
+      </button>
+    </div>
+
+    <!-- 플레이스홀더 -->
+    <div class="placeholder" id="placeholder">
+      <div class="ph-icon">🎨</div>
+      <p>소재 정보를 입력하고 생성 버튼을 누르면<br>카피 배리에이션 3종 + 1080×1080 광고소재가 표시돼요</p>
+    </div>
+
+    <!-- 로딩 -->
+    <div class="loading-wrap" id="loadingWrap">
+      <div class="loading-top">
+        <span>생성 중...</span>
+        <span class="loading-pct" id="loadingPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="step-list">
+        <div class="step-item" id="step1"><div class="step-dot"></div>상세페이지 크롤링</div>
+        <div class="step-item" id="step2"><div class="step-dot"></div>레퍼런스 이미지 스타일 분석</div>
+        <div class="step-item" id="step3"><div class="step-dot"></div>소재 정보 구조화</div>
+        <div class="step-item" id="step4"><div class="step-dot"></div>카피 배리에이션 3종 생성 (A/B/C)</div>
+        <div class="step-item" id="step5"><div class="step-dot"></div>1080×1080 HTML 소재 3종 렌더링</div>
+      </div>
+    </div>
+
+    <!-- 에러 -->
+    <div class="error-wrap" id="errorWrap"></div>
+
+    <!-- 결과 본문 -->
+    <div class="result-body" id="resultBody">
+
+      <!-- 선택 배리에이션 정보 -->
+      <div class="var-info">
+        <span style="font-size:12px;font-weight:600;color:#606770">현재 보기:</span>
+        <span class="var-badge" id="varBadge">A - 혜택형</span>
+      </div>
+
+      <!-- 이미지 미리보기 -->
+      <div class="preview-section">
+        <div class="preview-label">🖼️ 광고소재 미리보기 (1080×1080)</div>
+        <div class="preview-container">
+          <div class="preview-scaler">
+            <iframe id="previewFrame" srcdoc=""></iframe>
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON 데이터 -->
+      <div class="code-section" style="margin-bottom:12px">
+        <div class="code-header">
+          <div class="code-label">🗂 광고 데이터 JSON</div>
+          <button class="btn-copy-code" id="btnCopyJson" onclick="copyJson()">복사</button>
+        </div>
+        <div class="code-box" id="jsonBox" style="color:#f9c784"></div>
+      </div>
+
+      <!-- HTML 코드 -->
+      <div class="code-section">
+        <div class="code-header">
+          <div class="code-label">📄 HTML 코드 (Figma HTML to Design용)</div>
+          <button class="btn-copy-code" id="btnCopyCode" onclick="copyCode()">복사</button>
+        </div>
+        <div class="code-box" id="codeBox"></div>
+      </div>
+
+      <!-- Figma 사용 가이드 -->
+      <div class="figma-guide">
+        <div class="figma-guide-title">📐 Figma에서 불러오는 방법</div>
+        <div class="figma-steps">
+          <div class="figma-step"><span class="num">1</span><span>원하는 버전 탭 선택 후 <strong>HTML 다운로드</strong> 버튼 클릭 → 파일 저장</span></div>
+          <div class="figma-step"><span class="num">2</span><span>Figma 열기 → 플러그인 → <strong>HTML to Design</strong> 검색</span></div>
+          <div class="figma-step"><span class="num">3</span><span>플러그인에서 저장한 HTML 파일 업로드</span></div>
+          <div class="figma-step"><span class="num">4</span><span>레이어별로 편집 후 1080×1080 PNG 내보내기</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let selectedColor = '#1B5BD4';
+  let refImages = [];
+  let variations = [];      // [{adData, html}, ...]
+  let activeVariation = 0;
+
+  // ── 배리에이션 탭 전환 ──
+  function switchVariation(idx) {
+    if (!variations[idx]) return;
+    activeVariation = idx;
+
+    document.querySelectorAll('.var-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+
+    const v = variations[idx];
+    document.getElementById('previewFrame').srcdoc = v.html;
+    document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
+    document.getElementById('codeBox').textContent = v.html;
+    document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${['A','B','C'][idx]}`;
+  }
+
+  // ── 컬러 피커 ──
+  function onColorPickerChange(val) {
+    selectedColor = val;
+    document.getElementById('colorSwatch').style.background = val;
+    document.getElementById('hexInput').value = val.toUpperCase();
+    updateActiveDot(val);
+  }
+
+  function onHexInput(val) {
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      selectedColor = val;
+      document.getElementById('colorSwatch').style.background = val;
+      document.getElementById('colorPicker').value = val;
+      updateActiveDot(val);
+    }
+  }
+
+  function onHexBlur(val) {
+    let v = val.trim();
+    if (/^[0-9A-Fa-f]{6}$/.test(v)) v = '#' + v;
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+      document.getElementById('hexInput').value = v.toUpperCase();
+      onHexInput(v);
+    } else {
+      document.getElementById('hexInput').value = selectedColor.toUpperCase();
+    }
+  }
+
+  function applyPreset(el) {
+    const color = el.dataset.color;
+    selectedColor = color;
+    document.getElementById('colorSwatch').style.background = color;
+    document.getElementById('colorPicker').value = color;
+    document.getElementById('hexInput').value = color.toUpperCase();
+    updateActiveDot(color);
+  }
+
+  function updateActiveDot(color) {
+    document.querySelectorAll('.preset-dot').forEach(d => {
+      d.classList.toggle('active', d.dataset.color.toLowerCase() === color.toLowerCase());
+    });
+  }
+
+  // ── 탭 전환 (레퍼런스 이미지) ──
+  function switchTab(tab) {
+    const isUrl = tab === 'url';
+    document.getElementById('panelUpload').style.display = isUrl ? 'none' : 'block';
+    document.getElementById('panelUrl').style.display   = isUrl ? 'block' : 'none';
+    document.getElementById('tabUpload').style.background = isUrl ? '#f0f2f5' : '#1877f2';
+    document.getElementById('tabUpload').style.color    = isUrl ? '#606770' : '#fff';
+    document.getElementById('tabUrl').style.background  = isUrl ? '#1877f2' : '#f0f2f5';
+    document.getElementById('tabUrl').style.color       = isUrl ? '#fff'    : '#606770';
+  }
+
+  // ── URL로 이미지 추가 ──
+  async function addImgUrl() {
+    const input = document.getElementById('imgUrlInput');
+    const url = input.value.trim();
+    if (!url) return;
+    if (refImages.length >= 3) { alert('최대 3장까지 추가할 수 있어요.'); return; }
+
+    const btn = document.getElementById('btnAddUrl');
+    btn.textContent = '로딩...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/fetch-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '이미지를 가져올 수 없어요.');
+      refImages.push({ name: 'meta-ad-ref.jpg', data: data.dataUrl });
+      renderPreviews();
+      input.value = '';
+    } catch (e) {
+      alert('❌ ' + e.message);
+    } finally {
+      btn.textContent = '추가';
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('fileInput').addEventListener('change', function(e) {
+    Array.from(e.target.files).slice(0, 3 - refImages.length).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => { refImages.push({ name: file.name, data: ev.target.result }); renderPreviews(); };
+      reader.readAsDataURL(file);
+    });
+    this.value = '';
+  });
+
+  function renderPreviews() {
+    document.getElementById('imgPreviews').innerHTML = refImages.map((img, i) => `
+      <div class="img-wrap">
+        <img src="${img.data}" alt="${img.name}" />
+        <button class="img-remove" onclick="removeImg(${i})">×</button>
+      </div>
+    `).join('');
+  }
+
+  function removeImg(i) { refImages.splice(i, 1); renderPreviews(); }
+
+  // ── 프로그레스 ──
+  function setProgress(pct) {
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('loadingPct').textContent = pct + '%';
+  }
+  function animProgress(from, to, ms) {
+    return new Promise(resolve => {
+      const start = Date.now();
+      const tick = () => {
+        const p = Math.min((Date.now() - start) / ms, 1);
+        setProgress(Math.round(from + (to - from) * p));
+        p < 1 ? requestAnimationFrame(tick) : resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function resetSteps() {
+    ['step1','step2','step3','step4','step5'].forEach(id => {
+      const el = document.getElementById(id);
+      el.className = 'step-item';
+      el.querySelector('.step-dot').textContent = '';
+    });
+  }
+  function stepActive(id) {
+    const el = document.getElementById(id);
+    el.className = 'step-item active';
+    el.querySelector('.step-dot').textContent = '';
+  }
+  function stepDone(id) {
+    const el = document.getElementById(id);
+    el.className = 'step-item done';
+    el.querySelector('.step-dot').textContent = '✓';
+  }
+
+  // ── 메인 생성 ──
+  async function startGeneration() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { alert('URL을 입력해주세요.'); return; }
+
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('resultBody').style.display = 'none';
+    document.getElementById('errorWrap').style.display = 'none';
+    document.getElementById('resultActions').style.display = 'none';
+    document.getElementById('varTabs').style.display = 'none';
+    document.getElementById('loadingWrap').style.display = 'block';
+    resetSteps();
+    setProgress(0);
+
+    try {
+      stepActive('step1');
+      await animProgress(0, 15, 800);
+      stepDone('step1');
+
+      stepActive('step2');
+      await animProgress(15, 30, 600);
+      stepDone('step2');
+
+      stepActive('step3');
+      await animProgress(30, 45, 400);
+      stepDone('step3');
+
+      stepActive('step4');
+
+      const apiPromise = fetch('/api/generate-ad', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          target: document.getElementById('targetInput').value.trim(),
+          usp1: document.getElementById('usp1Input').value.trim(),
+          usp2: document.getElementById('usp2Input').value.trim(),
+          usp3: document.getElementById('usp3Input').value.trim(),
+          ad_set_message: document.getElementById('adSetMessageInput').value.trim(),
+          creative_message: document.getElementById('creativeMessageInput').value.trim(),
+          reference_images: refImages.map(img => img.data),
+          bg_color: selectedColor,
+        }),
+      });
+
+      await animProgress(45, 88, 25000);
+
+      const res = await apiPromise;
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+
+      stepDone('step4');
+      stepActive('step5');
+      await animProgress(88, 100, 500);
+      stepDone('step5');
+
+      await new Promise(r => setTimeout(r, 300));
+
+      variations = result.variations;
+      activeVariation = 0;
+      showVariations();
+
+    } catch (err) {
+      document.getElementById('loadingWrap').style.display = 'none';
+      const errEl = document.getElementById('errorWrap');
+      errEl.textContent = '❌ ' + err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function showVariations() {
+    document.getElementById('loadingWrap').style.display = 'none';
+    document.getElementById('varTabs').style.display = 'flex';
+    document.getElementById('resultBody').style.display = 'block';
+    document.getElementById('resultActions').style.display = 'flex';
+    switchVariation(0);
+  }
+
+  // ── 다운로드 / 복사 ──
+  function downloadHTML() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    const blob = new Blob([v.html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const label = ['A','B','C'][activeVariation] || activeVariation;
+    a.href = URL.createObjectURL(blob);
+    a.download = `ad_${v.adData.brand || 'ad'}_ver${label}_${today}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function copyHTML() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    navigator.clipboard.writeText(v.html).then(() => {
+      const btn = document.getElementById('btnCopyHTML');
+      btn.textContent = '✓ 복사됨';
+      setTimeout(() => { btn.textContent = '📋 HTML 복사'; }, 2000);
+    });
+  }
+
+  function copyJson() {
+    const text = document.getElementById('jsonBox').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('btnCopyJson');
+      btn.textContent = '✓ 복사됨';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function copyCode() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    navigator.clipboard.writeText(v.html).then(() => {
+      const btn = document.getElementById('btnCopyCode');
+      btn.textContent = '✓ 복사됨';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startGeneration();
+  });
+</script>
+</body>
+</html>
