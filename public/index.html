@@ -119,6 +119,44 @@
       transition: all .15s; white-space: nowrap;
     }
     .btn-ghost:hover { border-color: var(--pink); color: var(--pink); background: var(--pink-dim); }
+    .btn-figma {
+      background: #1E1E1E; border: 1.5px solid #555; border-radius: 8px;
+      padding: 8px 14px; font-size: 12px; font-weight: 700; color: #fff;
+      cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-figma:hover { background: #333; border-color: #aaa; }
+    /* Figma 모달 */
+    .figma-modal-bg {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+      z-index:999; align-items:center; justify-content:center;
+    }
+    .figma-modal-bg.open { display:flex; }
+    .figma-modal {
+      background:#1a1a1a; border:1px solid #333; border-radius:16px;
+      padding:28px 32px; max-width:480px; width:90%; position:relative;
+    }
+    .figma-modal h3 { font-size:17px; font-weight:800; color:#fff; margin-bottom:6px; }
+    .figma-modal .sub { font-size:12px; color:#888; margin-bottom:20px; }
+    .figma-url-box {
+      background:#111; border:1px solid #333; border-radius:8px;
+      padding:10px 14px; font-size:12px; color:#aaa; font-family:monospace;
+      word-break:break-all; margin-bottom:8px;
+    }
+    .figma-step-list { margin:16px 0; display:flex; flex-direction:column; gap:10px; }
+    .figma-step-row { display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#ccc; }
+    .figma-step-num { background:#FF4FA3; color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; margin-top:1px; }
+    .btn-open-figma {
+      width:100%; padding:13px; background:linear-gradient(90deg,#0d99ff,#6e40c9);
+      border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:800;
+      cursor:pointer; font-family:inherit; margin-top:16px; letter-spacing:-0.2px;
+    }
+    .btn-open-figma:hover { opacity:.9; }
+    .figma-copy-url {
+      width:100%; padding:9px; background:#222; border:1px solid #444; border-radius:8px;
+      color:#aaa; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px;
+    }
+    .figma-copy-url:hover { background:#2a2a2a; color:#fff; }
     .btn-suggest {
       width: 100%; background: rgba(124,58,237,0.12); border: 1.5px solid rgba(124,58,237,0.3);
       border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 700;
@@ -601,6 +639,7 @@
       <div class="result-actions" id="resultActions" style="display:none">
         <button class="btn-ghost" onclick="downloadHTML()">⬇ HTML 다운로드</button>
         <button class="btn-ghost" onclick="copyHTML()" id="btnCopyHTML">📋 HTML 복사</button>
+        <button class="btn-figma" id="btnFigma" onclick="openInFigma()">🎨 Figma로 열기</button>
       </div>
     </div>
 
@@ -696,6 +735,27 @@
     </div>
 
   </main>
+</div>
+
+<!-- Figma 내보내기 모달 -->
+<div class="figma-modal-bg" id="figmaModalBg" onclick="if(event.target===this)closeFigmaModal()">
+  <div class="figma-modal">
+    <button onclick="closeFigmaModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#666;font-size:18px;cursor:pointer">✕</button>
+    <h3>🎨 Figma로 열기</h3>
+    <p class="sub">광고소재를 Figma에서 바로 편집할 수 있어요</p>
+    <div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600">📎 광고소재 미리보기 URL</div>
+    <div class="figma-url-box" id="figmaPreviewUrl">URL 생성 중...</div>
+    <button class="figma-copy-url" id="btnCopyFigmaUrl" onclick="copyFigmaUrl()">📋 URL 복사하기</button>
+    <div class="figma-step-list">
+      <div class="figma-step-row"><div class="figma-step-num">1</div><span>위 URL을 복사하세요 (자동 복사됨)</span></div>
+      <div class="figma-step-row"><div class="figma-step-num">2</div><span>아래 버튼으로 Figma html.to.design 플러그인을 여세요</span></div>
+      <div class="figma-step-row"><div class="figma-step-num">3</div><span>플러그인에서 <strong style="color:#fff">URL 탭</strong> 선택 → URL 붙여넣기 → Import</span></div>
+      <div class="figma-step-row"><div class="figma-step-num">4</div><span>Figma에 1080×1080 프레임으로 자동 생성!</span></div>
+    </div>
+    <button class="btn-open-figma" onclick="goToFigmaPlugin()">
+      ✦ Figma html.to.design 플러그인 열기 →
+    </button>
+  </div>
 </div>
 
 <script>
@@ -1100,6 +1160,55 @@
       const btn = document.getElementById('btnCopyCode'); btn.textContent = '✓ 복사됨'; btn.classList.add('copied');
       setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
     });
+  }
+
+  /* ════════════════════════════════════════
+     FIGMA 내보내기
+  ════════════════════════════════════════ */
+  let currentFigmaPreviewUrl = '';
+
+  async function openInFigma() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    const btn = document.getElementById('btnFigma');
+    btn.textContent = '⏳ URL 생성 중...';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html: v.html }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '프리뷰 생성 실패');
+      currentFigmaPreviewUrl = data.previewUrl;
+      document.getElementById('figmaPreviewUrl').textContent = currentFigmaPreviewUrl;
+      // 자동 클립보드 복사
+      navigator.clipboard.writeText(currentFigmaPreviewUrl).catch(() => {});
+      document.getElementById('figmaModalBg').classList.add('open');
+    } catch (e) {
+      alert('❌ ' + e.message);
+    } finally {
+      btn.textContent = '🎨 Figma로 열기';
+      btn.disabled = false;
+    }
+  }
+
+  function closeFigmaModal() {
+    document.getElementById('figmaModalBg').classList.remove('open');
+  }
+
+  function copyFigmaUrl() {
+    navigator.clipboard.writeText(currentFigmaPreviewUrl).then(() => {
+      const btn = document.getElementById('btnCopyFigmaUrl');
+      btn.textContent = '✓ 복사됐어요!';
+      setTimeout(() => { btn.textContent = '📋 URL 복사하기'; }, 2000);
+    });
+  }
+
+  function goToFigmaPlugin() {
+    // html.to.design 플러그인 커뮤니티 페이지
+    window.open('https://www.figma.com/community/plugin/1159123024924461936/html-to-design', '_blank');
   }
 
   /* ════════════════════════════════════════

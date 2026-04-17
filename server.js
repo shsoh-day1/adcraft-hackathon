@@ -1288,6 +1288,28 @@ app.get('/api/search-unsplash', async (req, res) => {
   }
 });
 
+// ─── 광고 HTML 임시 프리뷰 저장소 (메모리) ───
+const previewStore = new Map();
+
+app.post('/api/preview', (req, res) => {
+  const { html } = req.body;
+  if (!html) return res.status(400).json({ error: 'HTML이 필요합니다' });
+  const id = Math.random().toString(36).slice(2, 12);
+  previewStore.set(id, { html, ts: Date.now() });
+  setTimeout(() => previewStore.delete(id), 60 * 60 * 1000); // 1시간 후 삭제
+  console.log('[프리뷰 저장]', id);
+  res.json({ previewUrl: `${req.protocol}://${req.get('host')}/preview/${id}` });
+});
+
+app.get('/preview/:id', (req, res) => {
+  const id = req.params.id;
+  const entry = previewStore.get(id);
+  if (!entry) return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>만료됨</title></head><body style="font-family:sans-serif;text-align:center;padding:80px;color:#666"><h2>⏰ 프리뷰가 만료됐습니다</h2><p>AdCraft에서 다시 생성해주세요</p></body></html>`);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.send(entry.html);
+});
+
 app.listen(PORT, () => {
   console.log('='.repeat(50));
   console.log('  AI 광고소재 자동화');
