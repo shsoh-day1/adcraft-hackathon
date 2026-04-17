@@ -1,148 +1,318 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AdCraft — AI 광고소재 자동화</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1c1e21; min-height: 100vh; }
+
+    /* ── CSS 변수 (라이트 기본) ─────────────────────── */
+    :root {
+      --bg:          #f0f2f5;
+      --nav-bg:      #1877f2;
+      --panel-bg:    #ffffff;
+      --bdr:         #e4e6eb;
+      --tx:          #1c1e21;
+      --tx-sub:      #606770;
+      --tx-muted:    #8a8d91;
+      --inp-bg:      #ffffff;
+      --inp-bdr:     #ddd;
+      --accent:      #1877f2;
+      --accent-h:    #166fe5;
+      --accent-lt:   #e7f3ff;
+      --accent-tx:   #1877f2;
+      --step-idle:   #f0f2f5;
+      --step-on:     #e7f3ff;
+      --step-done:   #f0fff4;
+      --done-clr:    #16a34a;
+      --upload-bg:   #fafafa;
+      --code-bg:     #1c1e21;
+      --fig-bg:      #f7f8fa;
+      --preset-bg:   #f7f8fa;
+      --err-bg:      #fff0f0;
+      --err-bdr:     #fecaca;
+      --err-tx:      #b91c1c;
+      --track-bg:    #e4e6eb;
+      --tab-idle-bg:  #f0f2f5;
+      --tab-idle-clr: #606770;
+      --shadow:      0 1px 4px rgba(0,0,0,.1);
+    }
+
+    /* ── 다크 모드 변수 ─────────────────────────────── */
+    [data-theme="dark"] {
+      --bg:          #0d0d0d;
+      --nav-bg:      #111111;
+      --panel-bg:    #1a1a1a;
+      --bdr:         #2d2d2d;
+      --tx:          #e4e6eb;
+      --tx-sub:      #9a9da1;
+      --tx-muted:    #55585f;
+      --inp-bg:      #242424;
+      --inp-bdr:     #3a3a3a;
+      --accent:      #1877f2;
+      --accent-h:    #2088ff;
+      --accent-lt:   #0d1f3c;
+      --accent-tx:   #4da3ff;
+      --step-idle:   #242424;
+      --step-on:     #0d1f3c;
+      --step-done:   #0d2518;
+      --done-clr:    #4ade80;
+      --upload-bg:   #202020;
+      --code-bg:     #111111;
+      --fig-bg:      #222222;
+      --preset-bg:   #222222;
+      --err-bg:      #2d0a0a;
+      --err-bdr:     #7f1d1d;
+      --err-tx:      #fca5a5;
+      --track-bg:    #2d2d2d;
+      --tab-idle-bg:  #242424;
+      --tab-idle-clr: #9a9da1;
+      --shadow:      0 1px 4px rgba(0,0,0,.4);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--tx); min-height: 100vh;
+      transition: background .2s, color .2s;
+    }
 
     nav {
-      background: #1877f2; color: white;
+      background: var(--nav-bg); color: white;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 24px; height: 56px; position: sticky; top: 0; z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
     }
     .logo { font-size: 18px; font-weight: 700; }
     .logo span { opacity: .7; font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
     .nav-badge { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
     .nav-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+    .btn-theme {
+      background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.3);
+      border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 700;
+      color: #fff; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap;
+    }
+    .btn-theme:hover { background: rgba(255,255,255,.28); }
 
     .container { max-width: 1300px; margin: 0 auto; padding: 28px 24px; display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
 
-    .panel { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.1); overflow: hidden; }
-    .panel-header { padding: 16px 20px 14px; border-bottom: 1px solid #e4e6eb; display: flex; align-items: center; gap: 8px; }
-    .panel-header h2 { font-size: 15px; font-weight: 700; }
-    .step-badge { background: #1877f2; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .panel { background: var(--panel-bg); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; transition: background .2s, box-shadow .2s; }
+    .panel-header { padding: 16px 20px 14px; border-bottom: 1px solid var(--bdr); display: flex; align-items: center; gap: 8px; }
+    .panel-header h2 { font-size: 15px; font-weight: 700; color: var(--tx); }
+    .step-badge { background: var(--accent); color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .panel-body { padding: 20px; }
 
     .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #606770; margin-bottom: 5px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--tx-sub); margin-bottom: 5px; }
     .form-group input, .form-group textarea {
-      width: 100%; border: 1.5px solid #ddd; border-radius: 8px; padding: 9px 12px;
-      font-size: 13px; color: #1c1e21; outline: none; font-family: inherit; transition: border-color .15s;
+      width: 100%; border: 1.5px solid var(--inp-bdr); border-radius: 8px; padding: 9px 12px;
+      font-size: 13px; color: var(--tx); outline: none; font-family: inherit; transition: border-color .15s;
+      background: var(--inp-bg);
     }
-    .form-group input:focus, .form-group textarea:focus { border-color: #1877f2; }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
     .form-group textarea { resize: vertical; }
 
     .usp-stack { display: flex; flex-direction: column; gap: 6px; }
     .usp-stack input { width: 100%; }
 
-    .section-divider { border: none; border-top: 1px solid #e4e6eb; margin: 16px 0; }
+    .section-divider { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
+
+    /* 프리셋 바 */
+    .preset-bar {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 14px;
+      background: var(--preset-bg); border-radius: 8px; padding: 9px 12px;
+      border: 1.5px solid var(--bdr);
+    }
+    .preset-bar span { font-size: 11px; font-weight: 700; color: var(--tx-sub); white-space: nowrap; }
+    .preset-bar select {
+      flex: 1; border: 1.5px solid var(--inp-bdr); border-radius: 6px; padding: 5px 8px;
+      font-size: 12px; font-family: inherit; outline: none; color: var(--tx);
+      background: var(--inp-bg); min-width: 0;
+    }
+    .preset-bar .btn-preset-load {
+      background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .preset-bar .btn-preset-save {
+      background: var(--inp-bg); color: var(--tx-sub); border: 1.5px solid var(--inp-bdr);
+      border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
 
     /* 이미지 업로드 */
-    .upload-area { border: 1.5px dashed #d0d0d0; border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; transition: all .15s; background: #fafafa; }
-    .upload-area:hover { border-color: #1877f2; background: #e7f3ff; }
+    .upload-area { border: 1.5px dashed var(--inp-bdr); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; transition: all .15s; background: var(--upload-bg); }
+    .upload-area:hover { border-color: var(--accent); background: var(--accent-lt); }
     .upload-icon { font-size: 22px; margin-bottom: 4px; }
-    .upload-text { font-size: 11px; color: #888; line-height: 1.5; }
-    .upload-text strong { color: #1877f2; }
+    .upload-text { font-size: 11px; color: var(--tx-muted); line-height: 1.5; }
+    .upload-text strong { color: var(--accent); }
     #fileInput { display: none; }
     .img-previews { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .img-wrap { position: relative; }
-    .img-wrap img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; display: block; }
+    .img-wrap img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid var(--bdr); display: block; }
     .img-remove { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: #ff4b6e; color: white; border: none; border-radius: 50%; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
+    /* 탭 (이미지 입력 방식) */
+    .tab-group { display: flex; gap: 0; border: 1.5px solid var(--inp-bdr); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+    .tab-btn { flex: 1; padding: 7px 0; font-size: 12px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .tab-btn.active { background: var(--accent); color: #fff; }
+    .tab-btn.inactive { background: var(--tab-idle-bg); color: var(--tab-idle-clr); }
+
+    /* Meta URL 안내 박스 */
+    .meta-notice {
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+      padding: 10px 12px; margin-bottom: 8px; font-size: 11px; color: #795548; line-height: 1.6;
+    }
+    [data-theme="dark"] .meta-notice { background: #2a2010; border-color: #5a4010; color: #c9a84c; }
+    [data-theme="dark"] .meta-notice span { color: #7a6030 !important; }
+
     /* 컬러 피커 */
-    .color-picker-wrap { display: flex; align-items: center; gap: 10px; border: 1.5px solid #ddd; border-radius: 8px; padding: 8px 12px; transition: border-color .15s; cursor: pointer; }
-    .color-picker-wrap:focus-within { border-color: #1877f2; }
+    .color-picker-wrap { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--inp-bdr); border-radius: 8px; padding: 8px 12px; transition: border-color .15s; cursor: pointer; background: var(--inp-bg); }
+    .color-picker-wrap:focus-within { border-color: var(--accent); }
     .color-swatch-btn { width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer; padding: 0; flex-shrink: 0; }
-    .hex-input { flex: 1; border: none; outline: none; font-size: 13px; font-family: 'Consolas', monospace; color: #1c1e21; background: transparent; letter-spacing: 1px; }
+    .hex-input { flex: 1; border: none; outline: none; font-size: 13px; font-family: 'Consolas', monospace; color: var(--tx); background: transparent; letter-spacing: 1px; }
     .eyedropper-icon { font-size: 16px; cursor: pointer; opacity: .5; transition: opacity .15s; flex-shrink: 0; }
     .eyedropper-icon:hover { opacity: 1; }
     .preset-dots { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
     .preset-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all .15s; flex-shrink: 0; }
     .preset-dot:hover { transform: scale(1.15); }
-    .preset-dot.active { border-color: #1877f2; box-shadow: 0 0 0 2px white, 0 0 0 4px #1877f2; }
+    .preset-dot.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--panel-bg), 0 0 0 4px var(--accent); }
 
-    .btn-generate { width: 100%; background: #1877f2; color: white; border: none; border-radius: 8px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; font-family: inherit; }
-    .btn-generate:hover { background: #166fe5; }
+    /* 컬러 모드 토글 */
+    .color-mode-group { display: flex; gap: 0; border: 1.5px solid var(--inp-bdr); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+    .color-mode-btn { flex: 1; padding: 7px 0; font-size: 12px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .color-mode-btn.active { background: var(--accent); color: #fff; }
+    .color-mode-btn.inactive { background: var(--tab-idle-bg); color: var(--tab-idle-clr); }
+
+    /* 자동/AI 안내 박스 */
+    .info-blue {
+      font-size: 11px; color: var(--accent-tx); background: var(--accent-lt);
+      border-radius: 6px; padding: 7px 10px; margin-bottom: 8px; line-height: 1.5;
+    }
+    .info-purple {
+      display: none; align-items: center; gap: 6px; font-size: 11px; color: #7c3aed;
+      margin-top: 6px; margin-bottom: 4px; background: #f3f0ff; border-radius: 6px; padding: 6px 10px;
+    }
+    [data-theme="dark"] .info-purple { background: #2a1f45; color: #a78bfa; }
+
+    /* 자동 추출 안내 */
+    .auto-extract-notice {
+      display: none; align-items: center; gap: 8px;
+      background: var(--accent-lt); border: 1px solid #b3d4ff; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: var(--accent-tx);
+    }
+    [data-theme="dark"] .auto-extract-notice { border-color: #1f3a6e; }
+
+    /* 레이아웃 추가 버튼 */
+    .layout-add-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1.5px dashed var(--inp-bdr); border-radius: 8px; padding: 9px;
+      cursor: pointer; background: var(--upload-bg); font-size: 12px; color: var(--tx-muted);
+      font-weight: 600; transition: all .15s;
+    }
+    .layout-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-generate { width: 100%; background: var(--accent); color: white; border: none; border-radius: 8px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s; font-family: inherit; }
+    .btn-generate:hover { background: var(--accent-h); }
     .btn-generate:disabled { background: #b0c4de; cursor: not-allowed; }
+
+    /* AI 제안 버튼 */
+    .btn-suggest { width: 100%; background: #f3f0ff; color: #7c3aed; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-suggest:hover { background: #ede9fe; }
+    .btn-suggest:disabled { opacity: .6; cursor: not-allowed; }
+    [data-theme="dark"] .btn-suggest { background: #2d1f4e; color: #a78bfa; border-color: #4c3a7e; }
+    [data-theme="dark"] .btn-suggest:hover { background: #3a2660; }
+
+    /* AI 제안 카드 */
+    .proposal-card {
+      display: none; margin-bottom: 14px; border: 1.5px solid #ddd6fe;
+      border-radius: 10px; overflow: hidden; background: #fdfcff;
+    }
+    [data-theme="dark"] .proposal-card { background: #1e1a2d; border-color: #3d2e6e; }
+    .proposal-card-body { padding: 14px 16px; }
+    .proposal-label { display: block; font-size: 11px; font-weight: 700; color: var(--tx-sub); margin-bottom: 4px; }
+    .proposal-input { width: 100%; border: 1.5px solid var(--inp-bdr); border-radius: 6px; padding: 7px 10px; font-size: 12px; outline: none; font-family: inherit; transition: border-color .15s; background: var(--inp-bg); color: var(--tx); }
+    .proposal-input:focus { border-color: #7c3aed; }
+    .proposal-hex-input { width: 90px; border: 1.5px solid var(--inp-bdr); border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: monospace; outline: none; letter-spacing: 1px; background: var(--inp-bg); color: var(--tx); }
+    .btn-purple { width: 100%; background: #7c3aed; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .btn-purple:hover { background: #6d28d9; }
 
     /* 결과 헤더 */
     .result-header { justify-content: space-between; }
-    .result-actions { display: flex; gap: 8px; }
-    .btn-action { border: 1.5px solid #ddd; background: white; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 5px; }
-    .btn-action:hover { border-color: #1877f2; color: #1877f2; background: #e7f3ff; }
-    .btn-download { background: #1877f2; color: white; border-color: #1877f2; }
-    .btn-download:hover { background: #166fe5; color: white; }
+    .result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-action { border: 1.5px solid var(--bdr); background: var(--panel-bg); color: var(--tx); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 5px; }
+    .btn-action:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+    .btn-download { background: var(--accent); color: white; border-color: var(--accent); }
+    .btn-download:hover { background: var(--accent-h); color: white; }
     .btn-figma { background: #1E1E1E; border: 1.5px solid #555; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; transition: all .15s; white-space: nowrap; }
     .btn-figma:hover { background: #333; border-color: #aaa; }
+
+    /* Figma 모달 */
     .figma-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
     .figma-modal-overlay.open { display:flex; }
-    .figma-modal { background:#fff;border-radius:14px;width:420px;max-width:90vw;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.22); }
+    .figma-modal { background:var(--panel-bg);border-radius:14px;width:420px;max-width:90vw;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.3); }
     .figma-modal-head { background:#1E1E1E;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
     .figma-modal-head h3 { color:#fff;font-size:14px;font-weight:700; }
     .figma-modal-close { background:rgba(255,255,255,.15);border:none;border-radius:50%;width:26px;height:26px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1; }
     .figma-modal-body { padding:20px; }
+    .figma-modal-body p { font-size:12px;color:var(--tx-sub);margin-bottom:12px; }
     .figma-url-box { display:flex;gap:8px;margin-bottom:16px; }
-    .figma-url-input { flex:1;border:1.5px solid #ddd;border-radius:8px;padding:9px 12px;font-size:12px;outline:none;font-family:monospace;color:#606770;background:#f7f8fa; }
-    .btn-copy-url { background:#1877f2;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap; }
+    .figma-url-input { flex:1;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:12px;outline:none;font-family:monospace;color:var(--tx-sub);background:var(--fig-bg); }
+    .btn-copy-url { background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap; }
     .btn-copy-url.copied { background:#16a34a; }
-    .figma-steps-title { font-size:12px;font-weight:700;color:#1c1e21;margin-bottom:10px; }
+    .figma-steps-title { font-size:12px;font-weight:700;color:var(--tx);margin-bottom:10px; }
     .figma-modal-steps { display:flex;flex-direction:column;gap:7px;margin-bottom:16px; }
-    .figma-modal-step { display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#606770;line-height:1.5; }
-    .figma-modal-step .snum { background:#1877f2;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
+    .figma-modal-step { display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--tx-sub);line-height:1.5; }
+    .figma-modal-step .snum { background:var(--accent);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
     .btn-open-plugin { width:100%;background:#1E1E1E;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:7px; }
     .btn-open-plugin:hover { background:#333; }
 
     /* 배리에이션 탭 */
-    .var-tabs { display: flex; gap: 0; border-bottom: 2px solid #e4e6eb; padding: 0 20px; }
+    .var-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--bdr); padding: 0 20px; background: var(--panel-bg); }
     .var-tab {
       padding: 12px 20px; font-size: 13px; font-weight: 700; border: none; background: transparent;
-      cursor: pointer; color: #8a8d91; font-family: inherit; position: relative; transition: color .15s;
+      cursor: pointer; color: var(--tx-muted); font-family: inherit; position: relative; transition: color .15s;
       border-bottom: 2px solid transparent; margin-bottom: -2px;
     }
-    .var-tab:hover { color: #1877f2; }
-    .var-tab.active { color: #1877f2; border-bottom-color: #1877f2; }
+    .var-tab:hover { color: var(--accent); }
+    .var-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .var-tab .tab-label { font-size: 10px; font-weight: 600; display: block; opacity: .7; }
 
     /* 플레이스홀더 */
-    .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: #bcc0c4; text-align: center; gap: 12px; }
+    .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: var(--tx-muted); text-align: center; gap: 12px; }
     .placeholder .ph-icon { font-size: 48px; }
     .placeholder p { font-size: 14px; line-height: 1.6; }
 
     /* 로딩 */
     .loading-wrap { padding: 28px 24px; display: none; }
     .loading-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
-    .loading-top span { font-size: 13px; font-weight: 700; }
-    .loading-pct { font-size: 13px; font-weight: 700; color: #1877f2; }
-    .progress-track { height: 4px; background: #e4e6eb; border-radius: 99px; margin-bottom: 20px; overflow: hidden; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg,#1877f2,#42a5f5); border-radius: 99px; transition: width .3s ease; width: 0%; }
+    .loading-top span { font-size: 13px; font-weight: 700; color: var(--tx); }
+    .loading-pct { font-size: 13px; font-weight: 700; color: var(--accent); }
+    .progress-track { height: 4px; background: var(--track-bg); border-radius: 99px; margin-bottom: 20px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg,var(--accent),#42a5f5); border-radius: 99px; transition: width .3s ease; width: 0%; }
     .step-list { display: flex; flex-direction: column; gap: 8px; }
-    .step-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; background: #f0f2f5; color: #8a8d91; }
-    .step-item.active { background: #e7f3ff; color: #1877f2; }
-    .step-item.done { background: #f0fff4; color: #16a34a; }
-    .step-dot { width: 16px; height: 16px; border-radius: 50%; background: #d0d0d0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
-    .step-item.active .step-dot { background: #1877f2; animation: pulse 1.2s infinite; }
-    .step-item.done .step-dot { background: #16a34a; color: white; }
+    .step-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; background: var(--step-idle); color: var(--tx-muted); }
+    .step-item.active { background: var(--step-on); color: var(--accent); }
+    .step-item.done { background: var(--step-done); color: var(--done-clr); }
+    .step-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--inp-bdr); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+    .step-item.active .step-dot { background: var(--accent); animation: pulse 1.2s infinite; }
+    .step-item.done .step-dot { background: var(--done-clr); color: white; }
     @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(24,119,242,.4)} 50%{box-shadow:0 0 0 6px rgba(24,119,242,0)} }
 
     /* 에러 */
-    .error-wrap { margin: 20px; background: #fff0f0; border: 1px solid #fecaca; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #b91c1c; display: none; }
+    .error-wrap { margin: 20px; background: var(--err-bg); border: 1px solid var(--err-bdr); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--err-tx); display: none; }
 
     /* 결과 영역 */
     .result-body { padding: 20px; display: none; }
 
     /* 배리에이션 레이블 */
     .var-info { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-    .var-badge { background: #e7f3ff; color: #1877f2; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
+    .var-badge { background: var(--accent-lt); color: var(--accent); border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
 
     /* 이미지 미리보기 */
     .preview-section { margin-bottom: 20px; }
-    .preview-label { font-size: 12px; font-weight: 700; color: #606770; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .preview-label { font-size: 12px; font-weight: 700; color: var(--tx-sub); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
     .preview-container {
-      width: 100%; background: #1c1e21; border-radius: 10px; overflow: hidden;
+      width: 100%; background: #0d0d0d; border-radius: 10px; overflow: hidden;
       display: flex; align-items: center; justify-content: center; padding: 20px;
     }
     .preview-scaler { position: relative; width: 540px; height: 540px; flex-shrink: 0; }
@@ -152,33 +322,22 @@
     }
 
     /* 코드 섹션 */
-    .code-section { }
     .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .code-label { font-size: 12px; font-weight: 700; color: #606770; }
-    .btn-copy-code { font-size: 12px; font-weight: 600; color: #1877f2; background: #e7f3ff; border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-family: inherit; transition: background .15s; }
-    .btn-copy-code:hover { background: #cce0ff; }
+    .code-label { font-size: 12px; font-weight: 700; color: var(--tx-sub); }
+    .btn-copy-code { font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-lt); border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .btn-copy-code:hover { filter: brightness(.9); }
     .btn-copy-code.copied { background: #d1fae5; color: #065f46; }
-    .code-box { background: #1c1e21; border-radius: 8px; padding: 14px 16px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; color: #a8d8a8; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .code-box { background: var(--code-bg); border-radius: 8px; padding: 14px 16px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; color: #a8d8a8; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
 
     /* Figma 안내 */
-    .figma-guide { margin-top: 16px; background: #f7f8fa; border-radius: 10px; padding: 14px 16px; }
-    .figma-guide-title { font-size: 12px; font-weight: 700; color: #1c1e21; margin-bottom: 8px; }
+    .figma-guide { margin-top: 16px; background: var(--fig-bg); border-radius: 10px; padding: 14px 16px; }
+    .figma-guide-title { font-size: 12px; font-weight: 700; color: var(--tx); margin-bottom: 8px; }
     .figma-steps { display: flex; flex-direction: column; gap: 6px; }
-    .figma-step { font-size: 12px; color: #606770; display: flex; gap: 8px; align-items: flex-start; }
-    .figma-step .num { font-weight: 700; color: #1877f2; flex-shrink: 0; }
+    .figma-step { font-size: 12px; color: var(--tx-sub); display: flex; gap: 8px; align-items: flex-start; }
+    .figma-step .num { font-weight: 700; color: var(--accent); flex-shrink: 0; }
 
-    /* AI 제안 카드 */
-    .proposal-label { display: block; font-size: 11px; font-weight: 700; color: #606770; margin-bottom: 4px; }
-    .proposal-input { width: 100%; border: 1.5px solid #ddd; border-radius: 6px; padding: 7px 10px; font-size: 12px; outline: none; font-family: inherit; transition: border-color .15s; }
-    .proposal-input:focus { border-color: #7c3aed; }
-    .btn-purple { width: 100%; background: #7c3aed; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; }
-    .btn-purple:hover { background: #6d28d9; }
-    .btn-suggest { width: 100%; background: #f3f0ff; color: #7c3aed; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .btn-suggest:hover { background: #ede9fe; }
-    .btn-suggest:disabled { opacity: .6; cursor: not-allowed; }
-    .bg-tab { flex: 1; padding: 6px 0; font-size: 11px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; transition: all .15s; }
-    .bg-tab.active { background: #7c3aed; color: #fff; }
-    .bg-tab.inactive { background: #f5f3ff; color: #7c3aed; }
+    /* 검증 패널 */
+    #validationPanel { display:none;margin-bottom:16px;background:var(--fig-bg);border:1.5px solid var(--bdr);border-radius:10px;padding:14px 16px; }
 
     @media (max-width: 960px) { .container { grid-template-columns: 1fr; } }
   </style>
@@ -187,7 +346,10 @@
 
 <nav>
   <div class="logo">AdCraft <span>by Claude AI</span></div>
-  <div class="nav-badge"><div class="dot"></div>HTML to Design Ready</div>
+  <div class="nav-right">
+    <button id="themeToggle" class="btn-theme" onclick="toggleTheme()">🌙 다크</button>
+    <div class="nav-badge"><div class="dot"></div>HTML to Design Ready</div>
+  </div>
 </nav>
 
 <div class="container">
@@ -201,13 +363,13 @@
     <div class="panel-body">
 
       <!-- 과정 프리셋 -->
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;background:#f7f8fa;border-radius:8px;padding:9px 12px;border:1.5px solid #e4e6eb">
-        <span style="font-size:11px;font-weight:700;color:#606770;white-space:nowrap">💾 프리셋</span>
-        <select id="presetSelect" style="flex:1;border:1.5px solid #ddd;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;outline:none;color:#1c1e21;background:#fff;min-width:0">
+      <div class="preset-bar">
+        <span>💾 프리셋</span>
+        <select id="presetSelect">
           <option value="">-- 저장된 과정 선택 --</option>
         </select>
-        <button onclick="loadPreset()" style="background:#1877f2;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">불러오기</button>
-        <button onclick="savePreset()" style="background:#fff;color:#606770;border:1.5px solid #ddd;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">저장</button>
+        <button class="btn-preset-load" onclick="loadPreset()">불러오기</button>
+        <button class="btn-preset-save" onclick="savePreset()">저장</button>
       </div>
 
       <div class="form-group">
@@ -224,37 +386,29 @@
       </div>
 
       <!-- AI 제안 카드 -->
-      <div id="designProposalCard" style="display:none;margin-bottom:14px;border:1.5px solid #ddd6fe;border-radius:10px;overflow:hidden;background:#fdfcff">
-        <!-- 헤더 -->
+      <div id="designProposalCard" class="proposal-card">
         <div style="background:#7c3aed;padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:13px;font-weight:700;color:#fff">💡 AI 디자인 제안</span>
           <button onclick="closeDesignProposal()" style="background:rgba(255,255,255,.2);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
         </div>
-        <div style="padding:14px 16px">
-
-
-          <!-- 카피 톤 & 앵글 -->
+        <div class="proposal-card-body">
           <div style="margin-bottom:10px">
             <label class="proposal-label">🎯 카피 톤 & 앵글</label>
             <input id="proposalCopyTone" type="text" class="proposal-input" placeholder="예: 친근한 공감형" />
-            <div id="proposalCopyToneDesc" style="font-size:11px;color:#888;margin-top:3px;line-height:1.4"></div>
+            <div id="proposalCopyToneDesc" style="font-size:11px;color:var(--tx-muted);margin-top:3px;line-height:1.4"></div>
           </div>
-
-          <!-- 배경 컬러 방향 -->
           <div style="margin-bottom:10px">
             <label class="proposal-label">🎨 배경 컬러 방향</label>
             <div style="display:flex;align-items:center;gap:8px">
-              <div id="proposalColorSwatch" style="width:30px;height:30px;border-radius:6px;background:#1877f2;cursor:pointer;flex-shrink:0;border:1.5px solid #ddd"
+              <div id="proposalColorSwatch" style="width:30px;height:30px;border-radius:6px;background:#1877f2;cursor:pointer;flex-shrink:0;border:1.5px solid var(--inp-bdr)"
                 onclick="document.getElementById('proposalColorPicker').click()"></div>
               <input type="color" id="proposalColorPicker" style="position:absolute;opacity:0;width:0;height:0" oninput="onProposalColorChange(this.value)" />
-              <input id="proposalColorHex" type="text" maxlength="7" style="width:90px;border:1.5px solid #ddd;border-radius:6px;padding:6px 8px;font-size:12px;font-family:monospace;outline:none;letter-spacing:1px"
+              <input id="proposalColorHex" type="text" maxlength="7" class="proposal-hex-input"
                 oninput="onProposalHexInput(this.value)" />
               <input id="proposalColorDir" type="text" class="proposal-input" style="flex:1;width:auto"
                 placeholder="예: 딥 네이비 — 신뢰·전문성" />
             </div>
           </div>
-
-          <!-- 타겟 & 훅 -->
           <div style="margin-bottom:12px">
             <label class="proposal-label">👥 타겟 & 훅 문구</label>
             <input id="proposalTarget" type="text" class="proposal-input" style="margin-bottom:5px"
@@ -262,24 +416,23 @@
             <input id="proposalHook" type="text" class="proposal-input"
               placeholder="예: 퇴근하고도 공부할 시간이 없다고요?" />
           </div>
-
           <button onclick="generateWithProposal()" class="btn-purple">✨ 이대로 생성하기</button>
         </div>
       </div>
 
       <!-- 자동 추출 안내 -->
-      <div id="autoExtractNotice" style="display:none;align-items:center;gap:8px;background:#e7f3ff;border:1px solid #b3d4ff;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1877f2;">
+      <div id="autoExtractNotice" class="auto-extract-notice">
         <span>✨</span>
         <span><strong>URL에서 자동 추출된 정보예요.</strong> 수정 후 다시 생성하면 반영됩니다.</span>
       </div>
 
       <div class="form-group">
-        <label>과정 타겟 <span style="font-weight:400;color:#aaa">(선택)</span></label>
+        <label>과정 타겟 <span style="font-weight:400;color:var(--tx-muted)">(선택)</span></label>
         <input type="text" id="targetInput" placeholder="예: 30대 직장인 데이터 분석 입문자" />
       </div>
 
       <div class="form-group">
-        <label>USP <span style="font-weight:400;color:#aaa">핵심 강점 3가지 (선택)</span></label>
+        <label>USP <span style="font-weight:400;color:var(--tx-muted)">핵심 강점 3가지 (선택)</span></label>
         <div class="usp-stack">
           <input type="text" id="usp1Input" placeholder="USP 1  예: 실무 현업 강사진" />
           <input type="text" id="usp2Input" placeholder="USP 2  예: 12개월 무제한 수강" />
@@ -288,23 +441,23 @@
       </div>
 
       <div class="form-group">
-        <label>광고세트 메시지 <span style="font-weight:400;color:#aaa">(선택)</span></label>
+        <label>광고세트 메시지 <span style="font-weight:400;color:var(--tx-muted)">(선택)</span></label>
         <textarea id="adSetMessageInput" rows="2" placeholder="이 캠페인에서 전달하고자 하는 전체 메시지&#10;예: 지금 당장 데이터 역량을 키워야 하는 이유"></textarea>
       </div>
 
       <div class="form-group">
-        <label>소재 메시지 <span style="font-weight:400;color:#aaa">(선택)</span></label>
+        <label>소재 메시지 <span style="font-weight:400;color:var(--tx-muted)">(선택)</span></label>
         <textarea id="creativeMessageInput" rows="2" placeholder="이 광고소재에서 강조할 핵심 포인트&#10;예: 12개월 무제한 수강 + 실무 프로젝트 중심"></textarea>
       </div>
 
       <hr class="section-divider" />
 
       <div class="form-group">
-        <label>레퍼런스 이미지 <span style="font-weight:400;color:#aaa">(선택, 디자인 스타일 학습용 · 최대 3장)</span></label>
+        <label>레퍼런스 이미지 <span style="font-weight:400;color:var(--tx-muted)">(선택, 디자인 스타일 학습용 · 최대 3장)</span></label>
 
-        <div style="display:flex;gap:0;margin-bottom:8px;border:1.5px solid #ddd;border-radius:8px;overflow:hidden">
-          <button id="tabUpload" onclick="switchTab('upload')" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#1877f2;color:#fff;font-family:inherit;transition:all .15s">파일 업로드</button>
-          <button id="tabUrl" onclick="switchTab('url')" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#f0f2f5;color:#606770;font-family:inherit;transition:all .15s">Meta 광고 라이브러리 URL</button>
+        <div class="tab-group">
+          <button id="tabUpload" class="tab-btn active" onclick="switchTab('upload')">파일 업로드</button>
+          <button id="tabUrl" class="tab-btn inactive" onclick="switchTab('url')">Meta 광고 라이브러리 URL</button>
         </div>
 
         <div id="panelUpload">
@@ -316,79 +469,67 @@
         </div>
 
         <div id="panelUrl" style="display:none">
-          <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:11px;color:#795548;line-height:1.6">
+          <div class="meta-notice">
             <strong>사용 방법:</strong> facebook.com/ads/library 에서 광고 이미지 우클릭 → "이미지 주소 복사" 후 붙여넣기<br>
-            <span style="color:#9e9e9e">계정 연결 없음 · 공개 이미지만 수집</span>
+            <span>계정 연결 없음 · 공개 이미지만 수집</span>
           </div>
           <div style="display:flex;gap:6px">
-            <input type="url" id="imgUrlInput" placeholder="https://scontent-*.fbcdn.net/v/..." style="flex:1;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;font-size:12px;outline:none;font-family:inherit" />
-            <button onclick="addImgUrl()" style="background:#1877f2;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap" id="btnAddUrl">추가</button>
+            <input type="url" id="imgUrlInput" placeholder="https://scontent-*.fbcdn.net/v/..." style="flex:1;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:8px 10px;font-size:12px;outline:none;font-family:inherit;background:var(--inp-bg);color:var(--tx)" />
+            <button onclick="addImgUrl()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap" id="btnAddUrl">추가</button>
           </div>
-          <div style="font-size:11px;color:#aaa;margin-top:4px">최대 3장</div>
+          <div style="font-size:11px;color:var(--tx-muted);margin-top:4px">최대 3장</div>
         </div>
 
         <div class="img-previews" id="imgPreviews"></div>
       </div>
 
       <div class="form-group">
-        <label>배경 컬러 <span style="font-weight:400;color:#aaa">(선택)</span></label>
+        <label>배경 컬러 <span style="font-weight:400;color:var(--tx-muted)">(선택)</span></label>
 
-        <!-- 자동/수동 토글 -->
-        <div style="display:flex;gap:0;border:1.5px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:8px">
-          <button id="colorModeAuto" onclick="setColorMode(true)"
-            style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#1877f2;color:#fff;font-family:inherit">
-            ✨ 자동 추출
-          </button>
-          <button id="colorModeManual" onclick="setColorMode(false)"
-            style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#f0f2f5;color:#606770;font-family:inherit">
-            직접 선택
-          </button>
+        <div class="color-mode-group">
+          <button id="colorModeAuto" class="color-mode-btn active" onclick="setColorMode(true)">✨ 자동 추출</button>
+          <button id="colorModeManual" class="color-mode-btn inactive" onclick="setColorMode(false)">직접 선택</button>
         </div>
 
-        <!-- 자동 모드 안내 -->
-        <div id="autoColorDesc" style="font-size:11px;color:#1877f2;background:#e7f3ff;border-radius:6px;padding:7px 10px;margin-bottom:8px;line-height:1.5">
+        <div id="autoColorDesc" class="info-blue">
           레퍼런스 이미지 컬러 → 페이지 테마컬러 → AI 브랜드 추론 순서로 자동 적용됩니다
         </div>
 
-        <!-- 수동 컬러 피커 (숨김 기본) -->
         <div id="manualColorSection" style="display:none">
-        <div class="color-picker-wrap" onclick="document.getElementById('colorPicker').click()">
-          <input type="color" id="colorPicker" value="#1B5BD4"
-            style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
-            oninput="onColorPickerChange(this.value)" />
-          <div class="color-swatch-btn" id="colorSwatch" style="background:#1B5BD4"></div>
-          <input class="hex-input" id="hexInput" type="text" value="#1B5BD4" maxlength="7"
-            placeholder="#000000"
-            onclick="event.stopPropagation()"
-            oninput="onHexInput(this.value)"
-            onblur="onHexBlur(this.value)" />
-          <span class="eyedropper-icon" title="컬러 피커 열기">🎨</span>
+          <div class="color-picker-wrap" onclick="document.getElementById('colorPicker').click()">
+            <input type="color" id="colorPicker" value="#1B5BD4"
+              style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+              oninput="onColorPickerChange(this.value)" />
+            <div class="color-swatch-btn" id="colorSwatch" style="background:#1B5BD4"></div>
+            <input class="hex-input" id="hexInput" type="text" value="#1B5BD4" maxlength="7"
+              placeholder="#000000"
+              onclick="event.stopPropagation()"
+              oninput="onHexInput(this.value)"
+              onblur="onHexBlur(this.value)" />
+            <span class="eyedropper-icon" title="컬러 피커 열기">🎨</span>
+          </div>
+          <div id="colorAutoNotice" class="info-purple">
+            <span>🎨</span>
+            <span>레퍼런스 이미지에서 자동 추출된 컬러입니다</span>
+          </div>
+          <div class="preset-dots">
+            <div class="preset-dot active" data-color="#1B5BD4" title="블루" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#0A0A1A" title="다크" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#064E3B" title="그린" style="background:#064E3B" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#C2185B" title="코랄" style="background:#C2185B" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#7C3AED" title="퍼플" style="background:#7C3AED" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#B45309" title="골드" style="background:#B45309" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#1E3A5F" title="네이비" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#1a1a1a" title="블랙" style="background:#1a1a1a;border:1px solid #555" onclick="applyPreset(this)"></div>
+          </div>
         </div>
-        <div id="colorAutoNotice" style="display:none;align-items:center;gap:6px;font-size:11px;color:#7c3aed;margin-top:6px;margin-bottom:4px;background:#f3f0ff;border-radius:6px;padding:6px 10px">
-          <span>🎨</span>
-          <span>레퍼런스 이미지에서 자동 추출된 컬러입니다</span>
-        </div>
-        <div class="preset-dots">
-          <div class="preset-dot active" data-color="#1B5BD4" title="블루" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#0A0A1A" title="다크" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#064E3B" title="그린" style="background:#064E3B" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#C2185B" title="코랄" style="background:#C2185B" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#7C3AED" title="퍼플" style="background:#7C3AED" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#B45309" title="골드" style="background:#B45309" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#1E3A5F" title="네이비" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
-          <div class="preset-dot" data-color="#1a1a1a" title="블랙" style="background:#1a1a1a;border:1px solid #ccc" onclick="applyPreset(this)"></div>
-        </div>
-        </div> <!-- /manualColorSection -->
       </div>
 
       <div class="form-group">
-        <label>소재 레이아웃 레퍼런스 <span style="font-weight:400;color:#aaa">(선택 · 클릭하면 해당 구조로 생성)</span></label>
+        <label>소재 레이아웃 레퍼런스 <span style="font-weight:400;color:var(--tx-muted)">(선택 · 클릭하면 해당 구조로 생성)</span></label>
         <div id="layoutGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
-        <div id="layoutEmptyNote" style="display:none;font-size:11px;color:#aaa;margin-bottom:6px">레퍼런스 없음 — 기본 템플릿으로 생성됩니다</div>
-        <label style="display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #ccc;border-radius:8px;padding:9px;cursor:pointer;background:#fafafa;font-size:12px;color:#888;font-weight:600;transition:all .15s"
-          id="layoutAddBtn"
-          onmouseenter="this.style.borderColor='#1877f2';this.style.color='#1877f2'"
-          onmouseleave="this.style.borderColor='#ccc';this.style.color='#888'">
+        <div id="layoutEmptyNote" style="display:none;font-size:11px;color:var(--tx-muted);margin-bottom:6px">레퍼런스 없음 — 기본 템플릿으로 생성됩니다</div>
+        <label class="layout-add-btn" id="layoutAddBtn">
           + 레이아웃 레퍼런스 추가
           <input type="file" id="layoutFileInput" accept="image/*" style="display:none" />
         </label>
@@ -415,16 +556,13 @@
       </div>
     </div>
 
-    <!-- 배리에이션 탭 (동적 렌더링) -->
     <div class="var-tabs" id="varTabs" style="display:none"></div>
 
-    <!-- 플레이스홀더 -->
     <div class="placeholder" id="placeholder">
       <div class="ph-icon">🎨</div>
       <p>소재 정보를 입력하고 생성 버튼을 누르면<br>카피 배리에이션 3종 + 1080×1080 광고소재가 표시돼요</p>
     </div>
 
-    <!-- 로딩 -->
     <div class="loading-wrap" id="loadingWrap">
       <div class="loading-top">
         <span>생성 중...</span>
@@ -440,19 +578,15 @@
       </div>
     </div>
 
-    <!-- 에러 -->
     <div class="error-wrap" id="errorWrap"></div>
 
-    <!-- 결과 본문 -->
     <div class="result-body" id="resultBody">
 
-      <!-- 선택 배리에이션 정보 -->
       <div class="var-info">
-        <span style="font-size:12px;font-weight:600;color:#606770">현재 보기:</span>
+        <span style="font-size:12px;font-weight:600;color:var(--tx-sub)">현재 보기:</span>
         <span class="var-badge" id="varBadge">A - 혜택형</span>
       </div>
 
-      <!-- 이미지 미리보기 -->
       <div class="preview-section">
         <div class="preview-label">🖼️ 광고소재 미리보기 (1080×1080)</div>
         <div class="preview-container">
@@ -462,10 +596,8 @@
         </div>
       </div>
 
-      <!-- 주예진 체크리스트 검증 패널 -->
-      <div id="validationPanel" style="display:none;margin-bottom:16px;background:#f7f8fa;border:1.5px solid #e4e6eb;border-radius:10px;padding:14px 16px"></div>
+      <div id="validationPanel"></div>
 
-      <!-- JSON 데이터 -->
       <div class="code-section" style="margin-bottom:12px">
         <div class="code-header">
           <div class="code-label">🗂 광고 데이터 JSON</div>
@@ -474,7 +606,6 @@
         <div class="code-box" id="jsonBox" style="color:#f9c784"></div>
       </div>
 
-      <!-- HTML 코드 -->
       <div class="code-section">
         <div class="code-header">
           <div class="code-label">📄 HTML 코드 (Figma HTML to Design용)</div>
@@ -483,7 +614,6 @@
         <div class="code-box" id="codeBox"></div>
       </div>
 
-      <!-- Figma 사용 가이드 -->
       <div class="figma-guide">
         <div class="figma-guide-title">📐 Figma에서 불러오는 방법</div>
         <div class="figma-steps">
@@ -507,7 +637,7 @@
       <button class="figma-modal-close" onclick="closeFigmaModal()">×</button>
     </div>
     <div class="figma-modal-body">
-      <p style="font-size:12px;color:#606770;margin-bottom:12px">아래 미리보기 URL을 복사한 후 Figma <strong>html.to.design</strong> 플러그인에 붙여넣으세요.</p>
+      <p>아래 미리보기 URL을 복사한 후 Figma <strong>html.to.design</strong> 플러그인에 붙여넣으세요.</p>
       <div class="figma-url-box">
         <input class="figma-url-input" id="figmaPreviewUrl" readonly value="" />
         <button class="btn-copy-url" id="btnCopyFigmaUrl" onclick="copyFigmaUrl()">URL 복사</button>
@@ -533,9 +663,28 @@
   let selectedLayoutRefId = null;
   let cachedLayouts = [];
   let refImages = [];
-  let variations = [];      // [{adData, html}, ...]
+  let variations = [];
   let activeVariation = 0;
-  let selectedBgImage = null; // Unsplash 선택 이미지 base64
+  let selectedBgImage = null;
+
+  // ── 테마 토글 ──
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('adcraft_theme', next);
+    document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️ 라이트' : '🌙 다크';
+  }
+
+  // 저장된 테마 복원
+  (function() {
+    const saved = localStorage.getItem('adcraft_theme');
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+      document.getElementById('themeToggle').textContent = saved === 'dark' ? '☀️ 라이트' : '🌙 다크';
+    }
+  })();
 
   // ── 레이아웃 레퍼런스 관리 (localStorage 기반) ──
   function fetchLayouts() {
@@ -556,7 +705,7 @@
       const selected = selectedLayoutRefId === l.id;
       return `<div onclick="selectLayoutRef('${l.id}')"
         style="position:relative;cursor:pointer;border-radius:8px;overflow:hidden;
-          border:2.5px solid ${selected ? '#1877f2' : '#e0e0e0'};
+          border:2.5px solid ${selected ? '#1877f2' : 'var(--bdr)'};
           box-shadow:${selected ? '0 0 0 3px rgba(24,119,242,0.18)' : 'none'};
           transition:all .15s;flex-shrink:0">
         <img src="${l.thumbnail}" style="width:76px;height:76px;object-fit:cover;display:block" />
@@ -646,16 +795,13 @@
     document.getElementById('creativeMessageInput').value = preset.creative_message || '';
   }
 
-  // 페이지 로드 시 드롭다운 복원
   renderPresetDropdown();
 
   // ── 배리에이션 탭 전환 ──
   function switchVariation(idx) {
     if (!variations[idx]) return;
     activeVariation = idx;
-
     document.querySelectorAll('.var-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
-
     const v = variations[idx];
     document.getElementById('previewFrame').srcdoc = v.html;
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
@@ -664,12 +810,11 @@
     renderValidationPanel(v.adData);
   }
 
-  // ── 주예진 체크리스트 검증 패널 ──
+  // ── 검증 패널 ──
   function renderValidationPanel(adData) {
     const panel = document.getElementById('validationPanel');
     const validation = adData.validation;
     if (!validation) { panel.style.display = 'none'; return; }
-
     const score = typeof adData.validation_score === 'number'
       ? adData.validation_score
       : Object.values(validation).filter(Boolean).length;
@@ -677,29 +822,26 @@
     const total = 11;
     const scoreColor = score >= 10 ? '#16a34a' : score >= 8 ? '#ca8a04' : '#dc2626';
     const scoreLabel = score >= 10 ? '우수' : score >= 8 ? '보통' : '개선 필요';
-
     const criteriaLabels = {
       C1:'숫자 혜택 명시', C2:'긴박감 트리거', C3:'짧은 헤드라인',
       C4:'CTA 명시', C5:'의문문·반문', C6:'타겟 공감 먼저',
       V1:'헤드라인 강조', V2:'핵심 숫자 강조', V3:'가독성 확보',
       S1:'구체적 수치', P1:'3초 후킹',
     };
-
     const items = Object.entries(criteriaLabels).map(([id, label]) => {
       const pass = validation[id];
       return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0">
         <span style="width:15px;height:15px;border-radius:50%;background:${pass?'#d1fae5':'#fee2e2'};color:${pass?'#065f46':'#991b1b'};font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${pass?'✓':'✗'}</span>
-        <span style="font-size:11px;color:${pass?'#374151':'#991b1b'};font-weight:${pass?'400':'600'}">${id} ${label}</span>
+        <span style="font-size:11px;color:${pass?'var(--tx)':'#991b1b'};font-weight:${pass?'400':'600'}">${id} ${label}</span>
       </div>`;
     }).join('');
-
     panel.style.display = 'block';
     panel.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:12px;font-weight:700;color:#606770">✅ 주예진 체크리스트 검증</span>
+        <span style="font-size:12px;font-weight:700;color:var(--tx-sub)">✅ 주예진 체크리스트 검증</span>
         <span style="font-size:16px;font-weight:900;color:${scoreColor}">${score}/${total} — ${scoreLabel}</span>
       </div>
-      <div style="height:4px;background:#e4e6eb;border-radius:99px;overflow:hidden;margin-bottom:10px">
+      <div style="height:4px;background:var(--track-bg);border-radius:99px;overflow:hidden;margin-bottom:10px">
         <div style="height:100%;width:${Math.round((score/total)*100)}%;background:${scoreColor};border-radius:99px"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">${items}</div>
@@ -752,12 +894,10 @@
   // ── 컬러 모드 토글 ──
   function setColorMode(auto) {
     isAutoColor = auto;
-    document.getElementById('colorModeAuto').style.background   = auto ? '#1877f2' : '#f0f2f5';
-    document.getElementById('colorModeAuto').style.color        = auto ? '#fff'    : '#606770';
-    document.getElementById('colorModeManual').style.background = auto ? '#f0f2f5' : '#1877f2';
-    document.getElementById('colorModeManual').style.color      = auto ? '#606770' : '#fff';
-    document.getElementById('autoColorDesc').style.display      = auto ? 'block'   : 'none';
-    document.getElementById('manualColorSection').style.display = auto ? 'none'    : 'block';
+    document.getElementById('colorModeAuto').className = 'color-mode-btn ' + (auto ? 'active' : 'inactive');
+    document.getElementById('colorModeManual').className = 'color-mode-btn ' + (auto ? 'inactive' : 'active');
+    document.getElementById('autoColorDesc').style.display = auto ? 'block' : 'none';
+    document.getElementById('manualColorSection').style.display = auto ? 'none' : 'block';
   }
 
   function applyExtractedColor(hex) {
@@ -775,10 +915,8 @@
     const isUrl = tab === 'url';
     document.getElementById('panelUpload').style.display = isUrl ? 'none' : 'block';
     document.getElementById('panelUrl').style.display   = isUrl ? 'block' : 'none';
-    document.getElementById('tabUpload').style.background = isUrl ? '#f0f2f5' : '#1877f2';
-    document.getElementById('tabUpload').style.color    = isUrl ? '#606770' : '#fff';
-    document.getElementById('tabUrl').style.background  = isUrl ? '#1877f2' : '#f0f2f5';
-    document.getElementById('tabUrl').style.color       = isUrl ? '#fff'    : '#606770';
+    document.getElementById('tabUpload').className = 'tab-btn ' + (isUrl ? 'inactive' : 'active');
+    document.getElementById('tabUrl').className   = 'tab-btn ' + (isUrl ? 'active' : 'inactive');
   }
 
   // ── URL로 이미지 추가 ──
@@ -787,11 +925,9 @@
     const url = input.value.trim();
     if (!url) return;
     if (refImages.length >= 3) { alert('최대 3장까지 추가할 수 있어요.'); return; }
-
     const btn = document.getElementById('btnAddUrl');
     btn.textContent = '로딩...';
     btn.disabled = true;
-
     try {
       const res = await fetch('/api/fetch-image', {
         method: 'POST',
@@ -870,10 +1006,8 @@
   async function startGeneration() {
     const url = document.getElementById('urlInput').value.trim();
     if (!url) { alert('URL을 입력해주세요.'); return; }
-
     const btn = document.getElementById('generateBtn');
     btn.disabled = true;
-
     document.getElementById('placeholder').style.display = 'none';
     document.getElementById('resultBody').style.display = 'none';
     document.getElementById('errorWrap').style.display = 'none';
@@ -887,15 +1021,12 @@
       stepActive('step1');
       await animProgress(0, 15, 800);
       stepDone('step1');
-
       stepActive('step2');
       await animProgress(15, 30, 600);
       stepDone('step2');
-
       stepActive('step3');
       await animProgress(30, 45, 400);
       stepDone('step3');
-
       stepActive('step4');
 
       const apiPromise = fetch('/api/generate-ad', {
@@ -928,13 +1059,11 @@
       stepActive('step5');
       await animProgress(88, 100, 500);
       stepDone('step5');
-
       await new Promise(r => setTimeout(r, 300));
 
       variations = result.variations;
       activeVariation = 0;
 
-      // 자동 추출된 정보 → 폼에 채워서 보여주기
       if (result.extractedInfo) {
         const info = result.extractedInfo;
         document.getElementById('targetInput').value = info.target || '';
@@ -948,15 +1077,11 @@
         document.getElementById('autoExtractNotice').style.display = 'none';
       }
 
-      // 자동 추출된 컬러 → 컬러 피커에 반영 (참고용)
       if (result.effectiveBgColor && isAutoColor) {
         applyExtractedColor(result.effectiveBgColor);
         const srcLabel = {
-          style_ref: '스타일 레퍼런스',
-          layout_ref: '레이아웃 레퍼런스',
-          theme_color: '페이지 테마컬러',
-          ai_inferred: 'AI 브랜드 추론',
-          default: '기본값',
+          style_ref: '스타일 레퍼런스', layout_ref: '레이아웃 레퍼런스',
+          theme_color: '페이지 테마컬러', ai_inferred: 'AI 브랜드 추론', default: '기본값',
         }[result.colorSource] || result.colorSource;
         document.getElementById('colorAutoNotice').querySelector('span:last-child').innerHTML =
           `<strong>자동 추출 완료:</strong> ${srcLabel} (${result.effectiveBgColor})`;
@@ -978,8 +1103,6 @@
 
   function showVariations() {
     document.getElementById('loadingWrap').style.display = 'none';
-
-    // 탭 동적 렌더링 — 검증 점수 배지 포함
     const tabsEl = document.getElementById('varTabs');
     tabsEl.innerHTML = variations.map((v, i) => {
       const score = v.adData.validation_score;
@@ -996,7 +1119,6 @@
       </button>`;
     }).join('');
     tabsEl.style.display = 'flex';
-
     document.getElementById('resultBody').style.display = 'block';
     document.getElementById('resultActions').style.display = 'flex';
     switchVariation(0);
@@ -1098,21 +1220,17 @@
   }
 
   function generateWithProposal() {
-    // 제안 내용을 메인 폼에 반영
     const target = document.getElementById('proposalTarget').value.trim();
     const copyTone = document.getElementById('proposalCopyTone').value.trim();
     const colorDir = document.getElementById('proposalColorDir').value.trim();
     const hook = document.getElementById('proposalHook').value.trim();
     const colorHex = document.getElementById('proposalColorHex').value.trim();
-
     if (target && !document.getElementById('targetInput').value.trim())
       document.getElementById('targetInput').value = target;
     if (hook && !document.getElementById('adSetMessageInput').value.trim())
       document.getElementById('adSetMessageInput').value = hook;
     if (copyTone && !document.getElementById('creativeMessageInput').value.trim())
       document.getElementById('creativeMessageInput').value = copyTone + (colorDir ? ' · ' + colorDir : '');
-
-    // 컬러 적용
     if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
       setColorMode(false);
       selectedColor = colorHex;
@@ -1123,7 +1241,6 @@
     }
     startGeneration();
   }
-
 
   // ── 제안 컬러 피커 ──
   function onProposalColorChange(val) {
