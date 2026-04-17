@@ -54,6 +54,16 @@ try {
   console.warn('[디자인 스펙 없음] DESIGN_SPEC.md를 찾을 수 없어 기본 기준으로 동작합니다.');
 }
 
+// ─── Figma 레퍼런스 스타일 로드 (FIGMA_STYLES.md) ───
+const FIGMA_STYLES_FILE = join(__dirname, 'FIGMA_STYLES.md');
+let figmaStylesContent = '';
+try {
+  figmaStylesContent = readFileSync(FIGMA_STYLES_FILE, 'utf8');
+  console.log('[Figma 스타일 로드 완료] FIGMA_STYLES.md');
+} catch {
+  console.warn('[Figma 스타일 없음] FIGMA_STYLES.md를 찾을 수 없습니다.');
+}
+
 // ─── 레이아웃 레퍼런스 저장소 ───
 const LAYOUTS_FILE = join(__dirname, 'layouts.json');
 function readLayouts() {
@@ -493,35 +503,48 @@ ${checklistContent}
 ${designSpecContent}
 ` : '';
 
-  // A=수치카드형, B=헤드카피형, C=커뮤니티형 항상 고정 — 3종 레이아웃이 달라야 배리에이션 의미 있음
-  const layoutSpec = `
-## 배리에이션 레이아웃 고정 — A·B·C 각각 다른 타입·다른 필드로 작성
+  // Figma 검증 레이아웃 패턴 컨텍스트
+  const figmaCtx = figmaStylesContent ? `
+## Figma 검증 광고 레이아웃 패턴 (실제 집행 광고 기반 — 반드시 참고)
+${figmaStylesContent}
+→ 아래 JSON의 layout_type은 위 Figma 패턴명과 동일하게 지정할 것.
+` : '';
 
-### A - 혜택형 (수치카드형): 상단 훅 + 2줄 헤드라인 + 수치 카드
-- hook: 훅 텍스트. 최대 25자.
-- headline_line1, headline_line2: 각 최대 12자. 2줄 헤드라인.
+  // Figma 검증 3종 레이아웃 — A·B·C 각각 Figma 패턴 적용
+  const layoutSpec = `
+## 배리에이션 레이아웃 (Figma 검증 패턴) — A·B·C 각각 다른 타입·다른 필드로 작성
+
+### A - 혜택형 (헤드라인밴드형) [Figma 패턴 A]
+검정 가로 밴드 + 시안 초대형 헤드라인 + 수치카드 + 하단 검정 바
+- hook: 비주얼 영역 훅 텍스트. 최대 25자. 구어체.
+- headline_line1: 검정 밴드 텍스트 1줄. 최대 10자. 핵심 임팩트.
+- headline_line2: 검정 밴드 텍스트 2줄. 최대 10자. 강렬하게.
 - visual_stat1_value / visual_stat1_label: 수치 카드 1 (예: "3,200+" / "누적 수강생"). 없으면 null.
 - visual_stat2_value / visual_stat2_label: 수치 카드 2. 없으면 null.
 - cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
 
-### B - 공감형 (헤드카피형): 임팩트 헤드라인 + 혜택 서브카피 3줄
-- hook: 상단 훅. 최대 22자.
-- headline: 임팩트 1줄 헤드라인. 최대 20자.
-- sub_copy1 / sub_copy2 / sub_copy3: 혜택·이유 각 최대 28자. (✓ 아이콘 앞에 붙음)
+### B - 공감형 (다크스플릿형) [Figma 패턴 B]
+초록 그라디언트 상단 + 순검정 하단 / 노란 USP 하이라이트 바
+- hook: 노란 하이라이트 바 텍스트. 최대 10자. USP 핵심만. (예: "12개월 무제한")
+- headline_line1: 흰색 헤드라인 1줄. 최대 15자.
+- headline_line2: 흰색 헤드라인 2줄. 최대 15자.
+- sub_copy1: 서브 설명. 최대 28자.
 - cta_badge, cta_text ("→"로 끝내기).
 
-### C - 긴박형 (포토오버레이형): 이미지 배경 + 텍스트 오버레이 [피그마 템플릿 기반]
-지금 행동해야 할 이유·한정성 중심. 서브카피(공감) → 메인카피(임팩트) 구조.
-- hook: 서브카피 (상단 작은 텍스트). 타겟 상황·긴박감. 최대 28자. 구어체.
-- headline_line1: 메인카피 1줄. 최대 14자. 강렬하게.
-- headline_line2: 메인카피 2줄. 최대 14자. 강렬하게.
-- cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
+### C - 긴박형 (이미지모자이크형) [Figma 패턴 C]
+다크 네이비 배경 / 핫핑크 USP 뱃지 / 비주얼 모자이크
+지금 행동해야 할 이유·한정성 중심.
+- hook: 상단 서브 훅. 타겟 상황 공감. 최대 25자.
+- headline_line1: 메인 헤드라인 1줄. 최대 15자. 강렬하게.
+- headline_line2: 메인 헤드라인 2줄. 최대 15자. 강렬하게.
+- cta_badge: USP 뱃지 1 (이모지+키워드). 최대 12자.
+- cta_text: CTA. "→"로 끝내기.
 
 JSON 배열만 반환 (주석·설명 없이):
 [
-  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B - 공감형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
+  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드라인밴드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B - 공감형","brand":"","hook":"","headline_line1":"","headline_line2":"","sub_copy1":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"다크스플릿형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"이미지모자이크형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
 ]`;
 
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 3가지 배리에이션으로 작성하라.
@@ -536,7 +559,7 @@ JSON 배열만 반환 (주석·설명 없이):
 
 ## 상세페이지 내용 (참고)
 ${pageContent}${styleHint}
-${checklistCtx}${designSpecCtx}
+${checklistCtx}${designSpecCtx}${figmaCtx}
 ## 배리에이션 앵글 (반드시 각 앵글에 맞게 작성)
 - A (혜택형·수치카드형): 구체적 수치·성과·혜택을 직접 강조. 숫자가 있다면 적극 활용.
 - B (공감형·헤드카피형): 타겟의 고민·상황에 공감하며 감성적으로 접근.
@@ -585,10 +608,270 @@ function luminance(hex) {
 
 // ─── HTML 생성 (레이아웃 dispatcher) ───
 function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null) {
-  if (d.layout_type === '헤드카피형') return generateHeadlineCopyHTML(d, bgColor);
-  if (d.layout_type === '커뮤니티형') return generateCommunityHTML(d, bgColor);
+  // Figma 검증 패턴 (신규)
+  if (d.layout_type === '헤드라인밴드형') return generateHeadlineBandHTML(d, bgColor);
+  if (d.layout_type === '다크스플릿형')   return generateDarkSplitHTML(d, bgColor);
+  if (d.layout_type === '이미지모자이크형') return generateImageMosaicHTML(d, bgColor, bgImageBase64);
+  // 기존 레거시 패턴 (폴백)
+  if (d.layout_type === '헤드카피형')    return generateHeadlineCopyHTML(d, bgColor);
+  if (d.layout_type === '커뮤니티형')    return generateCommunityHTML(d, bgColor);
   if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64);
   return generateStatCardHTML(d, bgColor);
+}
+
+// ─── 헤드라인밴드형 (Figma 패턴 A) ───
+// 검정 가로 밴드 + 시안 초대형 텍스트 / 크림→앰버 배경 / 하단 검정 CTA 바
+function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
+  const hl1 = d.headline_line1 || '';
+  const hl2 = d.headline_line2 || '';
+  const hl1Size = hl1.length > 8 ? 78 : 96;
+  const hl2Size = hl2.length > 8 ? 78 : 96;
+  const band2Top = hl1Size === 96 ? 252 : 238;
+
+  const statCards = (() => {
+    if (!d.visual_stat1_value && !d.visual_stat2_value) return '';
+    let html = '';
+    if (d.visual_stat1_value) html += `
+      <div style="background:rgba(0,0,0,0.09);border-radius:22px;padding:24px 32px;text-align:center;border:1.5px solid rgba(0,0,0,0.13);min-width:200px">
+        <div style="font-size:${d.visual_stat1_value.length > 4 ? 46 : 56}px;font-weight:900;color:#000;letter-spacing:-2px;line-height:1">${d.visual_stat1_value}</div>
+        ${d.visual_stat1_label ? `<div style="font-size:20px;font-weight:600;color:rgba(0,0,0,0.5);margin-top:6px">${d.visual_stat1_label}</div>` : ''}
+      </div>`;
+    if (d.visual_stat2_value) html += `
+      <div style="background:rgba(0,0,0,0.09);border-radius:22px;padding:22px 30px;text-align:center;border:1.5px solid rgba(0,0,0,0.13)">
+        <div style="font-size:${d.visual_stat2_value.length > 4 ? 40 : 50}px;font-weight:900;color:#000;letter-spacing:-2px;line-height:1">${d.visual_stat2_value}</div>
+        ${d.visual_stat2_label ? `<div style="font-size:18px;font-weight:600;color:rgba(0,0,0,0.5);margin-top:6px">${d.visual_stat2_label}</div>` : ''}
+      </div>`;
+    return html;
+  })();
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:linear-gradient(168deg,#F0E8D5 0%,#F0E8D5 36%,#FFBE00 58%,#FF9500 100%)">
+
+  <!-- 브랜드 태그 -->
+  <div style="position:absolute;left:52px;top:42px;display:flex;align-items:center;gap:12px;z-index:10">
+    <div style="width:30px;height:30px;background:#1a1a1a;border-radius:6px"></div>
+    <span style="font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px">${d.brand || '브랜드'}</span>
+  </div>
+
+  <!-- 헤드라인 밴드 1 (검정 + 시안) -->
+  <div style="position:absolute;left:0;top:110px;width:100%;background:#000;padding:12px 52px;z-index:5">
+    <div style="font-size:${hl1Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl1}</div>
+  </div>
+
+  <!-- 헤드라인 밴드 2 (검정 + 시안) -->
+  <div style="position:absolute;left:0;top:${band2Top}px;width:100%;background:#000;padding:12px 52px;z-index:5">
+    <div style="font-size:${hl2Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl2}</div>
+  </div>
+
+  <!-- 훅 텍스트 (비주얼 영역 좌측) -->
+  <div style="position:absolute;left:52px;top:460px;max-width:540px;z-index:6">
+    <div style="font-size:34px;font-weight:600;color:rgba(0,0,0,0.65);line-height:1.5;letter-spacing:-0.5px">${d.hook || ''}</div>
+  </div>
+
+  <!-- 수치 카드 (우측 중단) -->
+  ${statCards ? `
+  <div style="position:absolute;right:52px;top:430px;display:flex;flex-direction:column;gap:18px;z-index:6">
+    ${statCards}
+  </div>` : ''}
+
+  <!-- 하단 검정 CTA 바 -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:130px;background:#000;display:flex;align-items:center;padding:0 52px;gap:20px;z-index:10">
+    ${d.cta_badge ? `<span style="font-size:21px;font-weight:800;color:#00E5FF;background:rgba(0,229,255,0.15);border:1px solid rgba(0,229,255,0.35);padding:8px 20px;border-radius:28px;white-space:nowrap">${d.cta_badge}</span>` : ''}
+    <span style="font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.5px;flex:1">${d.cta_text || '지금 바로 시작하기 →'}</span>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── 다크스플릿형 (Figma 패턴 B) ───
+// 초록 그라디언트 상단 + 순검정 하단 / 노란 USP 하이라이트 바 / 흰색 헤드라인
+function generateDarkSplitHTML(d, bgColor = '#00B140') {
+  const hl1 = d.headline_line1 || d.headline || '';
+  const hl2 = d.headline_line2 || d.sub_copy1 || '';
+  const hlSize = Math.max(hl1.length, hl2.length) > 12 ? 46 : 56;
+  const uspText = d.hook || 'USP 핵심 문구';
+  const uspSize = uspText.length > 8 ? 36 : 44;
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;background:#000}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:#000">
+
+  <!-- 상단 초록 그라디언트 (55%) -->
+  <div style="position:absolute;top:0;left:0;right:0;height:594px;background:linear-gradient(145deg,#00C853 0%,#00B140 28%,#004D20 62%,#001200 100%)"></div>
+
+  <!-- 코드/UI 반투명 오버레이 -->
+  <div style="position:absolute;top:0;left:0;right:0;height:594px;overflow:hidden;z-index:1;pointer-events:none">
+    <div style="position:absolute;top:30px;right:30px;width:520px;height:210px;border-radius:14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12)">
+      <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;gap:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57;opacity:0.7"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#febc2e;opacity:0.7"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#28c840;opacity:0.7"></div>
+      </div>
+      <div style="padding:16px 20px;font-family:monospace;font-size:15px;color:rgba(255,255,255,0.2);line-height:1.7">
+        <div>const ad = await generate({</div>
+        <div>&nbsp;&nbsp;target: <span style="color:rgba(0,229,255,0.4)">'${(d.brand||'Brand').slice(0,20)}'</span>,</div>
+        <div>&nbsp;&nbsp;usp: <span style="color:rgba(255,243,0,0.4)">'${uspText.slice(0,18)}'</span></div>
+        <div>});</div>
+      </div>
+    </div>
+    <div style="position:absolute;top:260px;right:30px;width:520px;height:100px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08)"></div>
+  </div>
+
+  <!-- 제품/브랜드 아이콘 (좌상단) -->
+  <div style="position:absolute;left:52px;top:44px;z-index:10">
+    <div style="width:110px;height:110px;background:#fff;border-radius:24px;box-shadow:0 8px 36px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:900;color:#00B140">
+      ${(d.brand || 'A').charAt(0)}
+    </div>
+  </div>
+
+  <!-- 브랜드명 -->
+  <div style="position:absolute;left:180px;top:64px;z-index:10">
+    <div style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px">${d.brand || '브랜드'}</div>
+    <div style="font-size:18px;color:rgba(255,255,255,0.55);margin-top:3px">AI 광고 자동화</div>
+  </div>
+
+  <!-- USP 노란 하이라이트 바 (경계 구역) -->
+  <div style="position:absolute;left:52px;top:510px;z-index:10">
+    <div style="background:#F5FF00;padding:11px 22px;display:inline-block;border-radius:7px">
+      <div style="font-size:${uspSize}px;font-weight:900;color:#000;letter-spacing:-1px;line-height:1;white-space:nowrap">${uspText}</div>
+    </div>
+  </div>
+
+  <!-- 흰색 헤드라인 (하단 블랙 영역) -->
+  <div style="position:absolute;left:52px;top:630px;right:52px;z-index:10">
+    <div style="font-size:${hlSize}px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1.18">
+      ${hl1}${hl2 ? `<br>${hl2}` : ''}
+    </div>
+  </div>
+
+  <!-- CTA (우하단) -->
+  <div style="position:absolute;bottom:52px;right:52px;left:52px;z-index:10;display:flex;justify-content:space-between;align-items:center">
+    ${d.cta_badge ? `<span style="font-size:20px;font-weight:700;color:rgba(255,255,255,0.45)">${d.cta_badge}</span>` : '<span></span>'}
+    <div style="font-size:26px;font-weight:700;color:#00E676;letter-spacing:-0.5px">${d.cta_text || '지금 바로 시작하기 →'}</div>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── 이미지모자이크형 (Figma 패턴 C) ───
+// 다크 네이비 + 도트 그리드 / 핫핑크 USP 뱃지 / 비주얼 모자이크 그리드
+function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null) {
+  const hl1 = d.headline_line1 || '';
+  const hl2 = d.headline_line2 || '';
+  const hlSize = Math.max(hl1.length, hl2.length) > 12 ? 58 : 70;
+
+  // 모자이크 타일 색상 세트 (다크 계열 그라디언트)
+  const tileStyles = [
+    'background:linear-gradient(135deg,#2D1B4E,#1a1a3e)',
+    'background:linear-gradient(135deg,#1B3A4E,#0d2030)',
+    'background:linear-gradient(135deg,#2E1B1B,#1a0d0d)',
+    'background:linear-gradient(135deg,#1B2E1B,#0d1a0d)',
+    'background:linear-gradient(135deg,#2E2B1B,#1a180d)',
+    'background:linear-gradient(135deg,#1B1B2E,#0d0d1a)',
+  ];
+  const tileLabels = ['모델샷', '제품샷', '컨셉 포토', '근접샷', '일상샷', '화보'];
+  const tileEmojis = ['👩', '📦', '✨', '🔬', '🌿', '📸'];
+
+  const gridHTML = tileStyles.map((style, i) => `
+    <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;min-height:180px;${style}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:42px;opacity:0.35">${tileEmojis[i]}</div>
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.4)">
+        <span style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.7)">${tileLabels[i]}</span>
+      </div>
+    </div>`).join('');
+
+  // bgImageBase64 있으면 첫 타일에 실제 이미지 표시
+  const firstTile = bgImageBase64
+    ? `<div style="flex:1;border-radius:12px;overflow:hidden;position:relative;min-height:180px">
+        <img src="${bgImageBase64}" style="width:100%;height:100%;object-fit:cover;object-position:center">
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.4)">
+          <span style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.7)">상세 이미지</span>
+        </div>
+      </div>`
+    : tileStyles.map((style, i) => i === 0 ? `
+    <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;min-height:180px;${style}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:42px;opacity:0.35">${tileEmojis[0]}</div>
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.4)">
+        <span style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.7)">${tileLabels[0]}</span>
+      </div>
+    </div>` : '').join('');
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:#13132B">
+
+  <!-- 도트 그리드 배경 패턴 -->
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);background-size:32px 32px;z-index:0;pointer-events:none"></div>
+
+  <!-- 브랜드 태그 -->
+  <div style="position:absolute;left:52px;top:36px;display:flex;align-items:center;gap:12px;z-index:10">
+    <div style="width:28px;height:28px;background:rgba(255,255,255,0.85);border-radius:6px"></div>
+    <span style="font-size:24px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
+  </div>
+
+  <!-- 상단 텍스트 영역 (35%) -->
+  <div style="position:absolute;top:80px;left:52px;right:52px;z-index:10">
+
+    <!-- 헤드라인 -->
+    <div style="font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1.1;margin-bottom:24px">
+      ${hl1}${hl2 ? `<br>${hl2}` : ''}
+    </div>
+
+    <!-- 훅 서브텍스트 -->
+    ${d.hook ? `<div style="font-size:24px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:20px;letter-spacing:-0.3px">${d.hook}</div>` : ''}
+
+    <!-- USP 핫핑크 뱃지들 -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      ${d.cta_badge ? `<span style="background:#FF00DD;color:#fff;font-size:24px;font-weight:700;padding:8px 22px;border-radius:30px;letter-spacing:-0.3px">${d.cta_badge}</span>` : ''}
+      <span style="background:#FF00DD;color:#fff;font-size:24px;font-weight:700;padding:8px 22px;border-radius:30px;letter-spacing:-0.3px">${d.cta_text ? d.cta_text.replace(' →','').slice(0,12) : '지금 시작'}</span>
+    </div>
+  </div>
+
+  <!-- 이미지 그리드 (하단 65%) -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:630px;padding:16px 20px 20px;display:flex;flex-direction:column;gap:10px;z-index:5">
+    <div style="display:flex;gap:10px;flex:1">
+      ${bgImageBase64
+        ? `<div style="flex:1.2;border-radius:12px;overflow:hidden;position:relative"><img src="${bgImageBase64}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.8)">메인 이미지</span></div></div>`
+        : `<div style="flex:1.2;border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(135deg,#2D1B4E,#1a1a3e)"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;opacity:0.3">👩</div><div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.7)">모델샷</span></div></div>`
+      }
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+        <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(135deg,#1B3A4E,#0d2030)"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;opacity:0.3">📦</div><div style="position:absolute;bottom:0;left:0;right:0;padding:6px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.7)">제품샷</span></div></div>
+        <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(135deg,#2E1B1B,#1a0d0d)"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;opacity:0.3">✨</div><div style="position:absolute;bottom:0;left:0;right:0;padding:6px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.7)">컨셉 포토</span></div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;height:170px">
+      <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(135deg,#1B2E1B,#0d1a0d)"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;opacity:0.3">🔬</div><div style="position:absolute;bottom:0;left:0;right:0;padding:6px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.7)">근접샷</span></div></div>
+      <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(135deg,#2E2B1B,#1a180d)"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;opacity:0.3">🌿</div><div style="position:absolute;bottom:0;left:0;right:0;padding:6px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.7)">일상샷</span></div></div>
+      <div style="flex:1;border-radius:12px;overflow:hidden;position:relative;background:linear-gradient(135deg,#1B1B2E,#0d0d1a)"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;opacity:0.3">📸</div><div style="position:absolute;bottom:0;left:0;right:0;padding:6px 12px;background:rgba(0,0,0,0.4)"><span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.7)">화보</span></div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`;
 }
 
 // ─── 포토오버레이형 (피그마 템플릿 기반) ───
