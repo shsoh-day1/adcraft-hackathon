@@ -510,41 +510,35 @@ ${figmaStylesContent}
 → 아래 JSON의 layout_type은 위 Figma 패턴명과 동일하게 지정할 것.
 ` : '';
 
-  // Figma 검증 3종 레이아웃 — A·B·C 각각 Figma 패턴 적용
+  // A=수치카드형, B=헤드카피형, C=포토오버레이형 — 3종 레이아웃 고정
   const layoutSpec = `
-## 배리에이션 레이아웃 (Figma 검증 패턴) — A·B·C 각각 다른 타입·다른 필드로 작성
+## 배리에이션 레이아웃 고정 — A·B·C 각각 다른 타입·다른 필드로 작성
 
-### A - 혜택형 (헤드라인밴드형) [Figma 패턴 A]
-검정 가로 밴드 + 시안 초대형 헤드라인 + 수치카드 + 하단 검정 바
-- hook: 비주얼 영역 훅 텍스트. 최대 25자. 구어체.
-- headline_line1: 검정 밴드 텍스트 1줄. 최대 10자. 핵심 임팩트.
-- headline_line2: 검정 밴드 텍스트 2줄. 최대 10자. 강렬하게.
+### A - 혜택형 (수치카드형): 상단 훅 + 2줄 헤드라인 + 수치 카드
+- hook: 훅 텍스트. 최대 25자.
+- headline_line1, headline_line2: 각 최대 12자. 2줄 헤드라인.
 - visual_stat1_value / visual_stat1_label: 수치 카드 1 (예: "3,200+" / "누적 수강생"). 없으면 null.
 - visual_stat2_value / visual_stat2_label: 수치 카드 2. 없으면 null.
 - cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
 
-### B - 공감형 (다크스플릿형) [Figma 패턴 B]
-초록 그라디언트 상단 + 순검정 하단 / 노란 USP 하이라이트 바
-- hook: 노란 하이라이트 바 텍스트. 최대 10자. USP 핵심만. (예: "12개월 무제한")
-- headline_line1: 흰색 헤드라인 1줄. 최대 15자.
-- headline_line2: 흰색 헤드라인 2줄. 최대 15자.
-- sub_copy1: 서브 설명. 최대 28자.
+### B - 공감형 (헤드카피형): 임팩트 헤드라인 + 혜택 서브카피 3줄
+- hook: 상단 훅. 최대 22자.
+- headline: 임팩트 1줄 헤드라인. 최대 20자.
+- sub_copy1 / sub_copy2 / sub_copy3: 혜택·이유 각 최대 28자. (✓ 아이콘 앞에 붙음)
 - cta_badge, cta_text ("→"로 끝내기).
 
-### C - 긴박형 (이미지모자이크형) [Figma 패턴 C]
-다크 네이비 배경 / 핫핑크 USP 뱃지 / 비주얼 모자이크
-지금 행동해야 할 이유·한정성 중심.
-- hook: 상단 서브 훅. 타겟 상황 공감. 최대 25자.
-- headline_line1: 메인 헤드라인 1줄. 최대 15자. 강렬하게.
-- headline_line2: 메인 헤드라인 2줄. 최대 15자. 강렬하게.
-- cta_badge: USP 뱃지 1 (이모지+키워드). 최대 12자.
-- cta_text: CTA. "→"로 끝내기.
+### C - 긴박형 (포토오버레이형): 이미지 배경 + 텍스트 오버레이
+지금 행동해야 할 이유·한정성 중심. 서브카피(공감) → 메인카피(임팩트) 구조.
+- hook: 서브카피 (상단 작은 텍스트). 타겟 상황·긴박감. 최대 28자. 구어체.
+- headline_line1: 메인카피 1줄. 최대 14자. 강렬하게.
+- headline_line2: 메인카피 2줄. 최대 14자. 강렬하게.
+- cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
 
 JSON 배열만 반환 (주석·설명 없이):
 [
-  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드라인밴드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B - 공감형","brand":"","hook":"","headline_line1":"","headline_line2":"","sub_copy1":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"다크스플릿형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"이미지모자이크형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
+  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B - 공감형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
 ]`;
 
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 3가지 배리에이션으로 작성하라.

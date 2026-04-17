@@ -712,15 +712,11 @@
   let selectedBgImage = null;
 
   /* ════════════════════════════════════════
-     LAYOUT REFS
+     LAYOUT REFS (localStorage 기반 — Vercel 서버리스 호환)
   ════════════════════════════════════════ */
-  async function fetchLayouts() {
-    try {
-      const res = await fetch('/api/layouts');
-      const data = await res.json();
-      cachedLayouts = data.layouts;
-      renderLayoutGrid();
-    } catch(e) { console.warn('레이아웃 로드 실패', e); }
+  function fetchLayouts() {
+    try { cachedLayouts = JSON.parse(localStorage.getItem('adcraft_layouts') || '[]'); } catch { cachedLayouts = []; }
+    renderLayoutGrid();
   }
 
   function renderLayoutGrid() {
@@ -748,23 +744,23 @@
 
   function selectLayoutRef(id) { selectedLayoutRefId = selectedLayoutRefId === id ? null : id; renderLayoutGrid(); }
 
-  async function deleteLayoutRef(id) {
+  function deleteLayoutRef(id) {
     if (!confirm('삭제할까요?')) return;
-    await fetch(`/api/layouts/${id}`, { method: 'DELETE' });
     if (selectedLayoutRefId === id) selectedLayoutRefId = null;
     cachedLayouts = cachedLayouts.filter(l => l.id !== id);
+    localStorage.setItem('adcraft_layouts', JSON.stringify(cachedLayouts));
     renderLayoutGrid();
   }
 
-  document.getElementById('layoutFileInput').addEventListener('change', async function(e) {
+  document.getElementById('layoutFileInput').addEventListener('change', function(e) {
     const file = e.target.files[0]; if (!file) return;
     const name = window.prompt('레이아웃 이름:', file.name.replace(/\.[^.]+$/, ''));
     if (!name?.trim()) { this.value = ''; return; }
     const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const res = await fetch('/api/layouts', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name: name.trim(), imageData: ev.target.result }) });
-      const data = await res.json();
-      cachedLayouts.push({ id: data.id, name: data.name, thumbnail: ev.target.result });
+    reader.onload = (ev) => {
+      const layout = { id: Date.now().toString(), name: name.trim(), thumbnail: ev.target.result };
+      cachedLayouts.push(layout);
+      localStorage.setItem('adcraft_layouts', JSON.stringify(cachedLayouts));
       renderLayoutGrid();
     };
     reader.readAsDataURL(file);
@@ -1004,9 +1000,12 @@
           usp3: document.getElementById('usp3Input').value.trim(),
           ad_set_message: document.getElementById('adSetMessageInput').value.trim(),
           creative_message: document.getElementById('creativeMessageInput').value.trim(),
-          reference_images: refImages.map(img => img.data),
+          reference_images: [
+            ...refImages.map(img => img.data),
+            // 선택된 레이아웃 레퍼런스 이미지를 스타일 분석용으로 포함
+            ...(selectedLayoutRefId ? (cachedLayouts.find(l => l.id === selectedLayoutRefId)?.thumbnail ? [cachedLayouts.find(l => l.id === selectedLayoutRefId).thumbnail] : []) : []),
+          ],
           bg_color: isAutoColor ? '' : selectedColor,
-          layout_ref_id: selectedLayoutRefId || '',
           custom_bg_image: selectedBgImage || null,
         }),
       });
