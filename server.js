@@ -1,6 +1,7 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { parse } from 'node-html-parser';
 import Anthropic from '@anthropic-ai/sdk';
 import 'dotenv/config';
@@ -13,6 +14,53 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.static(join(__dirname, 'public')));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// ─── reference_images/ 폴더 자동 로드 ───
+const REF_IMAGES_DIR = join(__dirname, 'reference_images');
+function loadReferenceImages() {
+  if (!existsSync(REF_IMAGES_DIR)) return [];
+  const files = readdirSync(REF_IMAGES_DIR)
+    .filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f))
+    .sort();
+  if (!files.length) return [];
+  const images = files.map(f => {
+    const buf = readFileSync(join(REF_IMAGES_DIR, f));
+    const ext = f.split('.').pop().toLowerCase();
+    const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  });
+  console.log(`[reference_images] ${files.length}장 자동 로드:`, files.join(', '));
+  return images;
+}
+const AUTO_REF_IMAGES = loadReferenceImages();
+
+// ─── 주예진 체크리스트 로드 (CHECKLIST.md) ───
+const CHECKLIST_FILE = join(__dirname, 'CHECKLIST.md');
+let checklistContent = '';
+try {
+  checklistContent = readFileSync(CHECKLIST_FILE, 'utf8');
+  console.log('[체크리스트 로드 완료] CHECKLIST.md');
+} catch {
+  console.warn('[체크리스트 없음] CHECKLIST.md 파일을 찾을 수 없어 기본 기준으로 동작합니다.');
+}
+
+// ─── 디자인 스펙 로드 (DESIGN_SPEC.md) ───
+const DESIGN_SPEC_FILE = join(__dirname, 'DESIGN_SPEC.md');
+let designSpecContent = '';
+try {
+  designSpecContent = readFileSync(DESIGN_SPEC_FILE, 'utf8');
+  console.log('[디자인 스펙 로드 완료] DESIGN_SPEC.md');
+} catch {
+  console.warn('[디자인 스펙 없음] DESIGN_SPEC.md를 찾을 수 없어 기본 기준으로 동작합니다.');
+}
+
+// ─── 레이아웃 레퍼런스 저장소 ───
+const LAYOUTS_FILE = join(__dirname, 'layouts.json');
+function readLayouts() {
+  if (!existsSync(LAYOUTS_FILE)) return [];
+  try { return JSON.parse(readFileSync(LAYOUTS_FILE, 'utf8')); } catch { return []; }
+}
+function writeLayouts(arr) { writeFileSync(LAYOUTS_FILE, JSON.stringify(arr, null, 2), 'utf8'); }
 
 // ─── 헬스체크 ───
 app.get('/health', (req, res) => {
@@ -28,7 +76,9 @@ app.post('/api/generate-ad', async (req, res) => {
     ad_set_message = '',
     creative_message = '',
     reference_images = [],
-    bg_color = '#1B5BD4'
+    bg_color = '',
+    layout_ref_id = '',
+    custom_bg_image = null,
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -37,33 +87,88 @@ app.post('/api/generate-ad', async (req, res) => {
   }
 
   try {
-    // Step 1: 페이지 크롤링
-    const pageContent = await fetchPageContent(url);
-    console.log('[크롤링 완료]', pageContent.slice(0, 80));
+    console.log('\n' + '─'.repeat(50));
+    console.log('[🚀 생성 시작]', url);
+    console.log('─'.repeat(50));
 
-    // Step 2: 레퍼런스 이미지 분석 (선택)
-    const styleAnalysis = reference_images.length > 0
-      ? await analyzeReferenceImages(reference_images)
-      : null;
-    if (styleAnalysis) console.log('[이미지 분석 완료]', styleAnalysis.slice(0, 80));
+    // ── STEP 1: 페이지 크롤링 (모든 에이전트의 기반 데이터) ──
+    const { text: pageContent, themeColor: pageThemeColor, ogImageUrl } = await fetchPageContent(url);
+    console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X');
 
-    // Step 3: 카피 배리에이션 3종 생성
-    const adDataList = await extractAdDataVariations(pageContent, styleAnalysis, {
-      target, usp1, usp2, usp3, ad_set_message, creative_message
+    // ── STEP 2: 이미지 에이전트 + 소재정보 추출 병렬 실행 ──
+    // → 이미지 에이전트: 레퍼런스 분석 + 배경 이미지 fetch (동시)
+    // → 소재정보 추출: URL 자동 추출이 필요할 때만
+    const rawPageInfo = { target, usp1, usp2, usp3, ad_set_message, creative_message };
+    const needsAutoExtract = !target && !usp1 && !usp2 && !usp3 && !ad_set_message && !creative_message;
+
+    const [imageResult, resolvedPageInfo] = await Promise.all([
+      imageAgent({ referenceImages: reference_images, ogImageUrl, customBgImage: custom_bg_image }),
+      needsAutoExtract ? extractPageInfo(pageContent) : Promise.resolve(rawPageInfo),
+    ]);
+    const extractedInfo = needsAutoExtract ? resolvedPageInfo : null;
+
+    // ── STEP 3: 배경 컬러 결정 (이미지 에이전트 결과 활용) ──
+    const { color: effectiveBgColor, source: colorSource } = await determineBgColor({
+      bgColor: bg_color,
+      parsedStyle: imageResult.parsedStyle,
+      layoutRefId: layout_ref_id,
+      pageThemeColor,
+      pageContent,
     });
-    console.log('[배리에이션 생성 완료]', adDataList.length, '종');
 
-    // Step 4: 각 배리에이션 HTML 생성
-    const variations = adDataList.map(adData => ({
-      adData,
-      html: generateAdHTML(adData, bg_color)
-    }));
+    // ── STEP 4: 카피 에이전트 (스타일 분석 결과 + 소재정보 활용) ──
+    const { adDataList } = await copyAgent({
+      pageContent,
+      pageInfo: resolvedPageInfo,
+      styleAnalysis: imageResult.styleAnalysis,
+    });
 
-    res.json({ variations });
+    // ── STEP 5: 조합 에이전트 (카피 + 이미지 → HTML) ──
+    const variations = assemblyAgent({
+      adDataList,
+      bgColor: effectiveBgColor,
+      bgImageBase64: imageResult.bgImageBase64,
+    });
+
+    console.log('─'.repeat(50));
+    console.log('[✅ 생성 완료]', variations.length, '종 | 컬러:', effectiveBgColor, `(${colorSource})`);
+    console.log('─'.repeat(50) + '\n');
+
+    res.json({
+      variations,
+      extractedInfo,
+      effectiveBgColor,
+      colorSource,
+    });
   } catch (err) {
     console.error('[오류]', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── 레이아웃 레퍼런스 CRUD ───
+app.get('/api/layouts', (req, res) => {
+  const layouts = readLayouts().map(({ id, name, imageData }) => ({ id, name, thumbnail: imageData }));
+  res.json({ layouts });
+});
+
+app.post('/api/layouts', (req, res) => {
+  const { name, imageData } = req.body;
+  if (!name || !imageData) return res.status(400).json({ error: 'name, imageData 필요' });
+  const layouts = readLayouts();
+  const id = Date.now().toString();
+  layouts.push({ id, name, imageData });
+  writeLayouts(layouts);
+  console.log('[레이아웃 저장]', name, 'id:', id);
+  res.json({ id, name });
+});
+
+app.delete('/api/layouts/:id', (req, res) => {
+  const before = readLayouts();
+  const after = before.filter(l => l.id !== req.params.id);
+  writeLayouts(after);
+  console.log('[레이아웃 삭제]', req.params.id);
+  res.json({ ok: true });
 });
 
 // ─── 이미지 URL 프록시 (Meta 광고 라이브러리 등 공개 이미지) ───
@@ -75,6 +180,7 @@ app.post('/api/fetch-image', async (req, res) => {
     'fbcdn.net', 'facebook.com', 'fbsbx.com',
     'cdninstagram.com', 'instagram.com',
     'scontent', // fbcdn 서브도메인 패턴
+    'images.unsplash.com', 'unsplash.com',
   ];
   let hostname;
   try { hostname = new URL(url).hostname; } catch { return res.status(400).json({ error: '잘못된 URL입니다' }); }
@@ -101,6 +207,107 @@ app.post('/api/fetch-image', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════
+//  에이전트 (Agent) — 각자 독립적인 역할과 책임
+// ══════════════════════════════════════════════════════
+
+// ─── 🖼 이미지 에이전트 ───
+// 역할: 레퍼런스 이미지 스타일 분석 + 배경 이미지 취득
+// 독립성: 페이지 텍스트 불필요. 이미지 데이터만으로 동작.
+// 병렬성: 카피 에이전트와 동시 실행 가능 (크롤링 후 바로 시작).
+async function imageAgent({ referenceImages, ogImageUrl, customBgImage }) {
+  // API 요청에 레퍼런스 없으면 reference_images/ 폴더 자동 사용
+  const effectiveRefs = referenceImages.length > 0 ? referenceImages : AUTO_REF_IMAGES;
+  console.log('[🖼 이미지 에이전트] 시작 | 레퍼런스:', effectiveRefs.length, '장', effectiveRefs.length > 0 && referenceImages.length === 0 ? '(폴더 자동로드)' : '', '| OG:', ogImageUrl ? 'O' : 'X');
+
+  // 스타일 분석과 배경 이미지 fetch 동시 실행
+  const [styleAnalysis, bgImageBase64] = await Promise.all([
+    effectiveRefs.length > 0
+      ? analyzeReferenceImages(effectiveRefs)
+      : Promise.resolve(null),
+    customBgImage
+      ? Promise.resolve(customBgImage)                             // Unsplash 선택 이미지 우선
+      : (ogImageUrl ? fetchOgImageBase64(ogImageUrl) : Promise.resolve(null)),
+  ]);
+
+  let parsedStyle = null;
+  if (styleAnalysis) {
+    try {
+      const m = styleAnalysis.match(/\{[\s\S]+\}/);
+      if (m) parsedStyle = JSON.parse(m[0]);
+    } catch (e) { console.warn('[이미지 에이전트] 스타일 파싱 실패', e.message); }
+  }
+
+  console.log('[🖼 이미지 에이전트] 완료 | 스타일 bg:', parsedStyle?.bg_hex || '없음', '| 배경이미지:', bgImageBase64 ? 'O' : 'X');
+  return { styleAnalysis, parsedStyle, bgImageBase64 };
+}
+
+// ─── ✍️ 카피 에이전트 ───
+// 역할: 페이지 내용 + USP + 체크리스트 기준으로 카피 3종 생성
+// 독립성: 이미지 데이터 없이도 동작. 스타일 분석은 선택적 입력.
+// 병렬성: 이미지 에이전트와 동시 실행 가능 (소재정보 자동추출 포함).
+async function copyAgent({ pageContent, pageInfo, styleAnalysis }) {
+  console.log('[✍️ 카피 에이전트] 시작 | 타겟:', pageInfo.target ? pageInfo.target.slice(0, 30) : '자동추출됨');
+
+  const adDataList = await extractAdDataVariations(pageContent, styleAnalysis, pageInfo);
+
+  console.log('[✍️ 카피 에이전트] 완료 |', adDataList.map(v => `${v.variation_label}(${v.validation_score}/11)`).join(' · '));
+  return { adDataList };
+}
+
+// ─── 🔧 조합 에이전트 ───
+// 역할: 카피 데이터 + 배경 이미지 → 1080×1080 HTML 소재 3종 조립
+// 독립성: 카피 에이전트 + 이미지 에이전트 결과만 있으면 즉시 실행.
+// 특성: 동기(sync) 함수 — Claude API 호출 없이 순수 템플릿 렌더링.
+function assemblyAgent({ adDataList, bgColor, bgImageBase64 }) {
+  console.log('[🔧 조합 에이전트] 시작 | 배경컬러:', bgColor, '| 이미지:', bgImageBase64 ? 'O' : 'X');
+
+  const variations = adDataList.map(adData => ({
+    adData,
+    html: generateAdHTML(adData, bgColor, bgImageBase64),
+  }));
+
+  console.log('[🔧 조합 에이전트] 완료 | HTML 소재', variations.length, '종 생성');
+  return variations;
+}
+
+// ─── 배경 컬러 결정 (우선순위 체인) ───
+// manual(직접입력) > style_ref > layout_ref > theme_color > ai_inferred > default
+async function determineBgColor({ bgColor, parsedStyle, layoutRefId, pageThemeColor, pageContent }) {
+  let color = '#1B5BD4';
+  let source = 'default';
+
+  if (bgColor && /^#[0-9A-Fa-f]{6}$/.test(bgColor)) {
+    color = bgColor; source = 'manual';
+  } else {
+    const styleHex = parsedStyle?.bg_hex;
+    if (styleHex && /^#[0-9A-Fa-f]{6}$/.test(styleHex)) {
+      color = styleHex; source = 'style_ref';
+    } else if (layoutRefId) {
+      const refLayout = readLayouts().find(l => l.id === layoutRefId);
+      if (refLayout) {
+        const raw = await analyzeReferenceImages([refLayout.imageData]);
+        const lm = raw?.match(/\{[\s\S]+\}/);
+        if (lm) {
+          try {
+            const ls = JSON.parse(lm[0]);
+            if (ls.bg_hex && /^#[0-9A-Fa-f]{6}$/.test(ls.bg_hex)) { color = ls.bg_hex; source = 'layout_ref'; }
+          } catch {}
+        }
+      }
+    }
+    if (source === 'default' && pageThemeColor) { color = pageThemeColor; source = 'theme_color'; }
+    if (source === 'default') {
+      const aiColor = await extractKeyColorFromContent(pageContent);
+      if (aiColor) { color = aiColor; source = 'ai_inferred'; }
+    }
+  }
+  console.log('[배경컬러 결정]', color, `(${source})`);
+  return { color, source };
+}
+
+// ══════════════════════════════════════════════════════
+
 // ─── 페이지 크롤링 ───
 async function fetchPageContent(url) {
   const res = await fetch(url, {
@@ -109,9 +316,70 @@ async function fetchPageContent(url) {
   });
   if (!res.ok) throw new Error(`크롤링 실패: HTTP ${res.status}`);
   const html = await res.text();
+
+  // 페이지 테마컬러 추출 (theme-color / msapplication-TileColor)
+  const tcPatterns = [
+    /name=["']theme-color["'][^>]*content=["'](#[0-9A-Fa-f]{6})/i,
+    /content=["'](#[0-9A-Fa-f]{6})["'][^>]*name=["']theme-color["']/i,
+    /name=["']msapplication-TileColor["'][^>]*content=["'](#[0-9A-Fa-f]{6})/i,
+  ];
+  let themeColor = null;
+  for (const p of tcPatterns) {
+    const m = html.match(p);
+    if (m) { themeColor = m[1]; break; }
+  }
+
+  // OG 이미지 추출
+  const ogPatterns = [
+    /property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+    /content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+    /name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
+    /content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i,
+  ];
+  let ogImageUrl = null;
+  for (const p of ogPatterns) {
+    const m = html.match(p);
+    if (m && m[1].startsWith('http')) { ogImageUrl = m[1]; break; }
+  }
+
   const root = parse(html);
   root.querySelectorAll('script, style, nav, footer, header').forEach(el => el.remove());
-  return root.innerText.replace(/\s+/g, ' ').trim().slice(0, 3000);
+  const text = root.innerText.replace(/\s+/g, ' ').trim().slice(0, 3000);
+  return { text, themeColor, ogImageUrl };
+}
+
+// ─── OG 이미지 base64 변환 ───
+async function fetchOgImageBase64(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const ct = res.headers.get('content-type') || 'image/jpeg';
+    if (!ct.startsWith('image/')) return null;
+    const buf = await res.arrayBuffer();
+    return `data:${ct};base64,${Buffer.from(buf).toString('base64')}`;
+  } catch { return null; }
+}
+
+// ─── 페이지 내용에서 브랜드 키컬러 추론 ───
+async function extractKeyColorFromContent(pageText) {
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 20,
+      messages: [{
+        role: 'user',
+        content: `아래 상세페이지 내용으로 이 브랜드의 메인 키컬러를 추측하라.
+브랜드명·업종·분위기를 고려해 광고 배경에 어울리는 색상 하나를 골라라.
+${pageText.slice(0, 500)}
+#RRGGBB 형식만 반환:`,
+      }],
+    });
+    const m = msg.content[0].text.trim().match(/#[0-9A-Fa-f]{6}/);
+    return m ? m[0] : null;
+  } catch { return null; }
 }
 
 // ─── 레퍼런스 이미지 분석 ───
@@ -119,9 +387,20 @@ async function analyzeReferenceImages(images) {
   try {
     const content = [{
       type: 'text',
-      text: `아래 레퍼런스 광고 이미지들을 분석해서 공통 디자인 패턴을 JSON으로 반환하라.
-분석 항목: bg_hex(배경색), headline_hex(헤드라인 색), cta_hex(CTA 색), style_mood(분위기 키워드 3개), layout_note(레이아웃 특징 1줄)
-JSON만 반환.`,
+      text: `아래 레퍼런스 광고 이미지들을 분석해서 디자인 스타일 정보를 JSON으로 반환하라.
+
+분석 항목:
+- bg_hex: 배경 메인 컬러 (#RRGGBB 형식, 반드시 추출)
+- accent_hex: 포인트/강조 컬러 (#RRGGBB 형식)
+- headline_hex: 헤드라인 텍스트 컬러 (#RRGGBB 형식)
+- cta_hex: CTA 버튼/바 컬러 (#RRGGBB 형식)
+- style_mood: 전체 분위기 키워드 3개 (예: ["다이나믹","임팩트","직관적"])
+- font_style: 폰트 무게감 (예: "heavy_bold", "medium_clean", "light_elegant")
+- layout_type: 레이아웃 구조 설명 (예: "상단 훅+중앙 헤드라인+하단 수치카드+CTA바")
+- design_notes: 카피 배치·시각 계층 특이사항 한 줄
+
+JSON만 반환 (주석·설명 없이):
+{"bg_hex":"","accent_hex":"","headline_hex":"","cta_hex":"","style_mood":[],"font_style":"","layout_type":"","design_notes":""}`,
     }];
 
     for (const imgData of images.slice(0, 3)) {
@@ -133,7 +412,7 @@ JSON만 반환.`,
 
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 400,
+      max_tokens: 600,
       messages: [{ role: 'user', content }],
     });
     return msg.content[0].text;
@@ -143,10 +422,107 @@ JSON만 반환.`,
   }
 }
 
+// ─── 소재 기본 정보 자동 추출 ───
+async function extractPageInfo(pageContent) {
+  const prompt = `아래 상세페이지 내용을 분석해서 META 광고 소재 기본 정보를 추출하라.
+
+페이지 내용:
+${pageContent}
+
+추출 항목:
+- target: 이 과정/서비스의 핵심 타겟 고객 (1-2문장, 구체적으로)
+- usp1: 핵심 강점 1 — 가장 차별화된 혜택 (한 줄)
+- usp2: 핵심 강점 2 (한 줄)
+- usp3: 핵심 강점 3 (한 줄)
+- ad_set_message: 이 캠페인의 전체 메시지 방향 (1문장)
+- creative_message: 이 소재에서 강조할 핵심 포인트 (1문장)
+
+JSON만 반환:
+{"target":"","usp1":"","usp2":"","usp3":"","ad_set_message":"","creative_message":""}`;
+
+  const msg = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 600,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const raw = msg.content[0].text.trim();
+  const match = raw.match(/\{[\s\S]+\}/);
+  if (!match) throw new Error('소재 정보 자동 추출 실패');
+  return JSON.parse(match[0]);
+}
+
 // ─── 카피 배리에이션 3종 생성 ───
-async function extractAdDataVariations(pageContent, styleAnalysis, info) {
-  const styleHint = styleAnalysis ? `\n\n레퍼런스 스타일 분석:\n${styleAnalysis}` : '';
+async function extractAdDataVariations(pageContent, styleAnalysis, info, _attempt = 1) {
+  const styleHint = styleAnalysis ? `\n\n## 레퍼런스 디자인 스타일 (반드시 참고)\n${styleAnalysis}\n→ 위 스타일 분위기에 맞는 카피 톤을 적용하라.` : '';
   const { target, usp1, usp2, usp3, ad_set_message, creative_message } = info;
+
+  // 주예진 체크리스트 컨텍스트
+  const checklistCtx = checklistContent ? `
+## 주예진 콘텐츠 기준 — 광고 소재 필수 체크리스트 (모든 MUST 항목 충족 필수)
+${checklistContent}
+
+## 카피 작성 톤앤매너 (반드시 준수)
+- 구어체·친근한 반말투 사용 / 딱딱한 문어체 완전 금지
+- hook은 의문문·반문 형태 적극 활용 (예: "코딩 1도 몰라도 가능하다고?", "지금 안 하면 언제 해?")
+- 타겟 공감 먼저 → 해결책/혜택 순서 (C6 필수)
+- 숫자 혜택 반드시 포함 (C1 필수)
+- 긴박감·희소성 트리거 포함 (C2: "선착순", "마감 임박", "지금 해야")
+- 3초 후킹: 스크롤 중 멈추게 만드는 요소 필수
+- 참고 패턴: "못 참지", "지금 해야 제일 싸요", "코딩 1도 모르던 문과생"
+
+## 자기 검증 — 각 배리에이션 JSON에 반드시 포함 (11개 항목 평가)
+카피 작성 후 아래 기준으로 스스로 평가해 각 배리에이션 JSON에 validation 필드를 추가하라:
+- C1(숫자혜택): 할인율·가격·인원 등 숫자로 혜택 명시 여부
+- C2(긴박감): "마감", "선착순", "지금 해야" 등 긴박감·희소성 트리거 포함 여부
+- C3(짧은헤드): 헤드라인이 짧고 임팩트 있는가 (20자 이내 권장)
+- C4(CTA): 행동 유도 문구 명시 여부
+- C5(의문문): 의문문·반문으로 독자 호기심 자극 여부
+- C6(공감먼저): 타겟 공감 먼저 → 해결책/혜택 순서 준수 여부
+- V1(헤드강조): 헤드라인이 시각적으로 압도적으로 강조되는 구조인가
+- V2(숫자강조): 핵심 숫자·키워드가 강조되는가
+- V3(가독성): 배경-텍스트 가독성 확보 가능한가
+- S1(구체수치): 수강생 수·조회수 등 구체적 수치로 소셜 증명 있는가
+- P1(3초후킹): 3초 안에 혜택 파악 가능한 후킹 요소 있는가
+→ "validation":{"C1":true/false,...11개...}, "validation_score":N(true 개수/11), "validation_fails":["C2: 이유"] 를 반드시 추가.
+` : '';
+
+  // 디자인 스펙 컨텍스트
+  const designSpecCtx = designSpecContent ? `
+## 디자인 스펙 — 시각 실행 기준 (반드시 준수)
+${designSpecContent}
+` : '';
+
+  // A=수치카드형, B=헤드카피형, C=커뮤니티형 항상 고정 — 3종 레이아웃이 달라야 배리에이션 의미 있음
+  const layoutSpec = `
+## 배리에이션 레이아웃 고정 — A·B·C 각각 다른 타입·다른 필드로 작성
+
+### A - 혜택형 (수치카드형): 상단 훅 + 2줄 헤드라인 + 수치 카드
+- hook: 훅 텍스트. 최대 25자.
+- headline_line1, headline_line2: 각 최대 12자. 2줄 헤드라인.
+- visual_stat1_value / visual_stat1_label: 수치 카드 1 (예: "3,200+" / "누적 수강생"). 없으면 null.
+- visual_stat2_value / visual_stat2_label: 수치 카드 2. 없으면 null.
+- cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
+
+### B - 공감형 (헤드카피형): 임팩트 헤드라인 + 혜택 서브카피 3줄
+- hook: 상단 훅. 최대 22자.
+- headline: 임팩트 1줄 헤드라인. 최대 20자.
+- sub_copy1 / sub_copy2 / sub_copy3: 혜택·이유 각 최대 28자. (✓ 아이콘 앞에 붙음)
+- cta_badge, cta_text ("→"로 끝내기).
+
+### C - 긴박형 (포토오버레이형): 이미지 배경 + 텍스트 오버레이 [피그마 템플릿 기반]
+지금 행동해야 할 이유·한정성 중심. 서브카피(공감) → 메인카피(임팩트) 구조.
+- hook: 서브카피 (상단 작은 텍스트). 타겟 상황·긴박감. 최대 28자. 구어체.
+- headline_line1: 메인카피 1줄. 최대 14자. 강렬하게.
+- headline_line2: 메인카피 2줄. 최대 14자. 강렬하게.
+- cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
+
+JSON 배열만 반환 (주석·설명 없이):
+[
+  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B - 공감형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
+]`;
 
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 3가지 배리에이션으로 작성하라.
 
@@ -160,29 +536,12 @@ async function extractAdDataVariations(pageContent, styleAnalysis, info) {
 
 ## 상세페이지 내용 (참고)
 ${pageContent}${styleHint}
-
+${checklistCtx}${designSpecCtx}
 ## 배리에이션 앵글 (반드시 각 앵글에 맞게 작성)
-- A (혜택형): 구체적 수치·성과·혜택을 직접적으로 강조. 숫자가 있다면 적극 활용.
-- B (공감형): 타겟의 고민·상황에 공감하며 감성적으로 접근.
-- C (긴박형): 지금 행동해야 하는 이유, 한정성·기회비용을 강조.
-
-## 각 필드 규칙
-- hook: 훅 텍스트. 최대 25자.
-- headline_line1, headline_line2: 각 줄 최대 12자. 임팩트 있는 2줄 헤드라인.
-- visual_stat1_value: 카드에 표시할 수치 (예: "3,200+"). 없으면 null.
-- visual_stat1_label: 수치 설명 (예: "누적 수강생"). 없으면 null.
-- visual_stat2_value: 두 번째 수치. 없으면 null.
-- visual_stat2_label: 두 번째 수치 설명. 없으면 null.
-- cta_badge: 이모지 포함 최대 12자 (예: "📊 데이터 역량 UP")
-- cta_text: 행동 유도 최대 24자. "→"로 끝내기.
-- footnote: 주석(*로 시작). 없으면 null.
-
-JSON 배열만 반환 (주석·설명 없이):
-[
-  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null},
-  {"variation_label":"B - 공감형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null},
-  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null}
-]`;
+- A (혜택형·수치카드형): 구체적 수치·성과·혜택을 직접 강조. 숫자가 있다면 적극 활용.
+- B (공감형·헤드카피형): 타겟의 고민·상황에 공감하며 감성적으로 접근.
+- C (긴박형·커뮤니티형): 지금 행동해야 하는 이유, 한정성·기회비용을 강조.
+${layoutSpec}`;
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
@@ -193,7 +552,19 @@ JSON 배열만 반환 (주석·설명 없이):
   const raw = msg.content[0].text.trim();
   const match = raw.match(/\[[\s\S]+\]/);
   if (!match) throw new Error('배리에이션 데이터 파싱 실패');
-  return JSON.parse(match[0]);
+  const parsed = JSON.parse(match[0]);
+
+  // 자동 재시도: validation_score < 8인 배리에이션이 있으면 1회 재생성
+  if (_attempt === 1) {
+    const hasLowScore = parsed.some(v => typeof v.validation_score === 'number' && v.validation_score < 8);
+    if (hasLowScore) {
+      const fails = [...new Set(parsed.flatMap(v => v.validation_fails || []))];
+      console.log('[체크리스트 점수 미달 — 자동 재생성]', fails.join(', '));
+      return extractAdDataVariations(pageContent, styleAnalysis, info, 2);
+    }
+  }
+
+  return parsed;
 }
 
 // ─── HEX 유틸 ───
@@ -212,8 +583,88 @@ function luminance(hex) {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
-// ─── HTML 생성 ───
-function generateAdHTML(d, bgColor = '#1B5BD4') {
+// ─── HTML 생성 (레이아웃 dispatcher) ───
+function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null) {
+  if (d.layout_type === '헤드카피형') return generateHeadlineCopyHTML(d, bgColor);
+  if (d.layout_type === '커뮤니티형') return generateCommunityHTML(d, bgColor);
+  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64);
+  return generateStatCardHTML(d, bgColor);
+}
+
+// ─── 포토오버레이형 (피그마 템플릿 기반) ───
+// 레이아웃: 피그마 node 3658:147 — 배경 이미지 + 하단 다크 오버레이 + 서브카피 + 메인카피
+// 서브카피: Pretendard Bold 42px, left:62, top:~640
+// 메인카피: Pretendard Bold 80px, 2줄 15자 이내, left:62, top:~740
+function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) {
+  const lum = luminance(bgColor);
+  const isDark = lum < 140;
+  // 배경이 없으면 다크 시네마틱 그라디언트
+  const bgBase = isDark ? bgColor : '#1a1a1a';
+  const bgStyle = bgImageBase64
+    ? `background:#000`
+    : `background:linear-gradient(155deg,${bgBase} 0%,#060606 100%)`;
+
+  const ctaBadgeHtml = d.cta_badge
+    ? `<span style="font-size:22px;font-weight:800;color:#fff;background:rgba(255,255,255,0.18);padding:5px 16px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
+    : '';
+
+  const footHtml = d.footnote
+    ? `<div style="position:absolute;bottom:96px;right:64px;font-size:20px;color:rgba(255,255,255,0.35);z-index:10">${d.footnote}</div>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;${bgStyle}">
+
+  ${bgImageBase64 ? `
+  <!-- OG 배경 이미지 -->
+  <img src="${bgImageBase64}" style="position:absolute;inset:0;width:1080px;height:1080px;object-fit:cover;object-position:center top;z-index:0;pointer-events:none" />
+  ` : `
+  <!-- 다크 그라디언트 (OG 이미지 없을 때) -->
+  <div style="position:absolute;top:180px;left:-40px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,${bgColor}55 0%,transparent 70%);z-index:0;pointer-events:none"></div>
+  <div style="position:absolute;top:60px;right:-80px;width:440px;height:440px;border-radius:50%;background:radial-gradient(circle,${bgColor}33 0%,transparent 70%);z-index:0;pointer-events:none"></div>
+  `}
+
+  <!-- 하단 다크 오버레이 (텍스트 가독성 — 피그마 디자인 핵심) -->
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.12) 35%,rgba(0,0,0,0.62) 52%,rgba(0,0,0,0.90) 68%,rgba(0,0,0,0.97) 82%,#000 100%);z-index:1;pointer-events:none"></div>
+
+  <!-- 브랜드 태그 (상단) -->
+  <div style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
+    <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
+    <span style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${d.brand || '브랜드'}</span>
+  </div>
+
+  <!-- 서브카피 (피그마: 42px, top≈688 비율 기준) -->
+  <div style="position:absolute;left:62px;top:634px;right:80px;z-index:10;font-size:40px;font-weight:700;color:rgba(255,255,255,0.82);letter-spacing:-0.84px;line-height:1.28;text-shadow:0 2px 8px rgba(0,0,0,0.6)">
+    ${d.hook || ''}
+  </div>
+
+  <!-- 메인카피 (피그마: 80px Bold, 2줄 15자 이내, top≈786 비율) -->
+  <div style="position:absolute;left:62px;top:736px;right:60px;z-index:10;font-size:80px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1.08;text-shadow:0 3px 12px rgba(0,0,0,0.7)">
+    ${d.headline_line1 || ''}<br>${d.headline_line2 || ''}
+  </div>
+
+  ${footHtml}
+
+  <!-- CTA 바 -->
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 62px;background:linear-gradient(90deg,#FF4B6E,#FF7040);display:flex;align-items:center;gap:14px;z-index:10;flex-shrink:0">
+    ${ctaBadgeHtml}
+    <span style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── 수치카드형 ───
+function generateStatCardHTML(d, bgColor = '#1B5BD4') {
   // 밝기에 따라 텍스트/카드 색상 결정
   const lum = luminance(bgColor);
   const isDark = lum < 140;
@@ -313,6 +764,252 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple 
 </body>
 </html>`;
 }
+
+// ─── 레퍼런스 이미지 기반 HTML 생성 (Claude Vision) ───
+async function generateVariationsHTMLFromRef(adDataList, refImageBase64, bgColor) {
+  try {
+    const match = refImageBase64.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) throw new Error('이미지 형식 오류');
+
+    const varsText = adDataList.map((d, i) =>
+      `[버전 ${['A','B','C'][i]} - ${d.variation_label}]\n${JSON.stringify(d)}`
+    ).join('\n\n');
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 6000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } },
+          {
+            type: 'text',
+            text: `이 레퍼런스 광고 이미지의 레이아웃 구조(요소 위치·크기 비율·여백·시각 계층)를 최대한 유지하면서,
+아래 카피 데이터 3종으로 1080×1080 HTML 광고소재 3개를 생성하라.
+
+## 카피 데이터 3종
+${varsText}
+
+## 생성 규칙
+- 캔버스: width:1080px; height:1080px; overflow:hidden 고정
+- 반드시 포함: <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+- 배경 메인 컬러: ${bgColor} (레퍼런스 색상 대신 이 컬러 기반으로 적용)
+- 이미지·사진 영역은 반투명 색상 블록 또는 그라디언트로 대체
+- 인라인 CSS만 사용 (외부 파일 없이)
+- 각 HTML은 완전한 독립 문서 (<!DOCTYPE html>~</html>)
+
+## 출력 형식 (이 구분자를 정확히 사용)
+===A===
+[A 버전 전체 HTML]
+===B===
+[B 버전 전체 HTML]
+===C===
+[C 버전 전체 HTML]`,
+          },
+        ],
+      }],
+    });
+
+    const text = msg.content[0].text;
+    const extract = (marker, next) => {
+      const re = new RegExp(`===${marker}===([\\s\\S]*?)(?=====${next}===|$)`);
+      const m = text.match(re);
+      if (!m) return null;
+      const h = m[1].match(/<!DOCTYPE html[\s\S]*?<\/html>/i);
+      return h ? h[0] : m[1].trim() || null;
+    };
+
+    return [
+      extract('A', 'B') || generateAdHTML(adDataList[0], bgColor),
+      extract('B', 'C') || generateAdHTML(adDataList[1], bgColor),
+      extract('C', 'ZZZEND') || generateAdHTML(adDataList[2], bgColor),
+    ];
+  } catch (e) {
+    console.warn('[레퍼런스 HTML 생성 실패, 폴백]', e.message);
+    return adDataList.map(d => generateAdHTML(d, bgColor));
+  }
+}
+
+// ─── 헤드카피+서브카피형 ───
+function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4') {
+  const lum = luminance(bgColor);
+  const isDark = lum < 140;
+  const lightEnd = lighten(bgColor, isDark ? 45 : -35);
+  const pal = {
+    bg:       `linear-gradient(150deg,${bgColor},${lightEnd})`,
+    burst:    'rgba(255,255,255,0.12)',
+    headline: isDark ? '#FFFFFF' : '#1a1a1a',
+    hook:     isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.6)',
+    sub:      isDark ? 'rgba(255,255,255,0.88)' : 'rgba(20,20,20,0.82)',
+    check:    '#4ADE80',
+    cta:      'linear-gradient(90deg,#FF4B6E,#FF7040)',
+  };
+
+  const ctaBadgeHtml = d.cta_badge
+    ? `<div style="font-size:24px;font-weight:800;color:#fff;background:rgba(0,0,0,0.18);padding:6px 18px;border-radius:30px;white-space:nowrap">${d.cta_badge}</div>`
+    : '';
+  const footnoteHtml = d.footnote
+    ? `<div style="font-size:20px;color:rgba(255,255,255,0.4);text-align:right;padding:0 64px 10px">${d.footnote}</div>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;background:${pal.bg};position:relative;display:flex;flex-direction:column;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,${pal.burst} 0%,transparent 60%);pointer-events:none"></div>
+  <div style="flex:1;display:flex;flex-direction:column;padding:68px 80px 24px;position:relative;z-index:1">
+    <div style="font-size:26px;font-weight:700;color:#fff;margin-bottom:40px;display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
+      ${d.brand || '브랜드'}
+    </div>
+    <div style="font-size:28px;font-weight:500;color:${pal.hook};margin-bottom:18px;letter-spacing:-0.3px">${d.hook || ''}</div>
+    <div style="font-size:96px;font-weight:900;line-height:1.02;color:${pal.headline};letter-spacing:-4px;margin-bottom:56px">${d.headline || ''}</div>
+    <div style="display:flex;flex-direction:column;gap:22px">
+      ${[d.sub_copy1, d.sub_copy2, d.sub_copy3].filter(Boolean).map(copy => `
+      <div style="display:flex;align-items:center;gap:18px">
+        <div style="width:30px;height:30px;border-radius:50%;background:${pal.check};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:900">✓</div>
+        <div style="font-size:34px;font-weight:600;color:${pal.sub};letter-spacing:-0.5px">${copy}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  ${footnoteHtml}
+  <div style="width:100%;padding:26px 64px;background:${pal.cta};display:flex;align-items:center;gap:12px;flex-shrink:0">
+    ${ctaBadgeHtml}
+    <div style="font-size:27px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+// ─── 커뮤니티/X형 ───
+function generateCommunityHTML(d, bgColor = '#1B5BD4') {
+  const lum = luminance(bgColor);
+  const isDark = lum < 140;
+  const lightEnd = lighten(bgColor, isDark ? 35 : -25);
+  const textMain = '#0f1923';
+  const textSub  = '#536471';
+
+  const bodyLines = [d.body_line1, d.body_line2, d.body_line3, d.body_line4]
+    .filter(Boolean)
+    .map(line => `<div style="font-size:30px;font-weight:500;color:${textMain};line-height:1.5">${line}</div>`)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;background:linear-gradient(150deg,${bgColor},${lightEnd});position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(255,255,255,0.13) 0%,transparent 65%);pointer-events:none"></div>
+  <div style="width:900px;background:rgba(255,255,255,0.97);border-radius:28px;box-shadow:0 48px 96px rgba(0,0,0,0.35);padding:60px 68px;position:relative;z-index:1">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:36px">
+      <div style="width:68px;height:68px;border-radius:50%;background:${bgColor};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff">${(d.brand || 'B').charAt(0)}</div>
+      <div>
+        <div style="font-size:27px;font-weight:800;color:${textMain}">${d.brand || '브랜드'}</div>
+        <div style="font-size:22px;color:${textSub}">${d.account_handle || '@brand'}</div>
+      </div>
+      <div style="margin-left:auto;background:${bgColor};color:#fff;border-radius:30px;padding:10px 30px;font-size:22px;font-weight:700">팔로우</div>
+    </div>
+    <div style="font-size:40px;font-weight:800;color:${textMain};line-height:1.3;margin-bottom:28px;border-left:5px solid ${bgColor};padding-left:22px;letter-spacing:-1px">"${d.quote_hook || ''}"</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:36px">${bodyLines}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:24px;border-top:1.5px solid #e7e9ea">
+      <div style="display:flex;gap:28px;color:${textSub};font-size:22px">
+        <span>🔁 <strong style="color:${textMain}">2.4K</strong></span>
+        <span>❤️ <strong style="color:${textMain}">8.1K</strong></span>
+        <span>💬 <strong style="color:${textMain}">342</strong></span>
+      </div>
+      <div style="background:${bgColor};color:#fff;border-radius:30px;padding:12px 32px;font-size:22px;font-weight:700;white-space:nowrap">${d.cta_text || '지금 확인하기 →'}</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+// ─── AI 디자인 제안 ───
+app.post('/api/suggest-design', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
+  try {
+    const { text: pageContent, themeColor } = await fetchPageContent(url);
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{
+        role: 'user',
+        content: `아래 상세페이지 내용을 분석해서 META 인스타그램 광고소재 디자인 제안을 JSON으로 반환하라.
+
+페이지 내용:
+${pageContent.slice(0, 1500)}
+${themeColor ? `\n페이지 테마컬러: ${themeColor}` : ''}
+
+JSON만 반환 (설명 없이):
+{
+  "bg_keywords_ko": "배경 이미지 검색어 한국어 3단어 콤마 구분",
+  "bg_keywords_en": "background image search query English 3-4 words",
+  "copy_tone": "카피 톤앤매너 짧게 (예: 친근한 공감형)",
+  "copy_tone_desc": "이 톤으로 작성할 때 핵심 포인트 1문장",
+  "color_direction": "배경 컬러 방향 설명 (예: 딥 네이비 계열 — 신뢰·전문성)",
+  "color_hex": "#RRGGBB",
+  "target": "핵심 타겟 1-2문장",
+  "hook_suggestion": "추천 훅 문구 의문문 또는 반문형 25자 이내"
+}`,
+      }],
+    });
+    const raw = msg.content[0].text.trim();
+    const match = raw.match(/\{[\s\S]+\}/);
+    if (!match) throw new Error('AI 제안 파싱 실패');
+    const suggestion = JSON.parse(match[0]);
+    if (themeColor && !suggestion.color_hex) suggestion.color_hex = themeColor;
+    console.log('[AI 제안 완료]', suggestion.copy_tone, suggestion.color_hex);
+    res.json(suggestion);
+  } catch (err) {
+    console.error('[AI 제안 오류]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Unsplash 이미지 검색 ───
+app.get('/api/search-unsplash', async (req, res) => {
+  const { q, per_page = 12 } = req.query;
+  if (!q) return res.status(400).json({ error: '검색어가 필요합니다' });
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey) {
+    return res.status(503).json({
+      error: 'UNSPLASH_ACCESS_KEY가 설정되지 않았습니다.',
+      setup_required: true,
+    });
+  }
+  try {
+    const apiUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${per_page}&orientation=squarish`;
+    const r = await fetch(apiUrl, {
+      headers: { Authorization: `Client-ID ${accessKey}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error(`Unsplash API HTTP ${r.status}`);
+    const data = await r.json();
+    const photos = (data.results || []).map(p => ({
+      id: p.id,
+      thumb: p.urls.small,
+      regular: p.urls.regular,
+      alt: p.alt_description || p.description || '',
+      credit: p.user.name,
+    }));
+    res.json({ photos });
+  } catch (err) {
+    console.error('[Unsplash 오류]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log('='.repeat(50));

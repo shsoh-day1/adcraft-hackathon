@@ -148,6 +148,23 @@
     .figma-step { font-size: 12px; color: #606770; display: flex; gap: 8px; align-items: flex-start; }
     .figma-step .num { font-weight: 700; color: #1877f2; flex-shrink: 0; }
 
+    /* AI 제안 카드 */
+    .proposal-label { display: block; font-size: 11px; font-weight: 700; color: #606770; margin-bottom: 4px; }
+    .proposal-input { width: 100%; border: 1.5px solid #ddd; border-radius: 6px; padding: 7px 10px; font-size: 12px; outline: none; font-family: inherit; transition: border-color .15s; }
+    .proposal-input:focus { border-color: #7c3aed; }
+    .unsplash-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; max-height: 172px; overflow-y: auto; }
+    .unsplash-thumb { cursor: pointer; border-radius: 4px; overflow: hidden; aspect-ratio: 1; border: 2.5px solid transparent; transition: border-color .1s; }
+    .unsplash-thumb:hover { border-color: #7c3aed; }
+    .unsplash-thumb.selected { border-color: #7c3aed; box-shadow: 0 0 0 2px #ddd6fe; }
+    .btn-purple { width: 100%; background: #7c3aed; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .btn-purple:hover { background: #6d28d9; }
+    .btn-suggest { width: 100%; background: #f3f0ff; color: #7c3aed; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-suggest:hover { background: #ede9fe; }
+    .btn-suggest:disabled { opacity: .6; cursor: not-allowed; }
+    .bg-tab { flex: 1; padding: 6px 0; font-size: 11px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .bg-tab.active { background: #7c3aed; color: #fff; }
+    .bg-tab.inactive { background: #f5f3ff; color: #7c3aed; }
+
     @media (max-width: 960px) { .container { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -168,9 +185,111 @@
     </div>
     <div class="panel-body">
 
+      <!-- 과정 프리셋 -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;background:#f7f8fa;border-radius:8px;padding:9px 12px;border:1.5px solid #e4e6eb">
+        <span style="font-size:11px;font-weight:700;color:#606770;white-space:nowrap">💾 프리셋</span>
+        <select id="presetSelect" style="flex:1;border:1.5px solid #ddd;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;outline:none;color:#1c1e21;background:#fff;min-width:0">
+          <option value="">-- 저장된 과정 선택 --</option>
+        </select>
+        <button onclick="loadPreset()" style="background:#1877f2;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">불러오기</button>
+        <button onclick="savePreset()" style="background:#fff;color:#606770;border:1.5px solid #ddd;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">저장</button>
+      </div>
+
       <div class="form-group">
         <label>상세페이지 URL *</label>
         <input type="url" id="urlInput" placeholder="https://example.com/product/..." />
+      </div>
+
+      <!-- AI 디자인 제안 버튼 -->
+      <div style="margin-bottom:14px">
+        <button id="btnSuggest" class="btn-suggest" onclick="fetchDesignSuggestion()">
+          <span id="suggestBtnIcon">💡</span>
+          <span id="suggestBtnText">AI 디자인 제안 받기</span>
+        </button>
+      </div>
+
+      <!-- AI 제안 카드 -->
+      <div id="designProposalCard" style="display:none;margin-bottom:14px;border:1.5px solid #ddd6fe;border-radius:10px;overflow:hidden;background:#fdfcff">
+        <!-- 헤더 -->
+        <div style="background:#7c3aed;padding:11px 16px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:700;color:#fff">💡 AI 디자인 제안</span>
+          <button onclick="closeDesignProposal()" style="background:rgba(255,255,255,.2);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
+        </div>
+        <div style="padding:14px 16px">
+
+          <!-- 배경 이미지 -->
+          <div style="margin-bottom:12px">
+            <label class="proposal-label" style="color:#7c3aed">🖼 배경 이미지 (C탭 포토오버레이형)</label>
+            <!-- 탭 -->
+            <div style="display:flex;gap:0;border:1.5px solid #ddd6fe;border-radius:7px;overflow:hidden;margin-bottom:8px">
+              <button id="bgTabUnsplash" class="bg-tab active" onclick="switchBgTab('unsplash')">Unsplash 검색</button>
+              <button id="bgTabGemini" class="bg-tab inactive" onclick="switchBgTab('gemini')">Gemini 생성</button>
+            </div>
+            <!-- Unsplash 패널 -->
+            <div id="bgPanelUnsplash">
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <input id="unsplashQuery" type="text" class="proposal-input" style="padding:7px 10px"
+                  placeholder="예: professional learning study"
+                  onkeydown="if(event.key==='Enter')searchUnsplash()" />
+                <button onclick="searchUnsplash()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">검색</button>
+              </div>
+              <div id="unsplashGrid" class="unsplash-grid"></div>
+              <div id="unsplashMsg" style="font-size:11px;color:#aaa;text-align:center;padding:10px 0;display:none"></div>
+            </div>
+            <!-- Gemini 패널 -->
+            <div id="bgPanelGemini" style="display:none;background:#f3f0ff;border-radius:8px;padding:14px;text-align:center">
+              <div style="font-size:22px;margin-bottom:6px">🔮</div>
+              <div style="font-size:12px;color:#7c3aed;font-weight:700">Gemini 이미지 생성</div>
+              <div style="font-size:11px;color:#9ca3af;margin-top:4px">GEMINI_API_KEY 설정 후 사용 가능</div>
+            </div>
+            <!-- 선택된 배경 미리보기 -->
+            <div id="selectedBgPreview" style="display:none;margin-top:6px;position:relative;border-radius:8px;overflow:hidden">
+              <img id="selectedBgImg" style="width:100%;height:70px;object-fit:cover;display:block" />
+              <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:space-between;padding:0 10px">
+                <span style="font-size:11px;color:#fff;font-weight:700">✓ 배경 이미지 선택됨</span>
+                <button onclick="clearSelectedBg()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 카피 톤 & 앵글 -->
+          <div style="margin-bottom:10px">
+            <label class="proposal-label">🎯 카피 톤 & 앵글</label>
+            <input id="proposalCopyTone" type="text" class="proposal-input" placeholder="예: 친근한 공감형" />
+            <div id="proposalCopyToneDesc" style="font-size:11px;color:#888;margin-top:3px;line-height:1.4"></div>
+          </div>
+
+          <!-- 배경 컬러 방향 -->
+          <div style="margin-bottom:10px">
+            <label class="proposal-label">🎨 배경 컬러 방향</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div id="proposalColorSwatch" style="width:30px;height:30px;border-radius:6px;background:#1877f2;cursor:pointer;flex-shrink:0;border:1.5px solid #ddd"
+                onclick="document.getElementById('proposalColorPicker').click()"></div>
+              <input type="color" id="proposalColorPicker" style="position:absolute;opacity:0;width:0;height:0" oninput="onProposalColorChange(this.value)" />
+              <input id="proposalColorHex" type="text" maxlength="7" style="width:90px;border:1.5px solid #ddd;border-radius:6px;padding:6px 8px;font-size:12px;font-family:monospace;outline:none;letter-spacing:1px"
+                oninput="onProposalHexInput(this.value)" />
+              <input id="proposalColorDir" type="text" class="proposal-input" style="flex:1;width:auto"
+                placeholder="예: 딥 네이비 — 신뢰·전문성" />
+            </div>
+          </div>
+
+          <!-- 타겟 & 훅 -->
+          <div style="margin-bottom:12px">
+            <label class="proposal-label">👥 타겟 & 훅 문구</label>
+            <input id="proposalTarget" type="text" class="proposal-input" style="margin-bottom:5px"
+              placeholder="예: 현업 전환을 원하는 30대 직장인" />
+            <input id="proposalHook" type="text" class="proposal-input"
+              placeholder="예: 퇴근하고도 공부할 시간이 없다고요?" />
+          </div>
+
+          <button onclick="generateWithProposal()" class="btn-purple">✨ 이대로 생성하기</button>
+        </div>
+      </div>
+
+      <!-- 자동 추출 안내 -->
+      <div id="autoExtractNotice" style="display:none;align-items:center;gap:8px;background:#e7f3ff;border:1px solid #b3d4ff;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1877f2;">
+        <span>✨</span>
+        <span><strong>URL에서 자동 추출된 정보예요.</strong> 수정 후 다시 생성하면 반영됩니다.</span>
       </div>
 
       <div class="form-group">
@@ -231,7 +350,27 @@
       </div>
 
       <div class="form-group">
-        <label>배경 컬러</label>
+        <label>배경 컬러 <span style="font-weight:400;color:#aaa">(선택)</span></label>
+
+        <!-- 자동/수동 토글 -->
+        <div style="display:flex;gap:0;border:1.5px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:8px">
+          <button id="colorModeAuto" onclick="setColorMode(true)"
+            style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#1877f2;color:#fff;font-family:inherit">
+            ✨ 자동 추출
+          </button>
+          <button id="colorModeManual" onclick="setColorMode(false)"
+            style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;cursor:pointer;background:#f0f2f5;color:#606770;font-family:inherit">
+            직접 선택
+          </button>
+        </div>
+
+        <!-- 자동 모드 안내 -->
+        <div id="autoColorDesc" style="font-size:11px;color:#1877f2;background:#e7f3ff;border-radius:6px;padding:7px 10px;margin-bottom:8px;line-height:1.5">
+          레퍼런스 이미지 컬러 → 페이지 테마컬러 → AI 브랜드 추론 순서로 자동 적용됩니다
+        </div>
+
+        <!-- 수동 컬러 피커 (숨김 기본) -->
+        <div id="manualColorSection" style="display:none">
         <div class="color-picker-wrap" onclick="document.getElementById('colorPicker').click()">
           <input type="color" id="colorPicker" value="#1B5BD4"
             style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
@@ -244,6 +383,10 @@
             onblur="onHexBlur(this.value)" />
           <span class="eyedropper-icon" title="컬러 피커 열기">🎨</span>
         </div>
+        <div id="colorAutoNotice" style="display:none;align-items:center;gap:6px;font-size:11px;color:#7c3aed;margin-top:6px;margin-bottom:4px;background:#f3f0ff;border-radius:6px;padding:6px 10px">
+          <span>🎨</span>
+          <span>레퍼런스 이미지에서 자동 추출된 컬러입니다</span>
+        </div>
         <div class="preset-dots">
           <div class="preset-dot active" data-color="#1B5BD4" title="블루" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
           <div class="preset-dot" data-color="#0A0A1A" title="다크" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
@@ -254,6 +397,20 @@
           <div class="preset-dot" data-color="#1E3A5F" title="네이비" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
           <div class="preset-dot" data-color="#1a1a1a" title="블랙" style="background:#1a1a1a;border:1px solid #ccc" onclick="applyPreset(this)"></div>
         </div>
+        </div> <!-- /manualColorSection -->
+      </div>
+
+      <div class="form-group">
+        <label>소재 레이아웃 레퍼런스 <span style="font-weight:400;color:#aaa">(선택 · 클릭하면 해당 구조로 생성)</span></label>
+        <div id="layoutGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+        <div id="layoutEmptyNote" style="display:none;font-size:11px;color:#aaa;margin-bottom:6px">레퍼런스 없음 — 기본 템플릿으로 생성됩니다</div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #ccc;border-radius:8px;padding:9px;cursor:pointer;background:#fafafa;font-size:12px;color:#888;font-weight:600;transition:all .15s"
+          id="layoutAddBtn"
+          onmouseenter="this.style.borderColor='#1877f2';this.style.color='#1877f2'"
+          onmouseleave="this.style.borderColor='#ccc';this.style.color='#888'">
+          + 레이아웃 레퍼런스 추가
+          <input type="file" id="layoutFileInput" accept="image/*" style="display:none" />
+        </label>
       </div>
 
       <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
@@ -276,21 +433,8 @@
       </div>
     </div>
 
-    <!-- 배리에이션 탭 -->
-    <div class="var-tabs" id="varTabs" style="display:none">
-      <button class="var-tab active" onclick="switchVariation(0)">
-        버전 A
-        <span class="tab-label">혜택형</span>
-      </button>
-      <button class="var-tab" onclick="switchVariation(1)">
-        버전 B
-        <span class="tab-label">공감형</span>
-      </button>
-      <button class="var-tab" onclick="switchVariation(2)">
-        버전 C
-        <span class="tab-label">긴박형</span>
-      </button>
-    </div>
+    <!-- 배리에이션 탭 (동적 렌더링) -->
+    <div class="var-tabs" id="varTabs" style="display:none"></div>
 
     <!-- 플레이스홀더 -->
     <div class="placeholder" id="placeholder">
@@ -308,7 +452,7 @@
       <div class="step-list">
         <div class="step-item" id="step1"><div class="step-dot"></div>상세페이지 크롤링</div>
         <div class="step-item" id="step2"><div class="step-dot"></div>레퍼런스 이미지 스타일 분석</div>
-        <div class="step-item" id="step3"><div class="step-dot"></div>소재 정보 구조화</div>
+        <div class="step-item" id="step3"><div class="step-dot"></div>소재 정보 추출 & 구조화</div>
         <div class="step-item" id="step4"><div class="step-dot"></div>카피 배리에이션 3종 생성 (A/B/C)</div>
         <div class="step-item" id="step5"><div class="step-dot"></div>1080×1080 HTML 소재 3종 렌더링</div>
       </div>
@@ -335,6 +479,9 @@
           </div>
         </div>
       </div>
+
+      <!-- 주예진 체크리스트 검증 패널 -->
+      <div id="validationPanel" style="display:none;margin-bottom:16px;background:#f7f8fa;border:1.5px solid #e4e6eb;border-radius:10px;padding:14px 16px"></div>
 
       <!-- JSON 데이터 -->
       <div class="code-section" style="margin-bottom:12px">
@@ -372,9 +519,133 @@
 
 <script>
   let selectedColor = '#1B5BD4';
+  let isAutoColor = true;
+  let selectedLayoutRefId = null;
+  let cachedLayouts = [];
   let refImages = [];
   let variations = [];      // [{adData, html}, ...]
   let activeVariation = 0;
+  let selectedBgImage = null; // Unsplash 선택 이미지 base64
+
+  // ── 레이아웃 레퍼런스 관리 ──
+  async function fetchLayouts() {
+    try {
+      const res = await fetch('/api/layouts');
+      const data = await res.json();
+      cachedLayouts = data.layouts;
+      renderLayoutGrid();
+    } catch(e) { console.warn('레이아웃 로드 실패', e); }
+  }
+
+  function renderLayoutGrid() {
+    const grid = document.getElementById('layoutGrid');
+    const empty = document.getElementById('layoutEmptyNote');
+    if (!cachedLayouts.length) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    grid.innerHTML = cachedLayouts.map(l => {
+      const selected = selectedLayoutRefId === l.id;
+      return `<div onclick="selectLayoutRef('${l.id}')"
+        style="position:relative;cursor:pointer;border-radius:8px;overflow:hidden;
+          border:2.5px solid ${selected ? '#1877f2' : '#e0e0e0'};
+          box-shadow:${selected ? '0 0 0 3px rgba(24,119,242,0.18)' : 'none'};
+          transition:all .15s;flex-shrink:0">
+        <img src="${l.thumbnail}" style="width:76px;height:76px;object-fit:cover;display:block" />
+        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);padding:3px 5px">
+          <span style="font-size:9px;color:#fff;font-weight:600;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${l.name}</span>
+        </div>
+        ${selected ? '<div style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#1877f2;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff">✓</div>' : ''}
+        <button onclick="event.stopPropagation();deleteLayoutRef('${l.id}')"
+          style="position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:50%;background:#ff4b6e;color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function selectLayoutRef(id) {
+    selectedLayoutRefId = selectedLayoutRefId === id ? null : id;
+    renderLayoutGrid();
+  }
+
+  async function deleteLayoutRef(id) {
+    if (!confirm('이 레이아웃 레퍼런스를 삭제할까요?')) return;
+    await fetch(`/api/layouts/${id}`, { method: 'DELETE' });
+    if (selectedLayoutRefId === id) selectedLayoutRefId = null;
+    cachedLayouts = cachedLayouts.filter(l => l.id !== id);
+    renderLayoutGrid();
+  }
+
+  document.getElementById('layoutFileInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const name = window.prompt('레이아웃 이름을 입력하세요:', file.name.replace(/\.[^.]+$/, ''));
+    if (!name?.trim()) { this.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const res = await fetch('/api/layouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), imageData: ev.target.result }),
+      });
+      const data = await res.json();
+      cachedLayouts.push({ id: data.id, name: data.name, thumbnail: ev.target.result });
+      renderLayoutGrid();
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+  });
+
+  fetchLayouts();
+
+  // ── 프리셋 저장/불러오기 ──
+  function getPresets() { return JSON.parse(localStorage.getItem('adcraft_presets') || '[]'); }
+  function savePresets(arr) { localStorage.setItem('adcraft_presets', JSON.stringify(arr)); }
+
+  function renderPresetDropdown() {
+    const sel = document.getElementById('presetSelect');
+    const presets = getPresets();
+    sel.innerHTML = '<option value="">-- 저장된 과정 선택 --</option>' +
+      presets.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  }
+
+  function savePreset() {
+    const name = window.prompt('과정명을 입력하세요 (저장 키):');
+    if (!name || !name.trim()) return;
+    const preset = {
+      name: name.trim(),
+      target: document.getElementById('targetInput').value,
+      usp1:   document.getElementById('usp1Input').value,
+      usp2:   document.getElementById('usp2Input').value,
+      usp3:   document.getElementById('usp3Input').value,
+      ad_set_message:   document.getElementById('adSetMessageInput').value,
+      creative_message: document.getElementById('creativeMessageInput').value,
+    };
+    const presets = getPresets();
+    const idx = presets.findIndex(p => p.name === preset.name);
+    if (idx >= 0) presets[idx] = preset; else presets.push(preset);
+    savePresets(presets);
+    renderPresetDropdown();
+    document.getElementById('presetSelect').value = preset.name;
+    alert(`"${preset.name}" 저장됨 ✓`);
+  }
+
+  function loadPreset() {
+    const name = document.getElementById('presetSelect').value;
+    if (!name) return alert('저장된 과정을 선택하세요.');
+    const preset = getPresets().find(p => p.name === name);
+    if (!preset) return;
+    document.getElementById('targetInput').value = preset.target || '';
+    document.getElementById('usp1Input').value   = preset.usp1   || '';
+    document.getElementById('usp2Input').value   = preset.usp2   || '';
+    document.getElementById('usp3Input').value   = preset.usp3   || '';
+    document.getElementById('adSetMessageInput').value   = preset.ad_set_message   || '';
+    document.getElementById('creativeMessageInput').value = preset.creative_message || '';
+  }
+
+  // 페이지 로드 시 드롭다운 복원
+  renderPresetDropdown();
 
   // ── 배리에이션 탭 전환 ──
   function switchVariation(idx) {
@@ -388,6 +659,49 @@
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
     document.getElementById('codeBox').textContent = v.html;
     document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${['A','B','C'][idx]}`;
+    renderValidationPanel(v.adData);
+  }
+
+  // ── 주예진 체크리스트 검증 패널 ──
+  function renderValidationPanel(adData) {
+    const panel = document.getElementById('validationPanel');
+    const validation = adData.validation;
+    if (!validation) { panel.style.display = 'none'; return; }
+
+    const score = typeof adData.validation_score === 'number'
+      ? adData.validation_score
+      : Object.values(validation).filter(Boolean).length;
+    const fails = adData.validation_fails || [];
+    const total = 11;
+    const scoreColor = score >= 10 ? '#16a34a' : score >= 8 ? '#ca8a04' : '#dc2626';
+    const scoreLabel = score >= 10 ? '우수' : score >= 8 ? '보통' : '개선 필요';
+
+    const criteriaLabels = {
+      C1:'숫자 혜택 명시', C2:'긴박감 트리거', C3:'짧은 헤드라인',
+      C4:'CTA 명시', C5:'의문문·반문', C6:'타겟 공감 먼저',
+      V1:'헤드라인 강조', V2:'핵심 숫자 강조', V3:'가독성 확보',
+      S1:'구체적 수치', P1:'3초 후킹',
+    };
+
+    const items = Object.entries(criteriaLabels).map(([id, label]) => {
+      const pass = validation[id];
+      return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0">
+        <span style="width:15px;height:15px;border-radius:50%;background:${pass?'#d1fae5':'#fee2e2'};color:${pass?'#065f46':'#991b1b'};font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${pass?'✓':'✗'}</span>
+        <span style="font-size:11px;color:${pass?'#374151':'#991b1b'};font-weight:${pass?'400':'600'}">${id} ${label}</span>
+      </div>`;
+    }).join('');
+
+    panel.style.display = 'block';
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:#606770">✅ 주예진 체크리스트 검증</span>
+        <span style="font-size:16px;font-weight:900;color:${scoreColor}">${score}/${total} — ${scoreLabel}</span>
+      </div>
+      <div style="height:4px;background:#e4e6eb;border-radius:99px;overflow:hidden;margin-bottom:10px">
+        <div style="height:100%;width:${Math.round((score/total)*100)}%;background:${scoreColor};border-radius:99px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">${items}</div>
+      ${fails.length ? `<div style="margin-top:8px;padding:7px 10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:11px;color:#92400e"><strong>개선 필요:</strong> ${fails.join(' / ')}</div>` : ''}`;
   }
 
   // ── 컬러 피커 ──
@@ -431,6 +745,27 @@
     document.querySelectorAll('.preset-dot').forEach(d => {
       d.classList.toggle('active', d.dataset.color.toLowerCase() === color.toLowerCase());
     });
+  }
+
+  // ── 컬러 모드 토글 ──
+  function setColorMode(auto) {
+    isAutoColor = auto;
+    document.getElementById('colorModeAuto').style.background   = auto ? '#1877f2' : '#f0f2f5';
+    document.getElementById('colorModeAuto').style.color        = auto ? '#fff'    : '#606770';
+    document.getElementById('colorModeManual').style.background = auto ? '#f0f2f5' : '#1877f2';
+    document.getElementById('colorModeManual').style.color      = auto ? '#606770' : '#fff';
+    document.getElementById('autoColorDesc').style.display      = auto ? 'block'   : 'none';
+    document.getElementById('manualColorSection').style.display = auto ? 'none'    : 'block';
+  }
+
+  function applyExtractedColor(hex) {
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
+    selectedColor = hex;
+    document.getElementById('colorSwatch').style.background = hex;
+    document.getElementById('colorPicker').value = hex;
+    document.getElementById('hexInput').value = hex.toUpperCase();
+    updateActiveDot(hex);
+    document.getElementById('colorAutoNotice').style.display = 'flex';
   }
 
   // ── 탭 전환 (레퍼런스 이미지) ──
@@ -573,7 +908,9 @@
           ad_set_message: document.getElementById('adSetMessageInput').value.trim(),
           creative_message: document.getElementById('creativeMessageInput').value.trim(),
           reference_images: refImages.map(img => img.data),
-          bg_color: selectedColor,
+          bg_color: isAutoColor ? '' : selectedColor,
+          layout_ref_id: selectedLayoutRefId || '',
+          custom_bg_image: selectedBgImage || null,
         }),
       });
 
@@ -592,6 +929,37 @@
 
       variations = result.variations;
       activeVariation = 0;
+
+      // 자동 추출된 정보 → 폼에 채워서 보여주기
+      if (result.extractedInfo) {
+        const info = result.extractedInfo;
+        document.getElementById('targetInput').value = info.target || '';
+        document.getElementById('usp1Input').value = info.usp1 || '';
+        document.getElementById('usp2Input').value = info.usp2 || '';
+        document.getElementById('usp3Input').value = info.usp3 || '';
+        document.getElementById('adSetMessageInput').value = info.ad_set_message || '';
+        document.getElementById('creativeMessageInput').value = info.creative_message || '';
+        document.getElementById('autoExtractNotice').style.display = 'flex';
+      } else {
+        document.getElementById('autoExtractNotice').style.display = 'none';
+      }
+
+      // 자동 추출된 컬러 → 컬러 피커에 반영 (참고용)
+      if (result.effectiveBgColor && isAutoColor) {
+        applyExtractedColor(result.effectiveBgColor);
+        const srcLabel = {
+          style_ref: '스타일 레퍼런스',
+          layout_ref: '레이아웃 레퍼런스',
+          theme_color: '페이지 테마컬러',
+          ai_inferred: 'AI 브랜드 추론',
+          default: '기본값',
+        }[result.colorSource] || result.colorSource;
+        document.getElementById('colorAutoNotice').querySelector('span:last-child').innerHTML =
+          `<strong>자동 추출 완료:</strong> ${srcLabel} (${result.effectiveBgColor})`;
+      } else {
+        document.getElementById('colorAutoNotice').style.display = 'none';
+      }
+
       showVariations();
 
     } catch (err) {
@@ -606,7 +974,25 @@
 
   function showVariations() {
     document.getElementById('loadingWrap').style.display = 'none';
-    document.getElementById('varTabs').style.display = 'flex';
+
+    // 탭 동적 렌더링 — 검증 점수 배지 포함
+    const tabsEl = document.getElementById('varTabs');
+    tabsEl.innerHTML = variations.map((v, i) => {
+      const score = v.adData.validation_score;
+      const total = 11;
+      const scoreColor = score == null ? '' : score >= 10 ? '#16a34a' : score >= 8 ? '#ca8a04' : '#dc2626';
+      const scoreBadge = score != null
+        ? `<span style="display:inline-block;background:${scoreColor};color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:5px;vertical-align:middle">${score}/${total}</span>`
+        : '';
+      const label = v.adData.variation_label || `버전 ${['A','B','C'][i]}`;
+      const parts = label.split(' - ');
+      return `<button class="var-tab ${i === 0 ? 'active' : ''}" onclick="switchVariation(${i})">
+        ${parts[0]}${scoreBadge}
+        <span class="tab-label">${parts[1] || ''}</span>
+      </button>`;
+    }).join('');
+    tabsEl.style.display = 'flex';
+
     document.getElementById('resultBody').style.display = 'block';
     document.getElementById('resultActions').style.display = 'flex';
     switchVariation(0);
@@ -660,6 +1046,161 @@
   document.getElementById('urlInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') startGeneration();
   });
+
+  // ── AI 디자인 제안 ──
+  async function fetchDesignSuggestion() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { alert('URL을 먼저 입력해주세요.'); return; }
+    const btn = document.getElementById('btnSuggest');
+    const icon = document.getElementById('suggestBtnIcon');
+    const text = document.getElementById('suggestBtnText');
+    icon.textContent = '⏳';
+    text.textContent = '페이지 분석 중...';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/suggest-design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI 제안 실패');
+      applyDesignSuggestion(data);
+      document.getElementById('designProposalCard').style.display = 'block';
+      // 자동으로 Unsplash 검색
+      if (data.bg_keywords_en) {
+        document.getElementById('unsplashQuery').value = data.bg_keywords_en;
+        searchUnsplash();
+      }
+    } catch (e) {
+      alert('❌ ' + e.message);
+    } finally {
+      icon.textContent = '💡';
+      text.textContent = 'AI 디자인 제안 받기';
+      btn.disabled = false;
+    }
+  }
+
+  function applyDesignSuggestion(d) {
+    if (d.copy_tone) document.getElementById('proposalCopyTone').value = d.copy_tone;
+    if (d.copy_tone_desc) document.getElementById('proposalCopyToneDesc').textContent = d.copy_tone_desc;
+    if (d.color_hex && /^#[0-9A-Fa-f]{6}$/.test(d.color_hex)) {
+      document.getElementById('proposalColorSwatch').style.background = d.color_hex;
+      document.getElementById('proposalColorPicker').value = d.color_hex;
+      document.getElementById('proposalColorHex').value = d.color_hex.toUpperCase();
+    }
+    if (d.color_direction) document.getElementById('proposalColorDir').value = d.color_direction;
+    if (d.target) document.getElementById('proposalTarget').value = d.target;
+    if (d.hook_suggestion) document.getElementById('proposalHook').value = d.hook_suggestion;
+  }
+
+  function closeDesignProposal() {
+    document.getElementById('designProposalCard').style.display = 'none';
+  }
+
+  function generateWithProposal() {
+    // 제안 내용을 메인 폼에 반영
+    const target = document.getElementById('proposalTarget').value.trim();
+    const copyTone = document.getElementById('proposalCopyTone').value.trim();
+    const colorDir = document.getElementById('proposalColorDir').value.trim();
+    const hook = document.getElementById('proposalHook').value.trim();
+    const colorHex = document.getElementById('proposalColorHex').value.trim();
+
+    if (target && !document.getElementById('targetInput').value.trim())
+      document.getElementById('targetInput').value = target;
+    if (hook && !document.getElementById('adSetMessageInput').value.trim())
+      document.getElementById('adSetMessageInput').value = hook;
+    if (copyTone && !document.getElementById('creativeMessageInput').value.trim())
+      document.getElementById('creativeMessageInput').value = copyTone + (colorDir ? ' · ' + colorDir : '');
+
+    // 컬러 적용
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+      setColorMode(false);
+      selectedColor = colorHex;
+      document.getElementById('colorSwatch').style.background = colorHex;
+      document.getElementById('colorPicker').value = colorHex;
+      document.getElementById('hexInput').value = colorHex.toUpperCase();
+      updateActiveDot(colorHex);
+    }
+    startGeneration();
+  }
+
+  // ── 배경 탭 전환 (Unsplash / Gemini) ──
+  function switchBgTab(tab) {
+    const isU = tab === 'unsplash';
+    document.getElementById('bgTabUnsplash').className = 'bg-tab ' + (isU ? 'active' : 'inactive');
+    document.getElementById('bgTabGemini').className = 'bg-tab ' + (isU ? 'inactive' : 'active');
+    document.getElementById('bgPanelUnsplash').style.display = isU ? 'block' : 'none';
+    document.getElementById('bgPanelGemini').style.display = isU ? 'none' : 'block';
+  }
+
+  // ── Unsplash 검색 ──
+  async function searchUnsplash() {
+    const q = document.getElementById('unsplashQuery').value.trim();
+    if (!q) return;
+    const grid = document.getElementById('unsplashGrid');
+    const msg = document.getElementById('unsplashMsg');
+    grid.innerHTML = '';
+    msg.style.display = 'block';
+    msg.textContent = '검색 중...';
+    try {
+      const res = await fetch(`/api/search-unsplash?q=${encodeURIComponent(q)}&per_page=12`);
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.setup_required) {
+          msg.innerHTML = `<span style="color:#dc2626;font-weight:700">UNSPLASH_ACCESS_KEY 필요</span><br><span style="font-size:10px;color:#888">unsplash.com/developers 에서 발급 후 .env에 추가하세요</span>`;
+          return;
+        }
+        throw new Error(data.error);
+      }
+      if (!data.photos?.length) { msg.textContent = '검색 결과 없음'; return; }
+      msg.style.display = 'none';
+      grid.innerHTML = data.photos.map(p => `
+        <div class="unsplash-thumb" onclick="selectUnsplashPhoto('${p.regular}', this)" title="${(p.alt || p.credit).replace(/"/g,'&quot;')}">
+          <img src="${p.thumb}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" />
+        </div>`).join('');
+    } catch (e) {
+      msg.style.display = 'block';
+      msg.textContent = '검색 실패: ' + e.message;
+    }
+  }
+
+  async function selectUnsplashPhoto(url, el) {
+    document.querySelectorAll('.unsplash-thumb.selected').forEach(t => t.classList.remove('selected'));
+    el.classList.add('selected');
+    try {
+      const r = await fetch(url);
+      const blob = await r.blob();
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        selectedBgImage = ev.target.result;
+        document.getElementById('selectedBgImg').src = selectedBgImage;
+        document.getElementById('selectedBgPreview').style.display = 'block';
+      };
+      reader.readAsDataURL(blob);
+    } catch (e) {
+      alert('이미지 로드 실패: ' + e.message);
+    }
+  }
+
+  function clearSelectedBg() {
+    selectedBgImage = null;
+    document.getElementById('selectedBgPreview').style.display = 'none';
+    document.getElementById('selectedBgImg').src = '';
+    document.querySelectorAll('.unsplash-thumb.selected').forEach(t => t.classList.remove('selected'));
+  }
+
+  // ── 제안 컬러 피커 ──
+  function onProposalColorChange(val) {
+    document.getElementById('proposalColorSwatch').style.background = val;
+    document.getElementById('proposalColorHex').value = val.toUpperCase();
+  }
+  function onProposalHexInput(val) {
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      document.getElementById('proposalColorSwatch').style.background = val;
+      document.getElementById('proposalColorPicker').value = val;
+    }
+  }
 </script>
 </body>
 </html>
