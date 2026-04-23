@@ -246,6 +246,73 @@
     .btn-figma { background: #1E1E1E; border: 1.5px solid #555; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; transition: all .15s; white-space: nowrap; }
     .btn-figma:hover { background: #333; border-color: #aaa; }
 
+    /* ── 왼쪽 패널 AI 배경 인라인 섹션 ──────────────────── */
+    .ai-bg-row { display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 10px;border-radius:8px;background:linear-gradient(135deg,rgba(124,58,237,.07),rgba(37,99,235,.07));border:1.5px solid rgba(124,58,237,.18);transition:all .15s; }
+    .ai-bg-row:hover { background:linear-gradient(135deg,rgba(124,58,237,.13),rgba(37,99,235,.13)); }
+    .ai-bg-row-label { font-size:12px;font-weight:700;color:#7c3aed;display:flex;align-items:center;gap:6px; }
+    [data-theme="dark"] .ai-bg-row-label { color:#a78bfa; }
+    .ai-bg-row-badge { font-size:10px;font-weight:600;color:var(--tx-muted);background:var(--tab-idle-bg);padding:2px 7px;border-radius:10px; }
+    .ai-bg-row-arrow { font-size:11px;color:var(--tx-muted);transition:transform .2s; }
+    .ai-bg-row-arrow.open { transform:rotate(90deg); }
+    .ai-bg-body { border:1.5px solid rgba(124,58,237,.18);border-top:none;border-radius:0 0 8px 8px;padding:12px;background:var(--panel-bg); }
+    .btn-gen-left-bg { width:100%;padding:9px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s; }
+    .btn-gen-left-bg:hover { opacity:.88; }
+    .btn-gen-left-bg:disabled { opacity:.5;cursor:not-allowed; }
+    .ai-bg-status { font-size:11px;color:var(--tx-muted);margin:7px 0 0;line-height:1.5; }
+    .ai-bg-preview-wrap { margin-top:10px; }
+    .ai-bg-preview-div { width:100%;aspect-ratio:1/1;border-radius:8px;border:1.5px solid var(--bdr); }
+    .btn-clear-bg { margin-top:6px;font-size:11px;color:var(--tx-sub);background:none;border:1px solid var(--bdr);border-radius:5px;padding:3px 10px;cursor:pointer;font-family:inherit; }
+    .btn-clear-bg:hover { border-color:var(--accent);color:var(--accent); }
+    .ai-bg-applied-badge { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#16a34a;background:#f0fff4;border:1px solid #86efac;border-radius:10px;padding:2px 8px;margin-top:5px; }
+    [data-theme="dark"] .ai-bg-applied-badge { background:#0d2518;border-color:#166534;color:#4ade80; }
+
+    /* ── AI 배경 이미지 패널 (오른쪽 패널 레거시) ─────────── */
+    .btn-ai-image { background: linear-gradient(135deg,#7c3aed,#2563eb); color:#fff !important; border-color:transparent !important; }
+    .btn-ai-image:hover { opacity:.88; color:#fff; background:linear-gradient(135deg,#6d28d9,#1d4ed8); }
+    .btn-ai-image.active { background:linear-gradient(135deg,#5b21b6,#1e40af); }
+    .ai-image-panel { border:1.5px solid var(--bdr); border-radius:10px; background:var(--panel-bg); margin:0 0 16px; overflow:hidden; }
+    .ai-image-panel-head { display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(37,99,235,.08));border-bottom:1px solid var(--bdr); }
+    .ai-image-panel-title { font-size:13px;font-weight:700;color:var(--tx); }
+    .ai-image-panel-body { padding:16px;display:flex;flex-direction:column;gap:12px; }
+    .ai-prompt-label { font-size:11px;font-weight:600;color:var(--tx-sub);display:flex;align-items:center;gap:6px;margin-bottom:5px; }
+    .ai-prompt-textarea { width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;background:var(--inp-bg);color:var(--tx);font-size:12px;font-family:inherit;line-height:1.6;padding:10px 12px;resize:vertical;min-height:90px;transition:border-color .15s; }
+    .ai-prompt-textarea:focus { outline:none;border-color:#7c3aed; }
+    .btn-regen { font-size:11px;font-weight:600;color:#7c3aed;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:6px;padding:5px 10px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap; }
+    .btn-regen:hover { background:rgba(124,58,237,.18); }
+    .btn-regen:disabled { opacity:.5;cursor:not-allowed; }
+    .ai-status { font-size:11px;color:var(--tx-muted);flex:1; }
+    .btn-gen-image { width:100%;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s; }
+    .btn-gen-image:hover { opacity:.88; }
+    .btn-gen-image:disabled { opacity:.5;cursor:not-allowed; }
+    .ai-img-preview-box { border:1.5px solid var(--bdr);border-radius:8px;overflow:hidden; }
+    .ai-img-preview-box img { width:100%;display:block; }
+    .btn-apply-bg { width:100%;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s; }
+    .btn-apply-bg:hover { opacity:.88; }
+    .btn-apply-bg:disabled { opacity:.5;cursor:not-allowed; }
+    [data-theme="dark"] .ai-image-panel-head { background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(37,99,235,.12)); }
+
+    /* AI 배경 모드 토글 */
+    .ai-bg-mode-btn { flex:1;padding:6px;font-size:11px;font-weight:700;border:1.5px solid var(--bdr);border-radius:6px;background:transparent;color:var(--tx-muted);cursor:pointer;font-family:inherit;transition:all .15s; }
+    .ai-bg-mode-btn.active { background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border-color:transparent; }
+    .btn-develop-prompt { width:100%;padding:7px;background:rgba(124,58,237,.1);color:#7c3aed;border:1.5px solid rgba(124,58,237,.25);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
+    .btn-develop-prompt:hover { background:rgba(124,58,237,.18); }
+    .btn-develop-prompt:disabled { opacity:.5;cursor:not-allowed; }
+
+    /* 카피 수정 패널 */
+    .copy-edit-panel { border:1.5px solid var(--bdr);border-radius:10px;background:var(--panel-bg);margin:0 0 16px;overflow:hidden; }
+    .copy-edit-header { display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(16,185,129,.06));border-bottom:1px solid var(--bdr);cursor:pointer; }
+    .copy-edit-title { font-size:12px;font-weight:700;color:var(--tx-sub);display:flex;align-items:center;gap:6px; }
+    .copy-edit-arrow { font-size:11px;color:var(--tx-muted);transition:transform .2s; }
+    .copy-edit-arrow.open { transform:rotate(90deg); }
+    .copy-edit-body { padding:14px 16px;display:flex;flex-direction:column;gap:8px; }
+    .copy-field-row { display:flex;flex-direction:column;gap:3px; }
+    .copy-field-label { font-size:10px;font-weight:700;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.5px; }
+    .copy-field-input { width:100%;padding:6px 9px;border:1.5px solid var(--bdr);border-radius:6px;background:var(--input-bg);color:var(--tx);font-size:12px;font-family:inherit;resize:none;transition:border-color .15s;box-sizing:border-box; }
+    .copy-field-input:focus { outline:none;border-color:var(--accent); }
+    .btn-update-preview { width:100%;padding:9px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:4px; }
+    .btn-update-preview:hover { opacity:.88; }
+    .btn-update-preview:disabled { opacity:.5;cursor:not-allowed; }
+
     /* Figma 모달 */
     .figma-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
     .figma-modal-overlay.open { display:flex; }
@@ -267,15 +334,16 @@
     .btn-open-plugin:hover { background:#333; }
 
     /* 배리에이션 탭 */
-    .var-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--bdr); padding: 0 20px; background: var(--panel-bg); }
+    .var-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--bdr); padding: 0 12px; background: var(--panel-bg); overflow-x: auto; scrollbar-width: none; }
+    .var-tabs::-webkit-scrollbar { display: none; }
     .var-tab {
-      padding: 12px 20px; font-size: 13px; font-weight: 700; border: none; background: transparent;
+      padding: 10px 13px; font-size: 12px; font-weight: 700; border: none; background: transparent;
       cursor: pointer; color: var(--tx-muted); font-family: inherit; position: relative; transition: color .15s;
-      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; flex-shrink: 0;
     }
     .var-tab:hover { color: var(--accent); }
     .var-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .var-tab .tab-label { font-size: 10px; font-weight: 600; display: block; opacity: .7; }
+    .var-tab .tab-label { font-size: 9px; font-weight: 600; display: block; opacity: .7; }
 
     /* 플레이스홀더 */
     .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; color: var(--tx-muted); text-align: center; gap: 12px; }
@@ -340,7 +408,15 @@
     #validationPanel { display:none;margin-bottom:16px;background:var(--fig-bg);border:1.5px solid var(--bdr);border-radius:10px;padding:14px 16px; }
 
     @media (max-width: 960px) { .container { grid-template-columns: 1fr; } }
+
+    /* 인라인 편집 모드 */
+    .btn-inline-edit { background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap; }
+    .btn-inline-edit:hover { opacity:.88; }
+    .btn-inline-edit.editing { background:linear-gradient(135deg,#16a34a,#15803d); }
+    .edit-mode-notice { display:none;font-size:11px;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 10px;margin-top:8px;line-height:1.5; }
+    [data-theme="dark"] .edit-mode-notice { background:#1e3a5f;border-color:#1d4ed8;color:#93c5fd; }
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -525,6 +601,48 @@
         </div>
       </div>
 
+      <!-- ✨ AI 배경 이미지 인라인 섹션 -->
+      <div class="form-group" id="aiBgFormGroup">
+        <div class="ai-bg-row" onclick="toggleLeftAiBg()">
+          <div class="ai-bg-row-label">✨ AI 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
+          <span class="ai-bg-row-arrow" id="aiBgArrow">▶</span>
+        </div>
+        <div id="aiBgBody" style="display:none">
+          <div class="ai-bg-body">
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button class="ai-bg-mode-btn active" id="btnModeAuto" onclick="setAiBgMode('auto')">🤖 자동 생성</button>
+              <button class="ai-bg-mode-btn" id="btnModeManual" onclick="setAiBgMode('manual')">✍️ 직접 입력</button>
+            </div>
+            <div id="aiBgHintWrap" style="display:none;margin-bottom:8px">
+              <textarea id="aiBgHintInput" class="copy-field-input" rows="2" placeholder="예: 밤하늘, 별빛, 감성적 / 도심 야경, 네온 / 자연, 숲, 새벽빛" style="font-size:12px"></textarea>
+              <button class="btn-develop-prompt" id="btnDevelopPrompt" onclick="developPrompt()" style="margin-top:6px">✨ 프롬프트 발전시키기</button>
+              <div id="aiBgDevelopedWrap" style="display:none;margin-top:8px">
+                <div class="copy-field-label" style="margin-bottom:4px">Claude가 발전시킨 프롬프트 <span style="font-weight:400;color:var(--tx-muted)">(직접 수정 가능)</span></div>
+                <textarea id="aiBgDevelopedPrompt" class="copy-field-input" rows="4" style="font-size:11px;line-height:1.5"></textarea>
+              </div>
+            </div>
+            <button class="btn-gen-left-bg" id="btnGenLeftBg" onclick="generateLeftAiBg()">🎨 AI 배경 생성하기</button>
+            <div class="ai-bg-status" id="aiBgStatus"></div>
+            <div class="ai-bg-preview-wrap" id="aiBgPreviewWrap" style="display:none">
+              <div class="ai-bg-preview-div" id="aiBgPreviewDiv"></div>
+              <div style="font-size:10px;color:var(--tx-muted);margin-top:4px;text-align:center" id="aiBgModelLabel"></div>
+              <div class="ai-bg-applied-badge">✅ 광고 생성 시 자동 포함</div>
+              <button class="btn-clear-bg" onclick="clearLeftAiBg()">✕ 배경 제거</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>광고 폰트 <span style="font-weight:400;color:var(--tx-muted)">(선택)</span></label>
+        <select id="fontSelect" style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;cursor:pointer">
+          <option value="Pretendard">Pretendard (기본 · 추천)</option>
+          <option value="Noto Sans KR">Noto Sans KR (구글 폰트)</option>
+          <option value="Nanum Gothic">나눔고딕 (네이버)</option>
+          <option value="Black Han Sans">Black Han Sans (임팩트체)</option>
+        </select>
+      </div>
+
       <div class="form-group">
         <label>소재 레이아웃 레퍼런스 <span style="font-weight:400;color:var(--tx-muted)">(선택 · 클릭하면 해당 구조로 생성)</span></label>
         <div id="layoutGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
@@ -550,9 +668,10 @@
         <h2>생성 결과</h2>
       </div>
       <div class="result-actions" id="resultActions" style="display:none">
-        <button class="btn-action btn-download" onclick="downloadHTML()">⬇ HTML 다운로드</button>
-        <button class="btn-action" onclick="copyHTML()" id="btnCopyHTML">📋 HTML 복사</button>
-        <button class="btn-figma" onclick="openInFigma()">🎨 Figma로 열기</button>
+        <button class="btn-action btn-download" onclick="downloadHTML()">⬇ HTML</button>
+        <button class="btn-action btn-download" onclick="downloadPNG()" id="btnDownloadPNG">📸 PNG</button>
+        <button class="btn-action" onclick="copyHTML()" id="btnCopyHTML">📋 복사</button>
+        <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
       </div>
     </div>
 
@@ -573,8 +692,8 @@
         <div class="step-item" id="step1"><div class="step-dot"></div>상세페이지 크롤링</div>
         <div class="step-item" id="step2"><div class="step-dot"></div>레퍼런스 이미지 스타일 분석</div>
         <div class="step-item" id="step3"><div class="step-dot"></div>소재 정보 추출 & 구조화</div>
-        <div class="step-item" id="step4"><div class="step-dot"></div>카피 배리에이션 3종 생성 (A/B/C)</div>
-        <div class="step-item" id="step5"><div class="step-dot"></div>1080×1080 HTML 소재 3종 렌더링</div>
+        <div class="step-item" id="step4"><div class="step-dot"></div>카피 배리에이션 9종 생성 (A1~C3)</div>
+        <div class="step-item" id="step5"><div class="step-dot"></div>1080×1080 HTML 소재 9종 렌더링</div>
       </div>
     </div>
 
@@ -588,7 +707,11 @@
       </div>
 
       <div class="preview-section">
-        <div class="preview-label">🖼️ 광고소재 미리보기 (1080×1080)</div>
+        <div class="preview-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>🖼️ 광고소재 미리보기 (1080×1080)</span>
+          <button id="btnInlineEdit" class="btn-inline-edit" onclick="toggleInlineEdit()" style="display:none">✏️ 직접 편집</button>
+        </div>
+        <div class="edit-mode-notice" id="editModeNotice">클릭하면 텍스트를 직접 수정할 수 있어요. 완료 후 "편집 완료" 버튼을 누르면 HTML이 저장됩니다.</div>
         <div class="preview-container">
           <div class="preview-scaler">
             <iframe id="previewFrame" srcdoc=""></iframe>
@@ -597,6 +720,48 @@
       </div>
 
       <div id="validationPanel"></div>
+
+      <!-- ✏️ 카피 수정 패널 -->
+      <div class="copy-edit-panel" id="copyEditPanel" style="display:none">
+        <div class="copy-edit-header" onclick="toggleCopyEdit()">
+          <div class="copy-edit-title">✏️ 카피 수정</div>
+          <span class="copy-edit-arrow" id="copyEditArrow">▶</span>
+        </div>
+        <div id="copyEditBody" style="display:none">
+          <div class="copy-edit-body" id="copyEditFields"></div>
+          <div style="padding:0 16px 14px">
+            <button class="btn-update-preview" id="btnUpdatePreview" onclick="applyEditChanges()">🔄 미리보기 업데이트</button>
+            <div style="font-size:10px;color:var(--tx-muted);text-align:center;margin-top:5px" id="copyEditStatus"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✨ AI 배경 이미지 생성 패널 -->
+      <div id="aiImagePanel" class="ai-image-panel" style="display:none">
+        <div class="ai-image-panel-head">
+          <div class="ai-image-panel-title">✨ AI 배경 이미지 생성 — Claude → Gemini</div>
+          <button class="btn-regen" onclick="toggleAiImagePanel()" style="font-size:16px;padding:1px 7px;line-height:1">×</button>
+        </div>
+        <div class="ai-image-panel-body">
+          <div>
+            <div class="ai-prompt-label">🤖 Claude가 만든 Gemini 이미지 프롬프트 <span style="font-weight:400;color:var(--tx-muted)">(직접 수정 가능)</span></div>
+            <textarea class="ai-prompt-textarea" id="aiImgPromptText" placeholder="프롬프트 생성 중..."></textarea>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+              <button class="btn-regen" id="btnRegenPrompt" onclick="generateImagePrompt()">🔄 프롬프트 재생성</button>
+              <span class="ai-status" id="aiImgStatus"></span>
+            </div>
+          </div>
+          <button class="btn-gen-image" id="btnGenerateAiImg" onclick="generateAiImage()">🎨 AI 배경 생성하기</button>
+          <div id="aiImgPreviewWrap" style="display:none">
+            <div class="ai-img-preview-box">
+              <img id="aiImgPreview" alt="생성된 배경 이미지" style="width:100%;display:block" />
+              <div id="aiCssPreview" style="display:none;width:100%;aspect-ratio:1/1;border-radius:6px"></div>
+            </div>
+            <div style="margin-top:6px;font-size:11px;color:var(--tx-muted);text-align:center" id="aiImgModelLabel"></div>
+            <button class="btn-apply-bg" id="btnApplyAiBg" onclick="applyAiBg()" style="margin-top:8px">✅ 이 배경을 광고에 적용</button>
+          </div>
+        </div>
+      </div>
 
       <div class="code-section" style="margin-bottom:12px">
         <div class="code-header">
@@ -801,13 +966,127 @@
   function switchVariation(idx) {
     if (!variations[idx]) return;
     activeVariation = idx;
+    // 편집 모드 초기화
+    const iframe = document.getElementById('previewFrame');
+    const btn = document.getElementById('btnInlineEdit');
+    const notice = document.getElementById('editModeNotice');
+    if (btn && btn.classList.contains('editing')) {
+      iframe.style.pointerEvents = 'none';
+      btn.classList.remove('editing');
+      btn.textContent = '✏️ 직접 편집';
+      if (notice) notice.style.display = 'none';
+    }
     document.querySelectorAll('.var-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
     const v = variations[idx];
     document.getElementById('previewFrame').srcdoc = v.html;
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
     document.getElementById('codeBox').textContent = v.html;
-    document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${['A','B','C'][idx]}`;
+    document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${idx + 1}`;
     renderValidationPanel(v.adData);
+    renderCopyEditPanel(v.adData);
+    // 직접 편집 버튼 표시
+    if (btn) btn.style.display = 'flex';
+  }
+
+  // ── 카피 수정 패널 ──
+  function toggleCopyEdit() {
+    const body = document.getElementById('copyEditBody');
+    const arrow = document.getElementById('copyEditArrow');
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    arrow.classList.toggle('open', !isOpen);
+  }
+
+  function renderCopyEditPanel(adData) {
+    const panel = document.getElementById('copyEditPanel');
+    const fieldsEl = document.getElementById('copyEditFields');
+    panel.style.display = 'block';
+
+    const layout = adData.layout_type || '';
+    let fields = [];
+    if (layout === '수치카드형') {
+      fields = [
+        { key: 'hook', label: '훅 (최대 25자)', rows: 1 },
+        { key: 'headline_line1', label: '헤드라인 1줄 (최대 12자)', rows: 1 },
+        { key: 'headline_line2', label: '헤드라인 2줄 (최대 12자)', rows: 1 },
+        { key: 'visual_stat1_value', label: '수치 1 값 (예: 3,200+)', rows: 1 },
+        { key: 'visual_stat1_label', label: '수치 1 설명 (예: 누적 수강생)', rows: 1 },
+        { key: 'visual_stat2_value', label: '수치 2 값', rows: 1 },
+        { key: 'visual_stat2_label', label: '수치 2 설명', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지 (이모지 포함)', rows: 1 },
+        { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
+      ];
+    } else if (layout === '헤드카피형') {
+      fields = [
+        { key: 'hook', label: '훅 (최대 22자)', rows: 1 },
+        { key: 'headline', label: '헤드라인 (최대 20자)', rows: 1 },
+        { key: 'sub_copy1', label: '서브카피 1 (최대 28자)', rows: 1 },
+        { key: 'sub_copy2', label: '서브카피 2 (최대 28자)', rows: 1 },
+        { key: 'sub_copy3', label: '서브카피 3 (최대 28자)', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
+      ];
+    } else {
+      fields = [
+        { key: 'hook', label: '서브카피/훅 (최대 28자)', rows: 1 },
+        { key: 'headline_line1', label: '메인카피 1줄 (최대 14자)', rows: 1 },
+        { key: 'headline_line2', label: '메인카피 2줄 (최대 14자)', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
+      ];
+    }
+
+    fieldsEl.innerHTML = fields.map(f => {
+      const val = adData[f.key] != null ? adData[f.key] : '';
+      return `<div class="copy-field-row">
+        <label class="copy-field-label">${f.label}</label>
+        <textarea class="copy-field-input" rows="${f.rows}" data-key="${f.key}" oninput="liveUpdatePreview(this)">${val}</textarea>
+      </div>`;
+    }).join('');
+  }
+
+  async function applyEditChanges() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    const btn = document.getElementById('btnUpdatePreview');
+    const status = document.getElementById('copyEditStatus');
+    btn.disabled = true;
+    status.textContent = '⏳ 미리보기 업데이트 중...';
+
+    // 폼에서 수정된 값을 adData에 반영
+    const updatedAdData = { ...v.adData };
+    document.querySelectorAll('#copyEditFields [data-key]').forEach(el => {
+      const key = el.dataset.key;
+      const val = el.value.trim();
+      updatedAdData[key] = val === '' ? null : val;
+    });
+
+    try {
+      const res = await fetch('/api/regenerate-with-bg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adData: updatedAdData,
+          bgColor: isAutoColor ? '' : selectedColor,
+          bgImageBase64: leftAiBgImg || null,
+          cssBackground: null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // 현재 variation 업데이트
+      variations[activeVariation] = { adData: updatedAdData, html: data.html };
+      document.getElementById('previewFrame').srcdoc = data.html;
+      document.getElementById('jsonBox').textContent = JSON.stringify(updatedAdData, null, 2);
+      document.getElementById('codeBox').textContent = data.html;
+      status.textContent = '✅ 업데이트 완료';
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   // ── 검증 패널 ──
@@ -1003,6 +1282,235 @@
   }
 
   // ── 메인 생성 ──
+  // ── 왼쪽 패널 AI 배경 이미지 ──
+  let leftAiBgCss = null;
+  let leftAiBgImg = null;
+  let aiBgMode = 'auto'; // 'auto' | 'manual'
+
+  function setAiBgMode(mode) {
+    aiBgMode = mode;
+    document.getElementById('btnModeAuto').classList.toggle('active', mode === 'auto');
+    document.getElementById('btnModeManual').classList.toggle('active', mode === 'manual');
+    document.getElementById('aiBgHintWrap').style.display = mode === 'manual' ? 'block' : 'none';
+    // 모드 전환 시 발전 프롬프트 초기화
+    document.getElementById('aiBgDevelopedWrap').style.display = 'none';
+    document.getElementById('aiBgDevelopedPrompt').value = '';
+  }
+
+  async function developPrompt() {
+    const hint = document.getElementById('aiBgHintInput').value.trim();
+    if (!hint) { alert('배경 설명을 입력해주세요'); return; }
+
+    const btn = document.getElementById('btnDevelopPrompt');
+    const status = document.getElementById('aiBgStatus');
+    btn.disabled = true;
+    btn.textContent = '⏳ 발전 중...';
+    status.textContent = '⏳ Claude가 프롬프트 발전 중...';
+
+    try {
+      const res = await fetch('/api/generate-image-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userHint: hint }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      document.getElementById('aiBgDevelopedPrompt').value = data.prompt;
+      document.getElementById('aiBgDevelopedWrap').style.display = 'block';
+      status.textContent = '✅ 프롬프트 준비 완료. 확인 후 이미지 생성하세요.';
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 다시 발전시키기';
+    }
+  }
+
+  function toggleLeftAiBg() {
+    const body = document.getElementById('aiBgBody');
+    const arrow = document.getElementById('aiBgArrow');
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    arrow.classList.toggle('open', !isOpen);
+  }
+
+  async function generateLeftAiBg() {
+    const btn = document.getElementById('btnGenLeftBg');
+    const status = document.getElementById('aiBgStatus');
+    btn.disabled = true;
+    btn.textContent = '⏳ 배경 생성 중...';
+    status.textContent = '⏳ Claude가 프롬프트 작성 중...';
+    leftAiBgCss = null;
+    leftAiBgImg = null;
+    document.getElementById('aiBgPreviewWrap').style.display = 'none';
+
+    try {
+      // 1. 프롬프트 생성 (자동 or 직접 입력)
+      let promptBody;
+      if (aiBgMode === 'manual') {
+        // 발전된 프롬프트가 있으면 바로 사용, 없으면 힌트로 즉시 발전 후 사용
+        const developed = document.getElementById('aiBgDevelopedPrompt').value.trim();
+        if (developed) {
+          // 발전 단계 건너뛰고 바로 이미지 생성
+          status.textContent = '⏳ AI 배경 이미지 생성 중...';
+          const imgRes = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: developed }),
+          });
+          const imgData = await imgRes.json();
+          if (!imgRes.ok) throw new Error(imgData.error);
+          if (!imgData.imageData) throw new Error(imgData.error || '이미지 생성 실패');
+          const previewDiv = document.getElementById('aiBgPreviewDiv');
+          leftAiBgImg = imgData.imageData;
+          leftAiBgCss = null;
+          previewDiv.style.background = `url('${leftAiBgImg}') center/cover no-repeat`;
+          document.getElementById('aiBgModelLabel').textContent = `생성: ${imgData.model}`;
+          document.getElementById('aiBgPreviewWrap').style.display = 'block';
+          status.textContent = '';
+          return; // 아래 공통 로직 건너뜀
+        }
+        const hint = document.getElementById('aiBgHintInput').value.trim();
+        if (!hint) throw new Error('배경 설명을 입력하거나 먼저 [프롬프트 발전시키기]를 클릭하세요');
+        promptBody = { userHint: hint };
+      } else {
+        promptBody = {
+          formInputs: {
+            url: document.getElementById('urlInput').value.trim(),
+            target: document.getElementById('targetInput').value.trim(),
+            usp1: document.getElementById('usp1Input').value.trim(),
+            usp2: document.getElementById('usp2Input').value.trim(),
+            usp3: document.getElementById('usp3Input').value.trim(),
+            ad_set_message: document.getElementById('adSetMessageInput').value.trim(),
+            creative_message: document.getElementById('creativeMessageInput').value.trim(),
+          },
+        };
+      }
+      const promptRes = await fetch('/api/generate-image-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(promptBody),
+      });
+      const promptData = await promptRes.json();
+      if (!promptRes.ok) throw new Error(promptData.error);
+
+      status.textContent = '⏳ AI 배경 이미지 생성 중...';
+
+      // 2. 이미지 생성 (Gemini → CSS 폴백)
+      const imgRes = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptData.prompt }),
+      });
+      const imgData = await imgRes.json();
+      if (!imgRes.ok) throw new Error(imgData.error);
+
+      // 3. 결과 저장 + 프리뷰
+      if (!imgData.imageData) throw new Error(imgData.error || '이미지 생성 실패');
+      const previewDiv = document.getElementById('aiBgPreviewDiv');
+      leftAiBgImg = imgData.imageData;
+      leftAiBgCss = null;
+      previewDiv.style.background = `url('${leftAiBgImg}') center/cover no-repeat`;
+
+      let modelLabel = `생성: ${imgData.model}`;
+      if (imgData.credit) modelLabel += ` · 📷 ${imgData.credit}`;
+      document.getElementById('aiBgModelLabel').textContent = modelLabel;
+      document.getElementById('aiBgPreviewWrap').style.display = 'block';
+      status.textContent = '';
+
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 다시 생성하기';
+    }
+  }
+
+  function clearLeftAiBg() {
+    leftAiBgCss = null;
+    leftAiBgImg = null;
+    document.getElementById('aiBgPreviewWrap').style.display = 'none';
+    document.getElementById('aiBgStatus').textContent = '';
+    document.getElementById('btnGenLeftBg').textContent = '🎨 AI 배경 생성하기';
+  }
+
+  // ── 인라인 편집 모드 ──
+  function toggleInlineEdit() {
+    const iframe = document.getElementById('previewFrame');
+    const btn = document.getElementById('btnInlineEdit');
+    const notice = document.getElementById('editModeNotice');
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+
+    const isEditing = btn.classList.contains('editing');
+
+    if (!isEditing) {
+      // 편집 모드 ON
+      iframe.style.pointerEvents = 'auto';
+      btn.classList.add('editing');
+      btn.textContent = '✅ 편집 완료';
+      notice.style.display = 'block';
+      doc.querySelectorAll('[data-field]').forEach(el => {
+        el.contentEditable = 'true';
+        el.style.outline = '2px dashed rgba(37,99,235,0.7)';
+        el.style.borderRadius = '3px';
+        el.style.cursor = 'text';
+        el.style.minWidth = '1em';
+        el.addEventListener('input', onIframeFieldEdit);
+      });
+    } else {
+      // 편집 모드 OFF
+      iframe.style.pointerEvents = 'none';
+      btn.classList.remove('editing');
+      btn.textContent = '✏️ 직접 편집';
+      notice.style.display = 'none';
+      doc.querySelectorAll('[data-field]').forEach(el => {
+        el.contentEditable = 'false';
+        el.style.outline = '';
+        el.style.borderRadius = '';
+        el.style.cursor = '';
+        el.removeEventListener('input', onIframeFieldEdit);
+      });
+      // iframe HTML 저장
+      const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+      if (variations[activeVariation]) {
+        variations[activeVariation].html = html;
+        document.getElementById('codeBox').textContent = html;
+      }
+    }
+  }
+
+  function onIframeFieldEdit(e) {
+    const key = e.target.dataset.field;
+    const val = e.target.textContent;
+    if (variations[activeVariation]) {
+      variations[activeVariation].adData[key] = val;
+    }
+    // 사이드 패널 textarea 동기화
+    const textarea = document.querySelector(`#copyEditFields [data-key="${key}"]`);
+    if (textarea) textarea.value = val;
+  }
+
+  // ── 실시간 미리보기 업데이트 (side panel → iframe, API 호출 없음) ──
+  function liveUpdatePreview(el) {
+    const key = el.dataset.key;
+    const val = el.value;
+    const iframe = document.getElementById('previewFrame');
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    const target = doc.querySelector(`[data-field="${key}"]`);
+    if (target && !btn_editing()) target.textContent = val;
+    if (variations[activeVariation]) {
+      variations[activeVariation].adData[key] = val;
+    }
+  }
+
+  function btn_editing() {
+    const btn = document.getElementById('btnInlineEdit');
+    return btn && btn.classList.contains('editing');
+  }
+
   async function startGeneration() {
     const url = document.getElementById('urlInput').value.trim();
     if (!url) { alert('URL을 입력해주세요.'); return; }
@@ -1045,7 +1553,9 @@
             ...(selectedLayoutRefId ? (cachedLayouts.find(l => l.id === selectedLayoutRefId)?.thumbnail ? [cachedLayouts.find(l => l.id === selectedLayoutRefId).thumbnail] : []) : []),
           ],
           bg_color: isAutoColor ? '' : selectedColor,
-          custom_bg_image: selectedBgImage || null,
+          custom_bg_image: leftAiBgImg || selectedBgImage || null,
+          custom_bg_css: leftAiBgCss || null,
+          font: document.getElementById('fontSelect').value || 'Pretendard',
         }),
       });
 
@@ -1111,7 +1621,7 @@
       const scoreBadge = score != null
         ? `<span style="display:inline-block;background:${scoreColor};color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:5px;vertical-align:middle">${score}/${total}</span>`
         : '';
-      const label = v.adData.variation_label || `버전 ${['A','B','C'][i]}`;
+      const label = v.adData.variation_label || `버전 ${i + 1}`;
       const parts = label.split(' - ');
       return `<button class="var-tab ${i === 0 ? 'active' : ''}" onclick="switchVariation(${i})">
         ${parts[0]}${scoreBadge}
@@ -1131,11 +1641,43 @@
     const blob = new Blob([v.html], { type: 'text/html;charset=utf-8' });
     const a = document.createElement('a');
     const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const label = ['A','B','C'][activeVariation] || activeVariation;
+    const label = (v.adData.variation_label || String(activeVariation + 1)).replace(/\s/g,'_');
     a.href = URL.createObjectURL(blob);
-    a.download = `ad_${v.adData.brand || 'ad'}_ver${label}_${today}.html`;
+    a.download = `ad_${v.adData.brand || 'ad'}_${label}_${today}.html`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  async function downloadPNG() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    const btn = document.getElementById('btnDownloadPNG');
+    btn.textContent = '⏳ 변환 중...';
+    btn.disabled = true;
+    try {
+      const iframe = document.getElementById('previewFrame');
+      // iframe이 로드될 때까지 잠시 대기
+      await new Promise(r => setTimeout(r, 300));
+      const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const canvas = await html2canvas(iDoc.documentElement, {
+        width: 1080, height: 1080, scale: 1,
+        useCORS: true, allowTaint: true, logging: false,
+      });
+      canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const label = (v.adData.variation_label || String(activeVariation + 1)).replace(/\s/g,'_');
+        a.href = URL.createObjectURL(blob);
+        a.download = `ad_${v.adData.brand || 'ad'}_${label}_${today}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    } catch (e) {
+      alert('PNG 변환 실패: ' + e.message);
+    } finally {
+      btn.textContent = '📸 PNG';
+      btn.disabled = false;
+    }
   }
 
   function copyHTML() {
@@ -1296,6 +1838,127 @@
 
   function goToFigmaPlugin() {
     window.open('https://www.figma.com/community/plugin/1159123024924461936/html-to-design', '_blank');
+  }
+
+  // ── AI 배경 이미지 생성 ──
+  let currentAiImageData = null;
+  let currentCssBg = null;
+  let aiImagePanelOpen = false;
+
+  function toggleAiImagePanel() {
+    const panel = document.getElementById('aiImagePanel');
+    aiImagePanelOpen = !aiImagePanelOpen;
+    panel.style.display = aiImagePanelOpen ? 'block' : 'none';
+    document.getElementById('btnAiImage').classList.toggle('active', aiImagePanelOpen);
+    if (aiImagePanelOpen && !document.getElementById('aiImgPromptText').value.trim()) {
+      generateImagePrompt();
+    }
+  }
+
+  async function generateImagePrompt() {
+    const v = variations[activeVariation];
+    if (!v) { document.getElementById('aiImgStatus').textContent = '먼저 광고소재를 생성하세요'; return; }
+    const status = document.getElementById('aiImgStatus');
+    const textarea = document.getElementById('aiImgPromptText');
+    const btn = document.getElementById('btnRegenPrompt');
+    status.textContent = '⏳ Claude가 프롬프트 작성 중...';
+    btn.disabled = true;
+    textarea.value = '';
+    try {
+      const res = await fetch('/api/generate-image-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adData: v.adData }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      textarea.value = data.prompt;
+      status.textContent = '✅ 준비 완료 — 수정 후 이미지 생성';
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function generateAiImage() {
+    const prompt = document.getElementById('aiImgPromptText').value.trim();
+    if (!prompt) { alert('프롬프트를 먼저 생성해주세요 (🔄 버튼 클릭).'); return; }
+    const status = document.getElementById('aiImgStatus');
+    const btn = document.getElementById('btnGenerateAiImg');
+    const previewWrap = document.getElementById('aiImgPreviewWrap');
+    btn.disabled = true;
+    btn.textContent = '⏳ AI 배경 생성 중... (10~30초)';
+    status.textContent = '⏳ AI 배경 생성 중...';
+    previewWrap.style.display = 'none';
+    currentAiImageData = null;
+    currentCssBg = null;
+    try {
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (data.type === 'css' && data.cssBackground) {
+        // Claude CSS Art 폴백
+        currentCssBg = data.cssBackground;
+        document.getElementById('aiImgPreview').style.display = 'none';
+        const cssEl = document.getElementById('aiCssPreview');
+        cssEl.style.display = 'block';
+        cssEl.style.background = currentCssBg;
+        document.getElementById('aiImgModelLabel').textContent = `생성: ${data.model} — CSS 그라디언트 배경`;
+        previewWrap.style.display = 'block';
+        status.textContent = `✅ 생성 완료 (Claude CSS Art)`;
+      } else {
+        // 실제 이미지 (Gemini Imagen)
+        currentAiImageData = data.imageData;
+        document.getElementById('aiCssPreview').style.display = 'none';
+        const imgEl = document.getElementById('aiImgPreview');
+        imgEl.style.display = 'block';
+        imgEl.src = currentAiImageData;
+        document.getElementById('aiImgModelLabel').textContent = `생성 모델: ${data.model || 'Gemini'}`;
+        previewWrap.style.display = 'block';
+        status.textContent = `✅ 생성 완료 (${data.model})`;
+      }
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🎨 AI 배경 생성하기';
+    }
+  }
+
+  async function applyAiBg() {
+    const v = variations[activeVariation];
+    if (!v || (!currentAiImageData && !currentCssBg)) return;
+    const btn = document.getElementById('btnApplyAiBg');
+    btn.disabled = true;
+    btn.textContent = '⏳ 적용 중...';
+    try {
+      const bgColor = isAutoColor ? '#1B5BD4' : selectedColor;
+      const body = { adData: v.adData, bgColor };
+      if (currentAiImageData) body.bgImageBase64 = currentAiImageData;
+      if (currentCssBg) body.cssBackground = currentCssBg;
+      const res = await fetch('/api/regenerate-with-bg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      variations[activeVariation].html = data.html;
+      document.getElementById('previewFrame').srcdoc = data.html;
+      document.getElementById('codeBox').textContent = data.html;
+      btn.textContent = '✅ 적용 완료!';
+      setTimeout(() => { btn.textContent = '✅ 이 배경을 광고에 적용'; btn.disabled = false; }, 2500);
+    } catch (e) {
+      alert('❌ ' + e.message);
+      btn.textContent = '✅ 이 이미지를 광고 배경으로 적용';
+      btn.disabled = false;
+    }
   }
 </script>
 </body>

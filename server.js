@@ -89,6 +89,8 @@ app.post('/api/generate-ad', async (req, res) => {
     bg_color = '',
     layout_ref_id = '',
     custom_bg_image = null,
+    custom_bg_css = null,
+    font = 'Pretendard',
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -112,7 +114,7 @@ app.post('/api/generate-ad', async (req, res) => {
     const needsAutoExtract = !target && !usp1 && !usp2 && !usp3 && !ad_set_message && !creative_message;
 
     const [imageResult, resolvedPageInfo] = await Promise.all([
-      imageAgent({ referenceImages: reference_images, ogImageUrl, customBgImage: custom_bg_image }),
+      imageAgent({ referenceImages: reference_images, ogImageUrl, customBgImage: custom_bg_image, customBgCss: custom_bg_css }),
       needsAutoExtract ? extractPageInfo(pageContent) : Promise.resolve(rawPageInfo),
     ]);
     const extractedInfo = needsAutoExtract ? resolvedPageInfo : null;
@@ -138,6 +140,8 @@ app.post('/api/generate-ad', async (req, res) => {
       adDataList,
       bgColor: effectiveBgColor,
       bgImageBase64: imageResult.bgImageBase64,
+      bgCss: imageResult.bgCss,
+      font,
     });
 
     console.log('─'.repeat(50));
@@ -225,7 +229,7 @@ app.post('/api/fetch-image', async (req, res) => {
 // 역할: 레퍼런스 이미지 스타일 분석 + 배경 이미지 취득
 // 독립성: 페이지 텍스트 불필요. 이미지 데이터만으로 동작.
 // 병렬성: 카피 에이전트와 동시 실행 가능 (크롤링 후 바로 시작).
-async function imageAgent({ referenceImages, ogImageUrl, customBgImage }) {
+async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBgCss }) {
   // API 요청에 레퍼런스 없으면 reference_images/ 폴더 자동 사용
   const effectiveRefs = referenceImages.length > 0 ? referenceImages : AUTO_REF_IMAGES;
   console.log('[🖼 이미지 에이전트] 시작 | 레퍼런스:', effectiveRefs.length, '장', effectiveRefs.length > 0 && referenceImages.length === 0 ? '(폴더 자동로드)' : '', '| OG:', ogImageUrl ? 'O' : 'X');
@@ -248,8 +252,8 @@ async function imageAgent({ referenceImages, ogImageUrl, customBgImage }) {
     } catch (e) { console.warn('[이미지 에이전트] 스타일 파싱 실패', e.message); }
   }
 
-  console.log('[🖼 이미지 에이전트] 완료 | 스타일 bg:', parsedStyle?.bg_hex || '없음', '| 배경이미지:', bgImageBase64 ? 'O' : 'X');
-  return { styleAnalysis, parsedStyle, bgImageBase64 };
+  console.log('[🖼 이미지 에이전트] 완료 | 스타일 bg:', parsedStyle?.bg_hex || '없음', '| 배경이미지:', bgImageBase64 ? 'O' : 'X', '| CSS배경:', customBgCss ? 'O' : 'X');
+  return { styleAnalysis, parsedStyle, bgImageBase64, bgCss: customBgCss || null };
 }
 
 // ─── ✍️ 카피 에이전트 ───
@@ -269,12 +273,12 @@ async function copyAgent({ pageContent, pageInfo, styleAnalysis }) {
 // 역할: 카피 데이터 + 배경 이미지 → 1080×1080 HTML 소재 3종 조립
 // 독립성: 카피 에이전트 + 이미지 에이전트 결과만 있으면 즉시 실행.
 // 특성: 동기(sync) 함수 — Claude API 호출 없이 순수 템플릿 렌더링.
-function assemblyAgent({ adDataList, bgColor, bgImageBase64 }) {
-  console.log('[🔧 조합 에이전트] 시작 | 배경컬러:', bgColor, '| 이미지:', bgImageBase64 ? 'O' : 'X');
+function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard' }) {
+  console.log('[🔧 조합 에이전트] 시작 | 배경컬러:', bgColor, '| 이미지:', bgImageBase64 ? 'O' : 'X', '| CSS배경:', bgCss ? 'O' : 'X');
 
   const variations = adDataList.map(adData => ({
     adData,
-    html: generateAdHTML(adData, bgColor, bgImageBase64),
+    html: generateAdHTML(adData, bgColor, bgImageBase64, bgCss, font),
   }));
 
   console.log('[🔧 조합 에이전트] 완료 | HTML 소재', variations.length, '종 생성');
@@ -317,6 +321,8 @@ async function determineBgColor({ bgColor, parsedStyle, layoutRefId, pageThemeCo
 }
 
 // ══════════════════════════════════════════════════════
+
+// ─── Claude CSS Art 배경 생성 (Gemini 폴백) ───
 
 // ─── 페이지 크롤링 ───
 async function fetchPageContent(url) {
@@ -441,9 +447,11 @@ ${pageContent}
 
 추출 항목:
 - target: 이 과정/서비스의 핵심 타겟 고객 (1-2문장, 구체적으로)
-- usp1: 핵심 강점 1 — 가장 차별화된 혜택 (한 줄)
-- usp2: 핵심 강점 2 (한 줄)
-- usp3: 핵심 강점 3 (한 줄)
+- usp1: 서비스·콘텐츠·커리큘럼 자체의 핵심 차별화 강점 1 (한 줄)
+  절대 제외: 결제 조건(무이자 할부, 카드 할인), 가격/할인율, 기간 한정 이벤트, 수강료 정보
+  포함 대상: 커리큘럼 방식, 강사 역량, 학습 성과, 취업/전환 지원, 독점 콘텐츠, 업계 인지도
+- usp2: 서비스 자체의 차별화 강점 2 (위 기준 동일 적용)
+- usp3: 서비스 자체의 차별화 강점 3 (위 기준 동일 적용)
 - ad_set_message: 이 캠페인의 전체 메시지 방향 (1문장)
 - creative_message: 이 소재에서 강조할 핵심 포인트 (1문장)
 
@@ -510,38 +518,46 @@ ${figmaStylesContent}
 → 아래 JSON의 layout_type은 위 Figma 패턴명과 동일하게 지정할 것.
 ` : '';
 
-  // A=수치카드형, B=헤드카피형, C=포토오버레이형 — 3종 레이아웃 고정
+  // 레이아웃 3종 × 카피 앵글 3종 = 9가지 배리에이션
   const layoutSpec = `
-## 배리에이션 레이아웃 고정 — A·B·C 각각 다른 타입·다른 필드로 작성
+## 배리에이션 — 총 9종 (레이아웃 3종 × 카피 앵글 3종)
 
-### A - 혜택형 (수치카드형): 상단 훅 + 2줄 헤드라인 + 수치 카드
-- hook: 훅 텍스트. 최대 25자.
-- headline_line1, headline_line2: 각 최대 12자. 2줄 헤드라인.
-- visual_stat1_value / visual_stat1_label: 수치 카드 1 (예: "3,200+" / "누적 수강생"). 없으면 null.
-- visual_stat2_value / visual_stat2_label: 수치 카드 2. 없으면 null.
-- cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
+### 수치카드형 (A1·A2·A3): 상단 훅 + 2줄 헤드라인 + 수치 카드
+공통 필드: hook(최대25자), headline_line1(최대12자), headline_line2(최대12자),
+visual_stat1_value/label(수치1, 없으면 null), visual_stat2_value/label(수치2, 없으면 null),
+cta_badge(이모지+최대12자), cta_text(최대24자, "→"로 끝)
+- A1(수치강조형): 구체 수치·성과·실적 전면 — 숫자가 증거
+- A2(혜택강조형): 가격 혜택·할인·패키지 가성비 강조
+- A3(소셜증명형): 수강생 후기·누적 인원·바이럴 소셜 증명
 
-### B - 공감형 (헤드카피형): 임팩트 헤드라인 + 혜택 서브카피 3줄
-- hook: 상단 훅. 최대 22자.
-- headline: 임팩트 1줄 헤드라인. 최대 20자.
-- sub_copy1 / sub_copy2 / sub_copy3: 혜택·이유 각 최대 28자. (✓ 아이콘 앞에 붙음)
-- cta_badge, cta_text ("→"로 끝내기).
+### 헤드카피형 (B1·B2·B3): 임팩트 헤드라인 + 혜택 서브카피 3줄
+공통 필드: hook(최대22자), headline(최대20자), sub_copy1/2/3(최대28자, ✓ 아이콘 앞에 붙음),
+cta_badge, cta_text("→"로 끝)
+- B1(고민공감형): 타겟의 고민·불안·상황에 공감하며 접근
+- B2(변화동기형): 배우기 전/후 변화·성장 스토리 강조
+- B3(호기심자극형): 의외성·반전·질문으로 스크롤 멈추게
 
-### C - 긴박형 (포토오버레이형): 이미지 배경 + 텍스트 오버레이
-지금 행동해야 할 이유·한정성 중심. 서브카피(공감) → 메인카피(임팩트) 구조.
-- hook: 서브카피 (상단 작은 텍스트). 타겟 상황·긴박감. 최대 28자. 구어체.
-- headline_line1: 메인카피 1줄. 최대 14자. 강렬하게.
-- headline_line2: 메인카피 2줄. 최대 14자. 강렬하게.
-- cta_badge: 이모지 포함 최대 12자. cta_text: "→"로 끝내기.
+### 포토오버레이형 (C1·C2·C3): 이미지 배경 + 텍스트 오버레이
+공통 필드: hook(최대28자, 서브카피), headline_line1/2(각 최대14자, 메인카피),
+cta_badge, cta_text("→"로 끝)
+- C1(마감임박형): 선착순·마감·지금 해야 하는 이유 긴박감
+- C2(기회비용형): 지금 안 하면 놓치는 것·미래 손해 강조
+- C3(결단촉구형): 결심·다짐·시작 결단을 촉구하는 응원형
 
 JSON 배열만 반환 (주석·설명 없이):
 [
-  {"variation_label":"A - 혜택형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B - 공감형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C - 긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
+  {"variation_label":"A1 - 수치강조형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"A2 - 혜택강조형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"A3 - 소셜증명형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B1 - 고민공감형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B2 - 변화동기형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B3 - 호기심자극형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C1 - 마감임박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C2 - 기회비용형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C3 - 결단촉구형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
 ]`;
 
-  const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 3가지 배리에이션으로 작성하라.
+  const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 9가지 배리에이션으로 작성하라.
 
 ## 소재 기본 정보
 - 과정 타겟: ${target}
@@ -554,15 +570,11 @@ JSON 배열만 반환 (주석·설명 없이):
 ## 상세페이지 내용 (참고)
 ${pageContent}${styleHint}
 ${checklistCtx}${designSpecCtx}${figmaCtx}
-## 배리에이션 앵글 (반드시 각 앵글에 맞게 작성)
-- A (혜택형·수치카드형): 구체적 수치·성과·혜택을 직접 강조. 숫자가 있다면 적극 활용.
-- B (공감형·헤드카피형): 타겟의 고민·상황에 공감하며 감성적으로 접근.
-- C (긴박형·커뮤니티형): 지금 행동해야 하는 이유, 한정성·기회비용을 강조.
 ${layoutSpec}`;
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2000,
+    max_tokens: 6000,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -584,6 +596,29 @@ ${layoutSpec}`;
   return parsed;
 }
 
+// ─── 폰트 CDN/패밀리 헬퍼 ───
+function getAdFontCSS(font = 'Pretendard') {
+  const map = {
+    'Pretendard': {
+      link: 'https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css',
+      family: "'Pretendard','Apple SD Gothic Neo',sans-serif",
+    },
+    'Noto Sans KR': {
+      link: 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap',
+      family: "'Noto Sans KR',sans-serif",
+    },
+    'Nanum Gothic': {
+      link: 'https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap',
+      family: "'Nanum Gothic',sans-serif",
+    },
+    'Black Han Sans': {
+      link: 'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
+      family: "'Black Han Sans',sans-serif",
+    },
+  };
+  return map[font] || map['Pretendard'];
+}
+
 // ─── HEX 유틸 ───
 function hexToRgb(hex) {
   const n = parseInt(hex.replace('#', ''), 16);
@@ -601,21 +636,22 @@ function luminance(hex) {
 }
 
 // ─── HTML 생성 (레이아웃 dispatcher) ───
-function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null) {
+function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
   // Figma 검증 패턴 (신규)
-  if (d.layout_type === '헤드라인밴드형') return generateHeadlineBandHTML(d, bgColor);
-  if (d.layout_type === '다크스플릿형')   return generateDarkSplitHTML(d, bgColor);
-  if (d.layout_type === '이미지모자이크형') return generateImageMosaicHTML(d, bgColor, bgImageBase64);
+  if (d.layout_type === '헤드라인밴드형') return generateHeadlineBandHTML(d, bgColor, font);
+  if (d.layout_type === '다크스플릿형')   return generateDarkSplitHTML(d, bgColor, font);
+  if (d.layout_type === '이미지모자이크형') return generateImageMosaicHTML(d, bgColor, bgImageBase64, cssBackground, font);
   // 기존 레거시 패턴 (폴백)
-  if (d.layout_type === '헤드카피형')    return generateHeadlineCopyHTML(d, bgColor);
-  if (d.layout_type === '커뮤니티형')    return generateCommunityHTML(d, bgColor);
-  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64);
-  return generateStatCardHTML(d, bgColor);
+  if (d.layout_type === '헤드카피형')    return generateHeadlineCopyHTML(d, bgColor, font);
+  if (d.layout_type === '커뮤니티형')    return generateCommunityHTML(d, bgColor, font);
+  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  return generateStatCardHTML(d, bgColor, cssBackground, font);
 }
 
 // ─── 헤드라인밴드형 (Figma 패턴 A) ───
 // 검정 가로 밴드 + 시안 초대형 텍스트 / 크림→앰버 배경 / 하단 검정 CTA 바
-function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
+function generateHeadlineBandHTML(d, bgColor = '#FFB300', font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const hl1 = d.headline_line1 || '';
   const hl2 = d.headline_line2 || '';
   const hl1Size = hl1.length > 8 ? 78 : 96;
@@ -627,13 +663,13 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
     let html = '';
     if (d.visual_stat1_value) html += `
       <div style="background:rgba(0,0,0,0.09);border-radius:22px;padding:24px 32px;text-align:center;border:1.5px solid rgba(0,0,0,0.13);min-width:200px">
-        <div style="font-size:${d.visual_stat1_value.length > 4 ? 46 : 56}px;font-weight:900;color:#000;letter-spacing:-2px;line-height:1">${d.visual_stat1_value}</div>
-        ${d.visual_stat1_label ? `<div style="font-size:20px;font-weight:600;color:rgba(0,0,0,0.5);margin-top:6px">${d.visual_stat1_label}</div>` : ''}
+        <div data-field="visual_stat1_value" style="font-size:${d.visual_stat1_value.length > 4 ? 46 : 56}px;font-weight:900;color:#000;letter-spacing:-2px;line-height:1">${d.visual_stat1_value}</div>
+        ${d.visual_stat1_label ? `<div data-field="visual_stat1_label" style="font-size:20px;font-weight:600;color:rgba(0,0,0,0.5);margin-top:6px">${d.visual_stat1_label}</div>` : ''}
       </div>`;
     if (d.visual_stat2_value) html += `
       <div style="background:rgba(0,0,0,0.09);border-radius:22px;padding:22px 30px;text-align:center;border:1.5px solid rgba(0,0,0,0.13)">
-        <div style="font-size:${d.visual_stat2_value.length > 4 ? 40 : 50}px;font-weight:900;color:#000;letter-spacing:-2px;line-height:1">${d.visual_stat2_value}</div>
-        ${d.visual_stat2_label ? `<div style="font-size:18px;font-weight:600;color:rgba(0,0,0,0.5);margin-top:6px">${d.visual_stat2_label}</div>` : ''}
+        <div data-field="visual_stat2_value" style="font-size:${d.visual_stat2_value.length > 4 ? 40 : 50}px;font-weight:900;color:#000;letter-spacing:-2px;line-height:1">${d.visual_stat2_value}</div>
+        ${d.visual_stat2_label ? `<div data-field="visual_stat2_label" style="font-size:18px;font-weight:600;color:rgba(0,0,0,0.5);margin-top:6px">${d.visual_stat2_label}</div>` : ''}
       </div>`;
     return html;
   })();
@@ -642,8 +678,8 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
 </head>
 <body>
 <div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:linear-gradient(168deg,#F0E8D5 0%,#F0E8D5 36%,#FFBE00 58%,#FF9500 100%)">
@@ -651,22 +687,22 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
   <!-- 브랜드 태그 -->
   <div style="position:absolute;left:52px;top:42px;display:flex;align-items:center;gap:12px;z-index:10">
     <div style="width:30px;height:30px;background:#1a1a1a;border-radius:6px"></div>
-    <span style="font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px">${d.brand || '브랜드'}</span>
+    <span data-field="brand" style="font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px">${d.brand || '브랜드'}</span>
   </div>
 
   <!-- 헤드라인 밴드 1 (검정 + 시안) -->
   <div style="position:absolute;left:0;top:110px;width:100%;background:#000;padding:12px 52px;z-index:5">
-    <div style="font-size:${hl1Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl1}</div>
+    <div data-field="headline_line1" style="font-size:${hl1Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl1}</div>
   </div>
 
   <!-- 헤드라인 밴드 2 (검정 + 시안) -->
   <div style="position:absolute;left:0;top:${band2Top}px;width:100%;background:#000;padding:12px 52px;z-index:5">
-    <div style="font-size:${hl2Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl2}</div>
+    <div data-field="headline_line2" style="font-size:${hl2Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl2}</div>
   </div>
 
   <!-- 훅 텍스트 (비주얼 영역 좌측) -->
   <div style="position:absolute;left:52px;top:460px;max-width:540px;z-index:6">
-    <div style="font-size:34px;font-weight:600;color:rgba(0,0,0,0.65);line-height:1.5;letter-spacing:-0.5px">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:34px;font-weight:600;color:rgba(0,0,0,0.65);line-height:1.5;letter-spacing:-0.5px">${d.hook || ''}</div>
   </div>
 
   <!-- 수치 카드 (우측 중단) -->
@@ -677,8 +713,8 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
 
   <!-- 하단 검정 CTA 바 -->
   <div style="position:absolute;bottom:0;left:0;right:0;height:130px;background:#000;display:flex;align-items:center;padding:0 52px;gap:20px;z-index:10">
-    ${d.cta_badge ? `<span style="font-size:21px;font-weight:800;color:#00E5FF;background:rgba(0,229,255,0.15);border:1px solid rgba(0,229,255,0.35);padding:8px 20px;border-radius:28px;white-space:nowrap">${d.cta_badge}</span>` : ''}
-    <span style="font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.5px;flex:1">${d.cta_text || '지금 바로 시작하기 →'}</span>
+    ${d.cta_badge ? `<span data-field="cta_badge" style="font-size:21px;font-weight:800;color:#00E5FF;background:rgba(0,229,255,0.15);border:1px solid rgba(0,229,255,0.35);padding:8px 20px;border-radius:28px;white-space:nowrap">${d.cta_badge}</span>` : ''}
+    <span data-field="cta_text" style="font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.5px;flex:1">${d.cta_text || '지금 바로 시작하기 →'}</span>
   </div>
 
 </div>
@@ -688,7 +724,8 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300') {
 
 // ─── 다크스플릿형 (Figma 패턴 B) ───
 // 초록 그라디언트 상단 + 순검정 하단 / 노란 USP 하이라이트 바 / 흰색 헤드라인
-function generateDarkSplitHTML(d, bgColor = '#00B140') {
+function generateDarkSplitHTML(d, bgColor = '#00B140', font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const hl1 = d.headline_line1 || d.headline || '';
   const hl2 = d.headline_line2 || d.sub_copy1 || '';
   const hlSize = Math.max(hl1.length, hl2.length) > 12 ? 46 : 56;
@@ -699,8 +736,8 @@ function generateDarkSplitHTML(d, bgColor = '#00B140') {
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;background:#000}</style>
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily};background:#000}</style>
 </head>
 <body>
 <div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:#000">
@@ -735,28 +772,28 @@ function generateDarkSplitHTML(d, bgColor = '#00B140') {
 
   <!-- 브랜드명 -->
   <div style="position:absolute;left:180px;top:64px;z-index:10">
-    <div style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px">${d.brand || '브랜드'}</div>
+    <div data-field="brand" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px">${d.brand || '브랜드'}</div>
     <div style="font-size:18px;color:rgba(255,255,255,0.55);margin-top:3px">AI 광고 자동화</div>
   </div>
 
   <!-- USP 노란 하이라이트 바 (경계 구역) -->
   <div style="position:absolute;left:52px;top:510px;z-index:10">
     <div style="background:#F5FF00;padding:11px 22px;display:inline-block;border-radius:7px">
-      <div style="font-size:${uspSize}px;font-weight:900;color:#000;letter-spacing:-1px;line-height:1;white-space:nowrap">${uspText}</div>
+      <div data-field="hook" style="font-size:${uspSize}px;font-weight:900;color:#000;letter-spacing:-1px;line-height:1;white-space:nowrap">${uspText}</div>
     </div>
   </div>
 
   <!-- 흰색 헤드라인 (하단 블랙 영역) -->
   <div style="position:absolute;left:52px;top:630px;right:52px;z-index:10">
     <div style="font-size:${hlSize}px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1.18">
-      ${hl1}${hl2 ? `<br>${hl2}` : ''}
+      <span data-field="headline_line1">${hl1}</span>${hl2 ? `<br><span data-field="headline_line2">${hl2}</span>` : ''}
     </div>
   </div>
 
   <!-- CTA (우하단) -->
   <div style="position:absolute;bottom:52px;right:52px;left:52px;z-index:10;display:flex;justify-content:space-between;align-items:center">
-    ${d.cta_badge ? `<span style="font-size:20px;font-weight:700;color:rgba(255,255,255,0.45)">${d.cta_badge}</span>` : '<span></span>'}
-    <div style="font-size:26px;font-weight:700;color:#00E676;letter-spacing:-0.5px">${d.cta_text || '지금 바로 시작하기 →'}</div>
+    ${d.cta_badge ? `<span data-field="cta_badge" style="font-size:20px;font-weight:700;color:rgba(255,255,255,0.45)">${d.cta_badge}</span>` : '<span></span>'}
+    <div data-field="cta_text" style="font-size:26px;font-weight:700;color:#00E676;letter-spacing:-0.5px">${d.cta_text || '지금 바로 시작하기 →'}</div>
   </div>
 
 </div>
@@ -766,7 +803,8 @@ function generateDarkSplitHTML(d, bgColor = '#00B140') {
 
 // ─── 이미지모자이크형 (Figma 패턴 C) ───
 // 다크 네이비 + 도트 그리드 / 핫핑크 USP 뱃지 / 비주얼 모자이크 그리드
-function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null) {
+function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const hl1 = d.headline_line1 || '';
   const hl2 = d.headline_line2 || '';
   const hlSize = Math.max(hl1.length, hl2.length) > 12 ? 58 : 70;
@@ -811,11 +849,11 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null) {
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
 </head>
 <body>
-<div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:#13132B">
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:${cssBackground || '#13132B'}">
 
   <!-- 도트 그리드 배경 패턴 -->
   <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);background-size:32px 32px;z-index:0;pointer-events:none"></div>
@@ -823,7 +861,7 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null) {
   <!-- 브랜드 태그 -->
   <div style="position:absolute;left:52px;top:36px;display:flex;align-items:center;gap:12px;z-index:10">
     <div style="width:28px;height:28px;background:rgba(255,255,255,0.85);border-radius:6px"></div>
-    <span style="font-size:24px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
+    <span data-field="brand" style="font-size:24px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
   </div>
 
   <!-- 상단 텍스트 영역 (35%) -->
@@ -831,16 +869,16 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null) {
 
     <!-- 헤드라인 -->
     <div style="font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1.1;margin-bottom:24px">
-      ${hl1}${hl2 ? `<br>${hl2}` : ''}
+      <span data-field="headline_line1">${hl1}</span>${hl2 ? `<br><span data-field="headline_line2">${hl2}</span>` : ''}
     </div>
 
     <!-- 훅 서브텍스트 -->
-    ${d.hook ? `<div style="font-size:24px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:20px;letter-spacing:-0.3px">${d.hook}</div>` : ''}
+    ${d.hook ? `<div data-field="hook" style="font-size:24px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:20px;letter-spacing:-0.3px">${d.hook}</div>` : ''}
 
     <!-- USP 핫핑크 뱃지들 -->
     <div style="display:flex;gap:12px;flex-wrap:wrap">
-      ${d.cta_badge ? `<span style="background:#FF00DD;color:#fff;font-size:24px;font-weight:700;padding:8px 22px;border-radius:30px;letter-spacing:-0.3px">${d.cta_badge}</span>` : ''}
-      <span style="background:#FF00DD;color:#fff;font-size:24px;font-weight:700;padding:8px 22px;border-radius:30px;letter-spacing:-0.3px">${d.cta_text ? d.cta_text.replace(' →','').slice(0,12) : '지금 시작'}</span>
+      ${d.cta_badge ? `<span data-field="cta_badge" style="background:#FF00DD;color:#fff;font-size:24px;font-weight:700;padding:8px 22px;border-radius:30px;letter-spacing:-0.3px">${d.cta_badge}</span>` : ''}
+      <span data-field="cta_text" style="background:#FF00DD;color:#fff;font-size:24px;font-weight:700;padding:8px 22px;border-radius:30px;letter-spacing:-0.3px">${d.cta_text ? d.cta_text.replace(' →','').slice(0,12) : '지금 시작'}</span>
     </div>
   </div>
 
@@ -872,17 +910,20 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null) {
 // 레이아웃: 피그마 node 3658:147 — 배경 이미지 + 하단 다크 오버레이 + 서브카피 + 메인카피
 // 서브카피: Pretendard Bold 42px, left:62, top:~640
 // 메인카피: Pretendard Bold 80px, 2줄 15자 이내, left:62, top:~740
-function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) {
+function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const lum = luminance(bgColor);
   const isDark = lum < 140;
   // 배경이 없으면 다크 시네마틱 그라디언트
   const bgBase = isDark ? bgColor : '#1a1a1a';
   const bgStyle = bgImageBase64
     ? `background:#000`
+    : cssBackground
+    ? `background:${cssBackground}`
     : `background:linear-gradient(155deg,${bgBase} 0%,#060606 100%)`;
 
   const ctaBadgeHtml = d.cta_badge
-    ? `<span style="font-size:22px;font-weight:800;color:#fff;background:rgba(255,255,255,0.18);padding:5px 16px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
+    ? `<span data-field="cta_badge" style="font-size:22px;font-weight:800;color:#fff;background:rgba(255,255,255,0.18);padding:5px 16px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
     : '';
 
   const footHtml = d.footnote
@@ -893,8 +934,8 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) 
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
 </head>
 <body>
 <div style="width:1080px;height:1080px;position:relative;overflow:hidden;${bgStyle}">
@@ -902,7 +943,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) 
   ${bgImageBase64 ? `
   <!-- OG 배경 이미지 -->
   <img src="${bgImageBase64}" style="position:absolute;inset:0;width:1080px;height:1080px;object-fit:cover;object-position:center top;z-index:0;pointer-events:none" />
-  ` : `
+  ` : cssBackground ? `` : `
   <!-- 다크 그라디언트 (OG 이미지 없을 때) -->
   <div style="position:absolute;top:180px;left:-40px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,${bgColor}55 0%,transparent 70%);z-index:0;pointer-events:none"></div>
   <div style="position:absolute;top:60px;right:-80px;width:440px;height:440px;border-radius:50%;background:radial-gradient(circle,${bgColor}33 0%,transparent 70%);z-index:0;pointer-events:none"></div>
@@ -914,17 +955,17 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) 
   <!-- 브랜드 태그 (상단) -->
   <div style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
     <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
-    <span style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${d.brand || '브랜드'}</span>
+    <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${d.brand || '브랜드'}</span>
   </div>
 
   <!-- 서브카피 (피그마: 42px, top≈688 비율 기준) -->
-  <div style="position:absolute;left:62px;top:634px;right:80px;z-index:10;font-size:40px;font-weight:700;color:rgba(255,255,255,0.82);letter-spacing:-0.84px;line-height:1.28;text-shadow:0 2px 8px rgba(0,0,0,0.6)">
+  <div data-field="hook" style="position:absolute;left:62px;top:634px;right:80px;z-index:10;font-size:40px;font-weight:700;color:rgba(255,255,255,0.82);letter-spacing:-0.84px;line-height:1.28;text-shadow:0 2px 8px rgba(0,0,0,0.6)">
     ${d.hook || ''}
   </div>
 
   <!-- 메인카피 (피그마: 80px Bold, 2줄 15자 이내, top≈786 비율) -->
   <div style="position:absolute;left:62px;top:736px;right:60px;z-index:10;font-size:80px;font-weight:900;color:#fff;letter-spacing:-2px;line-height:1.08;text-shadow:0 3px 12px rgba(0,0,0,0.7)">
-    ${d.headline_line1 || ''}<br>${d.headline_line2 || ''}
+    <span data-field="headline_line1">${d.headline_line1 || ''}</span><br><span data-field="headline_line2">${d.headline_line2 || ''}</span>
   </div>
 
   ${footHtml}
@@ -932,7 +973,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) 
   <!-- CTA 바 -->
   <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 62px;background:linear-gradient(90deg,#FF4B6E,#FF7040);display:flex;align-items:center;gap:14px;z-index:10;flex-shrink:0">
     ${ctaBadgeHtml}
-    <span style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
+    <span data-field="cta_text" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
   </div>
 
 </div>
@@ -941,13 +982,14 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null) 
 }
 
 // ─── 수치카드형 ───
-function generateStatCardHTML(d, bgColor = '#1B5BD4') {
+function generateStatCardHTML(d, bgColor = '#1B5BD4', cssBackground = null, font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   // 밝기에 따라 텍스트/카드 색상 결정
   const lum = luminance(bgColor);
   const isDark = lum < 140;
   const lightEnd = lighten(bgColor, isDark ? 40 : -30);
   const pal = {
-    bg:       `linear-gradient(160deg,${bgColor},${lightEnd})`,
+    bg:       cssBackground || `linear-gradient(160deg,${bgColor},${lightEnd})`,
     burst:    'rgba(255,255,255,0.15)',
     headline: isDark ? '#FFD0A0' : '#1a1a1a',
     hook:     isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)',
@@ -963,14 +1005,14 @@ function generateStatCardHTML(d, bgColor = '#1B5BD4') {
     let cards = '';
     if (d.visual_stat1_value) {
       cards += `<div style="flex:1;height:220px;border-radius:20px;background:${pal.card_bg};box-shadow:0 20px 50px rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
-        <div style="font-size:${d.visual_stat1_value.length > 4 ? 52 : 64}px;font-weight:900;letter-spacing:-3px;color:${pal.card_text};line-height:1">${d.visual_stat1_value}</div>
-        ${d.visual_stat1_label ? `<div style="font-size:18px;font-weight:600;color:${pal.card_text};opacity:0.6">${d.visual_stat1_label}</div>` : ''}
+        <div data-field="visual_stat1_value" style="font-size:${d.visual_stat1_value.length > 4 ? 52 : 64}px;font-weight:900;letter-spacing:-3px;color:${pal.card_text};line-height:1">${d.visual_stat1_value}</div>
+        ${d.visual_stat1_label ? `<div data-field="visual_stat1_label" style="font-size:18px;font-weight:600;color:${pal.card_text};opacity:0.6">${d.visual_stat1_label}</div>` : ''}
       </div>`;
     }
     if (d.visual_stat2_value) {
       cards += `<div style="flex:0.7;height:220px;border-radius:20px;background:${pal.card_bg};box-shadow:0 20px 50px rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
-        <div style="font-size:${d.visual_stat2_value.length > 4 ? 44 : 56}px;font-weight:900;letter-spacing:-3px;color:${pal.card_text};line-height:1">${d.visual_stat2_value}</div>
-        ${d.visual_stat2_label ? `<div style="font-size:16px;font-weight:600;color:${pal.card_text};opacity:0.6">${d.visual_stat2_label}</div>` : ''}
+        <div data-field="visual_stat2_value" style="font-size:${d.visual_stat2_value.length > 4 ? 44 : 56}px;font-weight:900;letter-spacing:-3px;color:${pal.card_text};line-height:1">${d.visual_stat2_value}</div>
+        ${d.visual_stat2_label ? `<div data-field="visual_stat2_label" style="font-size:16px;font-weight:600;color:${pal.card_text};opacity:0.6">${d.visual_stat2_label}</div>` : ''}
       </div>`;
     }
     return cards;
@@ -981,17 +1023,17 @@ function generateStatCardHTML(d, bgColor = '#1B5BD4') {
     : '';
 
   const ctaBadgeHtml = d.cta_badge
-    ? `<div style="font-size:24px;font-weight:800;color:#fff;background:rgba(0,0,0,0.18);padding:6px 18px;border-radius:30px;white-space:nowrap">${d.cta_badge}</div>`
+    ? `<div data-field="cta_badge" style="font-size:24px;font-weight:800;color:#fff;background:rgba(0,0,0,0.18);padding:6px 18px;border-radius:30px;white-space:nowrap">${d.cta_badge}</div>`
     : '';
 
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="${fontLink}" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}
+body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 </style>
 </head>
 <body>
@@ -1012,15 +1054,15 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple 
     <!-- 브랜드 -->
     <div style="font-size:26px;font-weight:700;color:#fff;margin-bottom:32px;display:flex;align-items:center;gap:10px">
       <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
-      ${d.brand || '브랜드'}
+      <span data-field="brand">${d.brand || '브랜드'}</span>
     </div>
 
     <!-- 훅 -->
-    <div style="font-size:30px;font-weight:500;color:${pal.hook};margin-bottom:14px;letter-spacing:-0.5px">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:30px;font-weight:500;color:${pal.hook};margin-bottom:14px;letter-spacing:-0.5px">${d.hook || ''}</div>
 
     <!-- 헤드라인 -->
     <div style="font-size:80px;font-weight:900;line-height:1.08;color:${pal.headline};letter-spacing:-2px">
-      ${d.headline_line1 || ''}<br>${d.headline_line2 || ''}
+      <span data-field="headline_line1">${d.headline_line1 || ''}</span><br><span data-field="headline_line2">${d.headline_line2 || ''}</span>
     </div>
 
     <!-- 비주얼 카드 -->
@@ -1034,7 +1076,7 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple 
   <!-- CTA 바 -->
   <div style="width:100%;padding:26px 64px;background:${pal.cta};display:flex;align-items:center;gap:12px;flex-shrink:0">
     ${ctaBadgeHtml}
-    <div style="font-size:27px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</div>
+    <div data-field="cta_text" style="font-size:27px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</div>
   </div>
 
 </div>
@@ -1048,7 +1090,7 @@ async function generateVariationsHTMLFromRef(adDataList, refImageBase64, bgColor
     const match = refImageBase64.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) throw new Error('이미지 형식 오류');
 
-    const varsText = adDataList.map((d, i) =>
+    const varsText = adDataList.slice(0, 3).map((d, i) =>
       `[버전 ${['A','B','C'][i]} - ${d.variation_label}]\n${JSON.stringify(d)}`
     ).join('\n\n');
 
@@ -1096,11 +1138,14 @@ ${varsText}
       return h ? h[0] : m[1].trim() || null;
     };
 
-    return [
+    // 레퍼런스 기반 HTML (앞 3개) + 나머지는 표준 생성
+    const refHtmls = [
       extract('A', 'B') || generateAdHTML(adDataList[0], bgColor),
       extract('B', 'C') || generateAdHTML(adDataList[1], bgColor),
       extract('C', 'ZZZEND') || generateAdHTML(adDataList[2], bgColor),
     ];
+    const extraHtmls = adDataList.slice(3).map(d => generateAdHTML(d, bgColor));
+    return [...refHtmls, ...extraHtmls];
   } catch (e) {
     console.warn('[레퍼런스 HTML 생성 실패, 폴백]', e.message);
     return adDataList.map(d => generateAdHTML(d, bgColor));
@@ -1108,7 +1153,8 @@ ${varsText}
 }
 
 // ─── 헤드카피+서브카피형 ───
-function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4') {
+function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const lum = luminance(bgColor);
   const isDark = lum < 140;
   const lightEnd = lighten(bgColor, isDark ? 45 : -35);
@@ -1123,7 +1169,7 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4') {
   };
 
   const ctaBadgeHtml = d.cta_badge
-    ? `<div style="font-size:24px;font-weight:800;color:#fff;background:rgba(0,0,0,0.18);padding:6px 18px;border-radius:30px;white-space:nowrap">${d.cta_badge}</div>`
+    ? `<div data-field="cta_badge" style="font-size:24px;font-weight:800;color:#fff;background:rgba(0,0,0,0.18);padding:6px 18px;border-radius:30px;white-space:nowrap">${d.cta_badge}</div>`
     : '';
   const footnoteHtml = d.footnote
     ? `<div style="font-size:20px;color:rgba(255,255,255,0.4);text-align:right;padding:0 64px 10px">${d.footnote}</div>`
@@ -1133,8 +1179,8 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4') {
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
 </head>
 <body>
 <div style="width:1080px;height:1080px;background:${pal.bg};position:relative;display:flex;flex-direction:column;overflow:hidden">
@@ -1142,22 +1188,22 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4') {
   <div style="flex:1;display:flex;flex-direction:column;padding:68px 80px 24px;position:relative;z-index:1">
     <div style="font-size:26px;font-weight:700;color:#fff;margin-bottom:40px;display:flex;align-items:center;gap:10px">
       <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
-      ${d.brand || '브랜드'}
+      <span data-field="brand">${d.brand || '브랜드'}</span>
     </div>
-    <div style="font-size:28px;font-weight:500;color:${pal.hook};margin-bottom:18px;letter-spacing:-0.3px">${d.hook || ''}</div>
-    <div style="font-size:96px;font-weight:900;line-height:1.02;color:${pal.headline};letter-spacing:-4px;margin-bottom:56px">${d.headline || ''}</div>
+    <div data-field="hook" style="font-size:28px;font-weight:500;color:${pal.hook};margin-bottom:18px;letter-spacing:-0.3px">${d.hook || ''}</div>
+    <div data-field="headline" style="font-size:96px;font-weight:900;line-height:1.02;color:${pal.headline};letter-spacing:-4px;margin-bottom:56px">${d.headline || ''}</div>
     <div style="display:flex;flex-direction:column;gap:22px">
-      ${[d.sub_copy1, d.sub_copy2, d.sub_copy3].filter(Boolean).map(copy => `
+      ${[d.sub_copy1, d.sub_copy2, d.sub_copy3].filter(Boolean).map((copy, idx) => `
       <div style="display:flex;align-items:center;gap:18px">
         <div style="width:30px;height:30px;border-radius:50%;background:${pal.check};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:900">✓</div>
-        <div style="font-size:34px;font-weight:600;color:${pal.sub};letter-spacing:-0.5px">${copy}</div>
+        <div data-field="sub_copy${idx+1}" style="font-size:34px;font-weight:600;color:${pal.sub};letter-spacing:-0.5px">${copy}</div>
       </div>`).join('')}
     </div>
   </div>
   ${footnoteHtml}
   <div style="width:100%;padding:26px 64px;background:${pal.cta};display:flex;align-items:center;gap:12px;flex-shrink:0">
     ${ctaBadgeHtml}
-    <div style="font-size:27px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</div>
+    <div data-field="cta_text" style="font-size:27px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</div>
   </div>
 </div>
 </body>
@@ -1165,7 +1211,8 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4') {
 }
 
 // ─── 커뮤니티/X형 ───
-function generateCommunityHTML(d, bgColor = '#1B5BD4') {
+function generateCommunityHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const lum = luminance(bgColor);
   const isDark = lum < 140;
   const lightEnd = lighten(bgColor, isDark ? 35 : -25);
@@ -1181,8 +1228,8 @@ function generateCommunityHTML(d, bgColor = '#1B5BD4') {
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Pretendard','Apple SD Gothic Neo',sans-serif}</style>
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
 </head>
 <body>
 <div style="width:1080px;height:1080px;background:linear-gradient(150deg,${bgColor},${lightEnd});position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden">
@@ -1191,12 +1238,12 @@ function generateCommunityHTML(d, bgColor = '#1B5BD4') {
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:36px">
       <div style="width:68px;height:68px;border-radius:50%;background:${bgColor};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff">${(d.brand || 'B').charAt(0)}</div>
       <div>
-        <div style="font-size:27px;font-weight:800;color:${textMain}">${d.brand || '브랜드'}</div>
+        <div data-field="brand" style="font-size:27px;font-weight:800;color:${textMain}">${d.brand || '브랜드'}</div>
         <div style="font-size:22px;color:${textSub}">${d.account_handle || '@brand'}</div>
       </div>
       <div style="margin-left:auto;background:${bgColor};color:#fff;border-radius:30px;padding:10px 30px;font-size:22px;font-weight:700">팔로우</div>
     </div>
-    <div style="font-size:40px;font-weight:800;color:${textMain};line-height:1.3;margin-bottom:28px;border-left:5px solid ${bgColor};padding-left:22px;letter-spacing:-1px">"${d.quote_hook || ''}"</div>
+    <div data-field="hook" style="font-size:40px;font-weight:800;color:${textMain};line-height:1.3;margin-bottom:28px;border-left:5px solid ${bgColor};padding-left:22px;letter-spacing:-1px">"${d.quote_hook || ''}"</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:36px">${bodyLines}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding-top:24px;border-top:1.5px solid #e7e9ea">
       <div style="display:flex;gap:28px;color:${textSub};font-size:22px">
@@ -1204,7 +1251,7 @@ function generateCommunityHTML(d, bgColor = '#1B5BD4') {
         <span>❤️ <strong style="color:${textMain}">8.1K</strong></span>
         <span>💬 <strong style="color:${textMain}">342</strong></span>
       </div>
-      <div style="background:${bgColor};color:#fff;border-radius:30px;padding:12px 32px;font-size:22px;font-weight:700;white-space:nowrap">${d.cta_text || '지금 확인하기 →'}</div>
+      <div data-field="cta_text" style="background:${bgColor};color:#fff;border-radius:30px;padding:12px 32px;font-size:22px;font-weight:700;white-space:nowrap">${d.cta_text || '지금 확인하기 →'}</div>
     </div>
   </div>
 </div>
@@ -1310,10 +1357,133 @@ app.get('/preview/:id', (req, res) => {
   res.send(entry.html);
 });
 
+// ══════════════════════════════════════════════════════
+//  AI 이미지 생성 기능 (Pollinations.ai + Unsplash 폴백)
+// ══════════════════════════════════════════════════════
+
+// ─── Claude → 이미지 프롬프트 생성 ───
+app.post('/api/generate-image-prompt', async (req, res) => {
+  const { adData, formInputs, userHint } = req.body;
+  if (!adData && !formInputs && !userHint) return res.status(400).json({ error: 'adData, formInputs, 또는 userHint 필요' });
+
+  // userHint만 있는 경우 빠른 발전 모드 (Haiku 사용)
+  if (userHint && !adData && !formInputs) {
+    try {
+      const msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: `사용자 입력 "${userHint}"을 Instagram 1:1 광고 배경 이미지 생성용 영어 프롬프트로 발전시켜라. 어두운 톤, 텍스트 가독성 확보, 추상적 배경. 마크다운 금지, 제목 금지, 2-3문장 순수 텍스트만:` }],
+      });
+      // 마크다운 헤더/불필요한 줄 제거
+      const raw = msg.content[0].text.trim().replace(/^#+\s+[^\n]*\n*/g, '').trim();
+      return res.json({ prompt: raw });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // adData(결과 기반) 또는 formInputs(입력 필드 기반) 양쪽 지원
+  let brand, hook, headline, contextDesc;
+  if (adData) {
+    brand = adData.brand || '브랜드';
+    hook = adData.hook || '';
+    headline = [adData.headline_line1, adData.headline_line2, adData.headline].filter(Boolean).join(' ');
+    contextDesc = `배리에이션: ${adData.variation_label || ''}, 훅: ${hook}, 헤드라인: ${headline}`;
+  } else {
+    const hostname = formInputs.url ? (() => { try { return new URL(formInputs.url).hostname.replace('www.', ''); } catch { return '브랜드'; } })() : '브랜드';
+    brand = hostname;
+    const usps = [formInputs.usp1, formInputs.usp2, formInputs.usp3].filter(Boolean).join(', ');
+    contextDesc = [
+      formInputs.target && `타겟: ${formInputs.target}`,
+      usps && `USP: ${usps}`,
+      formInputs.ad_set_message && `캠페인 메시지: ${formInputs.ad_set_message}`,
+    ].filter(Boolean).join(' | ');
+  }
+
+  const hintLine = userHint ? `\n- 사용자 추가 힌트: ${userHint}` : '';
+  const claudePrompt = `아래 META 인스타그램 광고소재를 위한 AI 이미지 생성 프롬프트를 영어로 작성하라.
+
+광고 정보:
+- 브랜드/도메인: ${brand}
+- 광고 컨텍스트: ${contextDesc || '프리미엄 교육/서비스 광고'}${hintLine}
+
+요구사항:
+1. 텍스트가 올라갈 배경 이미지이므로 복잡하지 않고 깔끔하게
+2. 어두운 톤 필수 (검정/네이비/진한 퍼플 계열 그라디언트) — 흰 카피 가독성 우선
+3. 추상적 디자인: 빛 효과, 기하학 패턴, 부드러운 bokeh, 그라디언트 등 활용
+4. 1:1 비율, 1080×1080 Instagram 광고 배경
+5. 브랜드/서비스 특성에 맞는 시각적 모티프 활용
+
+이미지 프롬프트 (영어, 2-3문장만, 기호 없이 순수 텍스트):`;
+
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: claudePrompt }],
+    });
+    res.json({ prompt: msg.content[0].text.trim() });
+  } catch (err) {
+    console.error('[프롬프트 생성 실패]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Pollinations.ai + Unsplash 폴백으로 이미지 생성 ───
+app.post('/api/generate-image', async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'prompt 필요' });
+
+  console.log('[🎨 이미지 생성] 시작 | 프롬프트:', prompt.slice(0, 80) + '...');
+
+  // 1순위: Pollinations.ai (무료, API 키 불필요, FLUX 모델)
+  try {
+    const seed = Math.floor(Math.random() * 99999);
+    const encoded = encodeURIComponent(prompt);
+    const polUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1080&height=1080&nologo=true&seed=${seed}&model=flux`;
+
+    console.log('[🌸 Pollinations] 요청 중...');
+    const polRes = await fetch(polUrl, { signal: AbortSignal.timeout(60000) });
+
+    if (polRes.ok) {
+      const contentType = polRes.headers.get('content-type') || 'image/jpeg';
+      const arrayBuffer = await polRes.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      console.log('[🌸 Pollinations] 성공 | 크기:', Math.round(arrayBuffer.byteLength / 1024) + 'KB');
+      return res.json({
+        imageData: `data:${contentType};base64,${base64}`,
+        model: 'Pollinations (FLUX)',
+        type: 'image',
+      });
+    } else {
+      console.warn('[Pollinations 실패]', polRes.status, polRes.statusText);
+    }
+  } catch (err) {
+    console.warn('[Pollinations 오류]', err.message);
+  }
+
+  // Pollinations 실패 시 에러 반환
+  return res.status(500).json({ error: 'Pollinations 이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+});
+
+// ─── 배경 이미지 적용 후 HTML 재생성 ───
+app.post('/api/regenerate-with-bg', (req, res) => {
+  const { adData, bgColor, bgImageBase64, cssBackground, font } = req.body;
+  if (!adData) return res.status(400).json({ error: 'adData 필요' });
+  try {
+    const html = generateAdHTML(adData, bgColor || '#1B5BD4', bgImageBase64 || null, cssBackground || null, font || 'Pretendard');
+    res.json({ html });
+  } catch (err) {
+    console.error('[HTML 재생성 실패]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log('='.repeat(50));
   console.log('  AI 광고소재 자동화');
   console.log(`  http://localhost:${PORT}`);
-  console.log(`  API KEY: ${process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ ANTHROPIC_API_KEY 필요'}`);
+  console.log(`  Anthropic: ${process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ ANTHROPIC_API_KEY 필요'}`);
+  console.log(`  Gemini:    ${process.env.GEMINI_API_KEY ? '✅ 설정됨' : '⚠️  GEMINI_API_KEY 없음 (이미지 생성 비활성)'}`);
   console.log('='.repeat(50));
 });
