@@ -298,6 +298,14 @@
     .btn-develop-prompt:hover { background:rgba(124,58,237,.18); }
     .btn-develop-prompt:disabled { opacity:.5;cursor:not-allowed; }
 
+    /* 배경 직접 업로드 */
+    .bg-upload-area { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:2px dashed rgba(124,58,237,.35);border-radius:8px;padding:18px 12px;cursor:pointer;background:rgba(124,58,237,.04);transition:all .15s;text-align:center; }
+    .bg-upload-area:hover { border-color:#7c3aed;background:rgba(124,58,237,.09); }
+    .bg-upload-area.drag-over { border-color:#7c3aed;background:rgba(124,58,237,.14); }
+    .bg-upload-icon { font-size:22px; }
+    .bg-upload-text { font-size:12px;font-weight:700;color:var(--tx-sub); }
+    .bg-upload-sub { font-size:10px;color:var(--tx-muted); }
+
     /* 카피 수정 패널 */
     .copy-edit-panel { border:1.5px solid var(--bdr);border-radius:10px;background:var(--panel-bg);margin:0 0 16px;overflow:hidden; }
     .copy-edit-header { display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(16,185,129,.06));border-bottom:1px solid var(--bdr);cursor:pointer; }
@@ -601,10 +609,10 @@
         </div>
       </div>
 
-      <!-- ✨ AI 배경 이미지 인라인 섹션 -->
+      <!-- 🖼 배경 이미지 인라인 섹션 -->
       <div class="form-group" id="aiBgFormGroup">
         <div class="ai-bg-row" onclick="toggleLeftAiBg()">
-          <div class="ai-bg-row-label">✨ AI 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
+          <div class="ai-bg-row-label">🖼 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
           <span class="ai-bg-row-arrow" id="aiBgArrow">▶</span>
         </div>
         <div id="aiBgBody" style="display:none">
@@ -612,6 +620,7 @@
             <div style="display:flex;gap:6px;margin-bottom:10px">
               <button class="ai-bg-mode-btn active" id="btnModeAuto" onclick="setAiBgMode('auto')">🤖 자동 생성</button>
               <button class="ai-bg-mode-btn" id="btnModeManual" onclick="setAiBgMode('manual')">✍️ 직접 입력</button>
+              <button class="ai-bg-mode-btn" id="btnModeUpload" onclick="setAiBgMode('upload')">📁 직접 업로드</button>
             </div>
             <div id="aiBgHintWrap" style="display:none;margin-bottom:8px">
               <textarea id="aiBgHintInput" class="copy-field-input" rows="2" placeholder="예: 밤하늘, 별빛, 감성적 / 도심 야경, 네온 / 자연, 숲, 새벽빛" style="font-size:12px"></textarea>
@@ -620,6 +629,15 @@
                 <div class="copy-field-label" style="margin-bottom:4px">Claude가 발전시킨 프롬프트 <span style="font-weight:400;color:var(--tx-muted)">(직접 수정 가능)</span></div>
                 <textarea id="aiBgDevelopedPrompt" class="copy-field-input" rows="4" style="font-size:11px;line-height:1.5"></textarea>
               </div>
+            </div>
+            <!-- 📁 직접 업로드 영역 -->
+            <div id="aiBgUploadWrap" style="display:none;margin-bottom:8px">
+              <label class="bg-upload-area" id="bgUploadArea">
+                <input type="file" id="bgUploadInput" accept="image/*" style="display:none" onchange="handleBgUpload(this.files[0])" />
+                <div class="bg-upload-icon">📁</div>
+                <div class="bg-upload-text">강사 사진 · 상품 이미지 등 업로드</div>
+                <div class="bg-upload-sub">JPG, PNG, WEBP · 클릭 또는 드래그</div>
+              </label>
             </div>
             <button class="btn-gen-left-bg" id="btnGenLeftBg" onclick="generateLeftAiBg()">🎨 AI 배경 생성하기</button>
             <div class="ai-bg-status" id="aiBgStatus"></div>
@@ -1285,16 +1303,35 @@
   // ── 왼쪽 패널 AI 배경 이미지 ──
   let leftAiBgCss = null;
   let leftAiBgImg = null;
-  let aiBgMode = 'auto'; // 'auto' | 'manual'
+  let aiBgMode = 'auto'; // 'auto' | 'manual' | 'upload'
 
   function setAiBgMode(mode) {
     aiBgMode = mode;
     document.getElementById('btnModeAuto').classList.toggle('active', mode === 'auto');
     document.getElementById('btnModeManual').classList.toggle('active', mode === 'manual');
+    document.getElementById('btnModeUpload').classList.toggle('active', mode === 'upload');
     document.getElementById('aiBgHintWrap').style.display = mode === 'manual' ? 'block' : 'none';
+    document.getElementById('aiBgUploadWrap').style.display = mode === 'upload' ? 'block' : 'none';
+    document.getElementById('btnGenLeftBg').style.display = mode === 'upload' ? 'none' : 'block';
     // 모드 전환 시 발전 프롬프트 초기화
     document.getElementById('aiBgDevelopedWrap').style.display = 'none';
     document.getElementById('aiBgDevelopedPrompt').value = '';
+  }
+
+  function handleBgUpload(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      selectedBgImage = e.target.result;
+      leftAiBgImg = null; // AI 생성 이미지 초기화
+      // 프리뷰 표시
+      const previewDiv = document.getElementById('aiBgPreviewDiv');
+      previewDiv.style.background = `url('${selectedBgImage}') center/cover no-repeat`;
+      document.getElementById('aiBgModelLabel').textContent = `📁 ${file.name}`;
+      document.getElementById('aiBgPreviewWrap').style.display = 'block';
+      document.getElementById('aiBgStatus').textContent = '';
+    };
+    reader.readAsDataURL(file);
   }
 
   async function developPrompt() {
@@ -1430,9 +1467,13 @@
   function clearLeftAiBg() {
     leftAiBgCss = null;
     leftAiBgImg = null;
+    selectedBgImage = null;
     document.getElementById('aiBgPreviewWrap').style.display = 'none';
     document.getElementById('aiBgStatus').textContent = '';
     document.getElementById('btnGenLeftBg').textContent = '🎨 AI 배경 생성하기';
+    // 파일 인풋 초기화 (같은 파일 재업로드 가능하게)
+    const input = document.getElementById('bgUploadInput');
+    if (input) input.value = '';
   }
 
   // ── 인라인 편집 모드 ──
@@ -1960,6 +2001,25 @@
       btn.disabled = false;
     }
   }
+
+  // ── 배경 직접 업로드 드래그앤드롭 ──
+  document.addEventListener('DOMContentLoaded', function() {
+    const area = document.getElementById('bgUploadArea');
+    if (!area) return;
+    area.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      area.classList.add('drag-over');
+    });
+    area.addEventListener('dragleave', function() {
+      area.classList.remove('drag-over');
+    });
+    area.addEventListener('drop', function(e) {
+      e.preventDefault();
+      area.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) handleBgUpload(file);
+    });
+  });
 </script>
 </body>
 </html>
