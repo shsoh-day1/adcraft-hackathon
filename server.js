@@ -532,43 +532,44 @@ ${figmaStylesContent}
 → 아래 JSON의 layout_type은 위 Figma 패턴명과 동일하게 지정할 것.
 ` : '';
 
-  // 레이아웃 3종 × 카피 앵글 3종 = 9가지 배리에이션
+  // 포토오버레이 3종 × 카피 앵글 3종 = 9가지 배리에이션
   const layoutSpec = `
-## 배리에이션 — 총 9종 (레이아웃 3종 × 카피 앵글 3종)
+## 배리에이션 — 총 9종 (포토오버레이 3종 × 카피 앵글 3종)
+모든 배리에이션은 포토오버레이 계열이다. 배경 이미지 + 오버레이 + 텍스트 구조.
 
-### 수치카드형 (A1·A2·A3): 상단 훅 + 2줄 헤드라인 + 수치 카드
-공통 필드: hook(최대25자), headline_line1(최대12자), headline_line2(최대12자),
-visual_stat1_value/label(수치1, 없으면 null), visual_stat2_value/label(수치2, 없으면 null),
-cta_badge(이모지+최대12자), cta_text(최대24자, "→"로 끝)
-- A1(수치강조형): 구체 수치·성과·실적 전면 — 숫자가 증거
-- A2(혜택강조형): 가격 혜택·할인·패키지 가성비 강조
-- A3(소셜증명형): 수강생 후기·누적 인원·바이럴 소셜 증명
+### 공통 필드 (9종 전부 동일)
+hook(최대28자, 서브카피·상황공감), headline_line1(최대14자, 메인카피1줄),
+headline_line2(최대14자, 메인카피2줄), cta_badge(이모지+최대12자), cta_text(최대24자, "→"로 끝)
 
-### 헤드카피형 (B1·B2·B3): 임팩트 헤드라인 + 혜택 서브카피 3줄
-공통 필드: hook(최대22자), headline(최대20자), sub_copy1/2/3(최대28자, ✓ 아이콘 앞에 붙음),
-cta_badge, cta_text("→"로 끝)
-- B1(고민공감형): 타겟의 고민·불안·상황에 공감하며 접근
-- B2(변화동기형): 배우기 전/후 변화·성장 스토리 강조
-- B3(호기심자극형): 의외성·반전·질문으로 스크롤 멈추게
+### 포토오버레이-시네마틱형 (A1·A2·A3): 하단 다크 그라디언트 + 대형 헤드라인
+배경이미지 하단 60%에 강한 다크 오버레이. 헤드라인이 80px 이상으로 화면 하단 압도.
+- A1(혜택강조형): 구체적 혜택·수강생 성과·수치 전면 부각
+- A2(공감형): 타겟 고민 먼저 공감 → 해결책으로 이어지는 흐름
+- A3(소셜증명형): 수강생 수·후기·누적 성과로 사회적 증거 강조
 
-### 포토오버레이형 (C1·C2·C3): 이미지 배경 + 텍스트 오버레이
-공통 필드: hook(최대28자, 서브카피), headline_line1/2(각 최대14자, 메인카피),
-cta_badge, cta_text("→"로 끝)
-- C1(마감임박형): 선착순·마감·지금 해야 하는 이유 긴박감
-- C2(기회비용형): 지금 안 하면 놓치는 것·미래 손해 강조
-- C3(결단촉구형): 결심·다짐·시작 결단을 촉구하는 응원형
+### 포토오버레이-센터패널형 (B1·B2·B3): 중앙 반투명 패널 + 비네팅
+배경 전체 비네팅(어두운 엣지) + 중앙 글래스모픽 패널 안에 카피. 중심감 강함.
+- B1(변화동기형): 수강 전→후 변화·성장 스토리
+- B2(마감긴박형): 선착순·마감·지금 해야 하는 긴박감
+- B3(기회비용형): 지금 안 하면 놓치는 것·미래 손해
+
+### 포토오버레이-사이드형 (C1·C2·C3): 좌측 다크 그라디언트 + 세로 레이아웃
+배경 좌측 70%에 다크 사이드 그라디언트. 텍스트 좌정렬, 상단→하단 흐름.
+- C1(호기심자극형): 의외성·반전·질문으로 스크롤 멈추게
+- C2(결단촉구형): 결심·다짐·지금 시작하는 결단 응원
+- C3(긴박행동형): 즉각 행동을 끌어내는 강한 CTA
 
 JSON 배열만 반환 (주석·설명 없이):
 [
-  {"variation_label":"A1 - 수치강조형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"A2 - 혜택강조형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"A3 - 소셜증명형","brand":"","hook":"","headline_line1":"","headline_line2":"","visual_stat1_value":null,"visual_stat1_label":null,"visual_stat2_value":null,"visual_stat2_label":null,"cta_badge":"","cta_text":"","footnote":null,"layout_type":"수치카드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B1 - 고민공감형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B2 - 변화동기형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B3 - 호기심자극형","brand":"","hook":"","headline":"","sub_copy1":"","sub_copy2":"","sub_copy3":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"헤드카피형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C1 - 마감임박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C2 - 기회비용형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C3 - 결단촉구형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
+  {"variation_label":"A1 - 혜택강조형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-시네마틱형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"A2 - 공감형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-시네마틱형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"A3 - 소셜증명형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-시네마틱형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B1 - 변화동기형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-센터패널형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B2 - 마감긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-센터패널형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"B3 - 기회비용형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-센터패널형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C1 - 호기심자극형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-사이드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C2 - 결단촉구형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-사이드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
+  {"variation_label":"C3 - 긴박행동형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-사이드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
 ]`;
 
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 9가지 배리에이션으로 작성하라.
@@ -656,15 +657,18 @@ function luminance(hex) {
 
 // ─── HTML 생성 (레이아웃 dispatcher) ───
 function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
-  // Figma 검증 패턴 (신규)
+  // 포토오버레이 3종 (메인)
+  if (d.layout_type === '포토오버레이-시네마틱형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  if (d.layout_type === '포토오버레이-센터패널형') return generatePhotoCenterPanelHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  if (d.layout_type === '포토오버레이-사이드형')   return generatePhotoSideHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  // 레거시 폴백
+  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
   if (d.layout_type === '헤드라인밴드형') return generateHeadlineBandHTML(d, bgColor, font);
   if (d.layout_type === '다크스플릿형')   return generateDarkSplitHTML(d, bgColor, font);
   if (d.layout_type === '이미지모자이크형') return generateImageMosaicHTML(d, bgColor, bgImageBase64, cssBackground, font);
-  // 기존 레거시 패턴 (폴백)
   if (d.layout_type === '헤드카피형')    return generateHeadlineCopyHTML(d, bgColor, font);
   if (d.layout_type === '커뮤니티형')    return generateCommunityHTML(d, bgColor, font);
-  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
-  return generateStatCardHTML(d, bgColor, cssBackground, font);
+  return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
 }
 
 // ─── 헤드라인밴드형 (Figma 패턴 A) ───
@@ -993,6 +997,151 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
   <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 62px;background:linear-gradient(90deg,#FF4B6E,#FF7040);display:flex;align-items:center;gap:14px;z-index:10;flex-shrink:0">
     ${ctaBadgeHtml}
     <span data-field="cta_text" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── 포토오버레이-센터패널형 ───
+// 레이아웃: 배경이미지 전체 + 비네팅 + 중앙 글래스모픽 패널에 카피
+function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const bgBase = bgColor || '#1a1a1a';
+  const bgStyle = bgImageBase64
+    ? `background:#000`
+    : cssBackground
+    ? `background:${cssBackground}`
+    : `background:linear-gradient(155deg,${bgBase} 0%,#050505 100%)`;
+
+  const ctaBadgeHtml = d.cta_badge
+    ? `<span data-field="cta_badge" style="display:inline-block;font-size:21px;font-weight:800;color:#fff;background:rgba(255,255,255,0.2);padding:5px 18px;border-radius:30px;white-space:nowrap;margin-bottom:20px">${d.cta_badge}</span>`
+    : '';
+
+  const hl1 = d.headline_line1 || '';
+  const hl2 = d.headline_line2 || '';
+  const hlSize = (hl1.length > 10 || hl2.length > 10) ? 72 : 84;
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;${bgStyle}">
+
+  ${bgImageBase64 ? `
+  <img src="${bgImageBase64}" style="position:absolute;inset:0;width:1080px;height:1080px;object-fit:cover;object-position:center;z-index:0;pointer-events:none" />
+  ` : cssBackground ? `` : `
+  <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 70% 30%,${bgBase}66 0%,transparent 65%);z-index:0"></div>
+  `}
+
+  <!-- 비네팅 오버레이 (엣지 전체 다크) -->
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,0.55) 62%,rgba(0,0,0,0.88) 100%);z-index:1;pointer-events:none"></div>
+  <!-- 상단 추가 어둠 -->
+  <div style="position:absolute;top:0;left:0;right:0;height:200px;background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);z-index:1;pointer-events:none"></div>
+
+  <!-- 브랜드 태그 (상단) -->
+  <div style="position:absolute;left:64px;top:54px;display:flex;align-items:center;gap:10px;z-index:10">
+    <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
+    <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 6px rgba(0,0,0,0.6)">${d.brand || '브랜드'}</span>
+  </div>
+
+  <!-- 중앙 글래스모픽 패널 -->
+  <div style="position:absolute;left:64px;right:64px;top:50%;transform:translateY(-54%);z-index:10;
+    background:rgba(10,10,10,0.62);
+    border:1px solid rgba(255,255,255,0.13);
+    border-radius:24px;
+    padding:52px 60px 48px">
+
+    <!-- 훅 (서브카피) -->
+    <div data-field="hook" style="font-size:32px;font-weight:600;color:rgba(255,255,255,0.7);letter-spacing:-0.5px;line-height:1.4;margin-bottom:22px">${d.hook || ''}</div>
+
+    <!-- 메인카피 -->
+    <div style="font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2.5px;line-height:1.06;margin-bottom:36px">
+      <span data-field="headline_line1">${hl1}</span><br>
+      <span data-field="headline_line2">${hl2}</span>
+    </div>
+
+    <!-- CTA 뱃지 + 텍스트 -->
+    ${ctaBadgeHtml}
+    <div style="display:flex;align-items:center;gap:12px">
+      <span data-field="cta_text" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.3px">${d.cta_text || '지금 바로 시작하기 →'}</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── 포토오버레이-사이드형 ───
+// 레이아웃: 배경이미지 + 좌측 다크 그라디언트 + 상단→하단 세로 흐름 텍스트
+function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const bgBase = bgColor || '#1a1a1a';
+  const bgStyle = bgImageBase64
+    ? `background:#000`
+    : cssBackground
+    ? `background:${cssBackground}`
+    : `background:linear-gradient(135deg,${bgBase} 0%,#080808 100%)`;
+
+  const ctaBadgeHtml = d.cta_badge
+    ? `<span data-field="cta_badge" style="font-size:20px;font-weight:800;color:#fff;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.25);padding:6px 18px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
+    : '';
+
+  const hl1 = d.headline_line1 || '';
+  const hl2 = d.headline_line2 || '';
+  const hlSize = (hl1.length > 10 || hl2.length > 10) ? 74 : 88;
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;${bgStyle}">
+
+  ${bgImageBase64 ? `
+  <img src="${bgImageBase64}" style="position:absolute;inset:0;width:1080px;height:1080px;object-fit:cover;object-position:right center;z-index:0;pointer-events:none" />
+  ` : cssBackground ? `` : `
+  <div style="position:absolute;top:0;right:0;width:500px;height:100%;background:radial-gradient(ellipse at 80% 50%,${bgBase}44 0%,transparent 70%);z-index:0"></div>
+  `}
+
+  <!-- 좌측 사이드 다크 그라디언트 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.94) 0%,rgba(0,0,0,0.82) 38%,rgba(0,0,0,0.48) 62%,rgba(0,0,0,0.1) 80%,transparent 100%);z-index:1;pointer-events:none"></div>
+  <!-- 하단 어둠 (CTA 영역) -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,0.85));z-index:1;pointer-events:none"></div>
+
+  <!-- 브랜드 태그 (상단 좌) -->
+  <div style="position:absolute;left:64px;top:56px;display:flex;align-items:center;gap:10px;z-index:10">
+    <div style="width:24px;height:24px;background:rgba(255,255,255,0.9);border-radius:4px;flex-shrink:0"></div>
+    <span data-field="brand" style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
+  </div>
+
+  <!-- 훅 (중상단) -->
+  <div data-field="hook" style="position:absolute;left:64px;top:200px;right:420px;z-index:10;
+    font-size:36px;font-weight:600;color:rgba(255,255,255,0.72);letter-spacing:-0.8px;line-height:1.4">${d.hook || ''}</div>
+
+  <!-- 메인카피 (중앙 좌) -->
+  <div style="position:absolute;left:64px;top:380px;right:380px;z-index:10;
+    font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2.5px;line-height:1.06">
+    <span data-field="headline_line1">${hl1}</span><br>
+    <span data-field="headline_line2">${hl2}</span>
+  </div>
+
+  <!-- 구분선 -->
+  <div style="position:absolute;left:64px;bottom:140px;width:280px;height:2px;background:rgba(255,255,255,0.25);z-index:10"></div>
+
+  <!-- CTA 영역 (하단 좌) -->
+  <div style="position:absolute;left:64px;bottom:52px;display:flex;align-items:center;gap:14px;z-index:10">
+    ${ctaBadgeHtml}
+    <span data-field="cta_text" style="font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.3px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
   </div>
 
 </div>
