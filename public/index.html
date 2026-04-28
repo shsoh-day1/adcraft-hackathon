@@ -263,6 +263,9 @@
     .ai-bg-preview-div { width:100%;aspect-ratio:1/1;border-radius:8px;border:1.5px solid var(--bdr); }
     .btn-clear-bg { margin-top:6px;font-size:11px;color:var(--tx-sub);background:none;border:1px solid var(--bdr);border-radius:5px;padding:3px 10px;cursor:pointer;font-family:inherit; }
     .btn-clear-bg:hover { border-color:var(--accent);color:var(--accent); }
+    .btn-apply-left-bg { display:block;width:100%;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:8px; }
+    .btn-apply-left-bg:hover { opacity:.88; }
+    .btn-apply-left-bg:disabled { opacity:.5;cursor:not-allowed; }
     .ai-bg-applied-badge { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#16a34a;background:#f0fff4;border:1px solid #86efac;border-radius:10px;padding:2px 8px;margin-top:5px; }
     [data-theme="dark"] .ai-bg-applied-badge { background:#0d2518;border-color:#166534;color:#4ade80; }
 
@@ -644,7 +647,8 @@
             <div class="ai-bg-preview-wrap" id="aiBgPreviewWrap" style="display:none">
               <div class="ai-bg-preview-div" id="aiBgPreviewDiv"></div>
               <div style="font-size:10px;color:var(--tx-muted);margin-top:4px;text-align:center" id="aiBgModelLabel"></div>
-              <div class="ai-bg-applied-badge">✅ 광고 생성 시 자동 포함</div>
+              <button id="btnApplyLeftBg" class="btn-apply-left-bg" onclick="applyLeftAiBg()">✅ 현재 광고에 적용</button>
+              <div class="ai-bg-applied-badge" id="leftBgAppliedBadge">다음 생성 시 자동 포함됩니다</div>
               <button class="btn-clear-bg" onclick="clearLeftAiBg()">✕ 배경 제거</button>
             </div>
           </div>
@@ -1086,8 +1090,8 @@
         body: JSON.stringify({
           adData: updatedAdData,
           bgColor: isAutoColor ? '' : selectedColor,
-          bgImageBase64: leftAiBgImg || null,
-          cssBackground: null,
+          bgImageBase64: leftAiBgImg || selectedBgImage || null,
+          cssBackground: leftAiBgCss || null,
         }),
       });
       const data = await res.json();
@@ -1474,6 +1478,50 @@
     // 파일 인풋 초기화 (같은 파일 재업로드 가능하게)
     const input = document.getElementById('bgUploadInput');
     if (input) input.value = '';
+  }
+
+  // ── 좌측 배경 이미지 → 현재 광고에 즉시 적용 ──
+  async function applyLeftAiBg() {
+    const v = variations[activeVariation];
+    if (!v) { alert('먼저 광고소재를 생성해주세요.'); return; }
+    const bgImg = leftAiBgImg || selectedBgImage;
+    const bgCss = leftAiBgCss;
+    if (!bgImg && !bgCss) { alert('배경 이미지를 먼저 업로드하거나 생성해주세요.'); return; }
+
+    const btn = document.getElementById('btnApplyLeftBg');
+    const badge = document.getElementById('leftBgAppliedBadge');
+    btn.disabled = true;
+    btn.textContent = '⏳ 적용 중...';
+
+    try {
+      const bgColor = isAutoColor ? '#1B5BD4' : selectedColor;
+      const body = { adData: v.adData, bgColor };
+      if (bgImg) body.bgImageBase64 = bgImg;
+      if (bgCss) body.cssBackground = bgCss;
+
+      const res = await fetch('/api/regenerate-with-bg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      variations[activeVariation].html = data.html;
+      document.getElementById('previewFrame').srcdoc = data.html;
+      document.getElementById('codeBox').textContent = data.html;
+
+      btn.textContent = '✅ 적용 완료!';
+      badge.textContent = '현재 광고에 반영됨';
+      setTimeout(() => {
+        btn.textContent = '✅ 현재 광고에 적용';
+        btn.disabled = false;
+      }, 2000);
+    } catch (e) {
+      alert('❌ ' + e.message);
+      btn.textContent = '✅ 현재 광고에 적용';
+      btn.disabled = false;
+    }
   }
 
   // ── 인라인 편집 모드 ──

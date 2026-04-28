@@ -326,12 +326,26 @@ async function determineBgColor({ bgColor, parsedStyle, layoutRefId, pageThemeCo
 
 // ─── 페이지 크롤링 ───
 async function fetchPageContent(url) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!res.ok) throw new Error(`크롤링 실패: HTTP ${res.status}`);
-  const html = await res.text();
+  const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+  ];
+
+  let html = '';
+  for (const ua of USER_AGENTS) {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': ua },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`크롤링 실패: HTTP ${res.status}`);
+    html = await res.text();
+
+    const root = parse(html);
+    root.querySelectorAll('script, style, nav, footer, header').forEach(el => el.remove());
+    const candidate = root.innerText.replace(/\s+/g, ' ').trim();
+    if (candidate.length >= 200) break; // 콘텐츠 충분 — 이 UA로 확정
+    console.log(`[크롤링] UA(${ua.slice(0,30)}...) 콘텐츠 부족(${candidate.length}자), 폴백 시도`);
+  }
 
   // 페이지 테마컬러 추출 (theme-color / msapplication-TileColor)
   const tcPatterns = [
@@ -579,8 +593,13 @@ ${layoutSpec}`;
   });
 
   const raw = msg.content[0].text.trim();
-  const match = raw.match(/\[[\s\S]+\]/);
-  if (!match) throw new Error('배리에이션 데이터 파싱 실패');
+  // 코드블록(```json ... ```) 안의 배열 또는 raw 배열 모두 허용
+  const stripped = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+  const match = stripped.match(/\[[\s\S]+\]/);
+  if (!match) {
+    console.error('[파싱 실패] Claude 응답:', raw.slice(0, 500));
+    throw new Error('배리에이션 데이터 파싱 실패 — 페이지 콘텐츠를 불러올 수 없거나 Claude 응답이 예상 형식과 다릅니다.');
+  }
   const parsed = JSON.parse(match[0]);
 
   // 자동 재시도: validation_score < 8인 배리에이션이 있으면 1회 재생성
