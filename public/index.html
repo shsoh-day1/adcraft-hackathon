@@ -323,6 +323,14 @@
     .btn-update-preview { width:100%;padding:9px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:4px; }
     .btn-update-preview:hover { opacity:.88; }
     .btn-update-preview:disabled { opacity:.5;cursor:not-allowed; }
+    /* 디자인 편집 섹션 */
+    .design-edit-section { border-top:1px solid var(--bdr);padding:12px 16px 4px;margin-top:4px; }
+    .design-edit-title { font-size:10px;font-weight:700;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px; }
+    .cta-color-presets { display:flex;gap:7px;flex-wrap:wrap;margin-top:4px; }
+    .cta-swatch { width:32px;height:32px;border-radius:8px;cursor:pointer;border:2.5px solid transparent;transition:border-color .15s,transform .12s;flex-shrink:0; }
+    .cta-swatch:hover { transform:scale(1.08); }
+    .cta-swatch.active { border-color:#fff;box-shadow:0 0 0 1.5px rgba(255,255,255,0.4); }
+    [data-theme="light"] .cta-swatch.active { border-color:#1d4ed8;box-shadow:0 0 0 1.5px rgba(29,78,216,0.3); }
 
     /* Figma 모달 */
     .figma-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
@@ -848,6 +856,7 @@
   let selectedColor = '#1B5BD4';
   let isAutoColor = true;
   let selectedLayoutRefId = null;
+  let selectedCtaColor = 'linear-gradient(90deg,#FF4B6E,#FF7040)';
   let cachedLayouts = [];
   let refImages = [];
   let variations = [];
@@ -1004,6 +1013,8 @@
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
     document.getElementById('codeBox').textContent = v.html;
     document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${idx + 1}`;
+    // 해당 배리에이션의 CTA 색상 복원
+    if (v.ctaColor) selectedCtaColor = v.ctaColor;
     renderValidationPanel(v.adData);
     renderCopyEditPanel(v.adData);
     // 직접 편집 버튼 표시
@@ -1019,10 +1030,32 @@
     arrow.classList.toggle('open', !isOpen);
   }
 
+  const CTA_PRESETS = [
+    { label: '핑크(기본)', value: 'linear-gradient(90deg,#FF4B6E,#FF7040)' },
+    { label: '블루',       value: 'linear-gradient(90deg,#3B82F6,#6366F1)' },
+    { label: '그린',       value: 'linear-gradient(90deg,#10B981,#059669)' },
+    { label: '퍼플',       value: 'linear-gradient(90deg,#8B5CF6,#EC4899)' },
+    { label: '골드',       value: 'linear-gradient(90deg,#F59E0B,#EF4444)' },
+    { label: '다크',       value: 'linear-gradient(90deg,#1F2937,#374151)' },
+  ];
+
+  function selectCtaColor(el) {
+    document.querySelectorAll('.cta-swatch').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    selectedCtaColor = el.dataset.cta;
+    // 현재 variation에 저장
+    if (variations[activeVariation]) variations[activeVariation].ctaColor = selectedCtaColor;
+  }
+
   function renderCopyEditPanel(adData) {
     const panel = document.getElementById('copyEditPanel');
+    const body = document.getElementById('copyEditBody');
+    const arrow = document.getElementById('copyEditArrow');
     const fieldsEl = document.getElementById('copyEditFields');
     panel.style.display = 'block';
+    // 결과 생성 시 자동 펼침
+    body.style.display = 'block';
+    arrow.classList.add('open');
 
     const layout = adData.layout_type || '';
     let fields = [];
@@ -1065,6 +1098,25 @@
         <textarea class="copy-field-input" rows="${f.rows}" data-key="${f.key}" oninput="liveUpdatePreview(this)">${val}</textarea>
       </div>`;
     }).join('');
+
+    // 디자인 편집 섹션 (CTA 색상)
+    const curCta = (variations[activeVariation] && variations[activeVariation].ctaColor) || selectedCtaColor;
+    const swatchesHtml = CTA_PRESETS.map(p => {
+      const isActive = p.value === curCta;
+      return `<div class="cta-swatch${isActive ? ' active' : ''}" data-cta="${p.value}" style="background:${p.value}" title="${p.label}" onclick="selectCtaColor(this)"></div>`;
+    }).join('');
+
+    const designSectionHtml = `<div class="design-edit-section" id="designEditSection">
+      <div class="design-edit-title">🎨 CTA 바 색상</div>
+      <div class="cta-color-presets">${swatchesHtml}</div>
+    </div>`;
+
+    // 기존 디자인 섹션이 있으면 교체, 없으면 body 끝에 추가
+    const existing = document.getElementById('designEditSection');
+    if (existing) {
+      existing.remove();
+    }
+    body.insertAdjacentHTML('beforeend', designSectionHtml);
   }
 
   async function applyEditChanges() {
@@ -1092,13 +1144,14 @@
           bgColor: isAutoColor ? '' : selectedColor,
           bgImageBase64: leftAiBgImg || selectedBgImage || null,
           cssBackground: leftAiBgCss || null,
+          ctaColor: selectedCtaColor,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
       // 현재 variation 업데이트
-      variations[activeVariation] = { adData: updatedAdData, html: data.html };
+      variations[activeVariation] = { adData: updatedAdData, html: data.html, ctaColor: selectedCtaColor };
       document.getElementById('previewFrame').srcdoc = data.html;
       document.getElementById('jsonBox').textContent = JSON.stringify(updatedAdData, null, 2);
       document.getElementById('codeBox').textContent = data.html;
@@ -1495,7 +1548,7 @@
 
     try {
       const bgColor = isAutoColor ? '#1B5BD4' : selectedColor;
-      const body = { adData: v.adData, bgColor };
+      const body = { adData: v.adData, bgColor, ctaColor: selectedCtaColor };
       if (bgImg) body.bgImageBase64 = bgImg;
       if (bgCss) body.cssBackground = bgCss;
 
@@ -2028,7 +2081,7 @@
     btn.textContent = '⏳ 적용 중...';
     try {
       const bgColor = isAutoColor ? '#1B5BD4' : selectedColor;
-      const body = { adData: v.adData, bgColor };
+      const body = { adData: v.adData, bgColor, ctaColor: selectedCtaColor };
       if (currentAiImageData) body.bgImageBase64 = currentAiImageData;
       if (currentCssBg) body.cssBackground = currentCssBg;
       const res = await fetch('/api/regenerate-with-bg', {

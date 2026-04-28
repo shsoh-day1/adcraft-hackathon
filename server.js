@@ -656,19 +656,19 @@ function luminance(hex) {
 }
 
 // ─── HTML 생성 (레이아웃 dispatcher) ───
-function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   // 포토오버레이 3종 (메인)
-  if (d.layout_type === '포토오버레이-시네마틱형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
-  if (d.layout_type === '포토오버레이-센터패널형') return generatePhotoCenterPanelHTML(d, bgColor, bgImageBase64, cssBackground, font);
-  if (d.layout_type === '포토오버레이-사이드형')   return generatePhotoSideHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  if (d.layout_type === '포토오버레이-시네마틱형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
+  if (d.layout_type === '포토오버레이-센터패널형') return generatePhotoCenterPanelHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
+  if (d.layout_type === '포토오버레이-사이드형')   return generatePhotoSideHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
   // 레거시 폴백
-  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
   if (d.layout_type === '헤드라인밴드형') return generateHeadlineBandHTML(d, bgColor, font);
   if (d.layout_type === '다크스플릿형')   return generateDarkSplitHTML(d, bgColor, font);
   if (d.layout_type === '이미지모자이크형') return generateImageMosaicHTML(d, bgColor, bgImageBase64, cssBackground, font);
   if (d.layout_type === '헤드카피형')    return generateHeadlineCopyHTML(d, bgColor, font);
   if (d.layout_type === '커뮤니티형')    return generateCommunityHTML(d, bgColor, font);
-  return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
 }
 
 // ─── 헤드라인밴드형 (Figma 패턴 A) ───
@@ -933,7 +933,7 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null, c
 // 레이아웃: 피그마 node 3658:147 — 배경 이미지 + 하단 다크 오버레이 + 서브카피 + 메인카피
 // 서브카피: Pretendard Bold 42px, left:62, top:~640
 // 메인카피: Pretendard Bold 80px, 2줄 15자 이내, left:62, top:~740
-function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const lum = luminance(bgColor);
   const isDark = lum < 140;
@@ -944,6 +944,8 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
     : cssBackground
     ? `background:${cssBackground}`
     : `background:linear-gradient(155deg,${bgBase} 0%,#060606 100%)`;
+
+  const ctaBg = ctaColor || 'linear-gradient(90deg,#FF4B6E,#FF7040)';
 
   const ctaBadgeHtml = d.cta_badge
     ? `<span data-field="cta_badge" style="font-size:22px;font-weight:800;color:#fff;background:rgba(255,255,255,0.18);padding:5px 16px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
@@ -994,7 +996,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
   ${footHtml}
 
   <!-- CTA 바 -->
-  <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 62px;background:linear-gradient(90deg,#FF4B6E,#FF7040);display:flex;align-items:center;gap:14px;z-index:10;flex-shrink:0">
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 62px;background:${ctaBg};display:flex;align-items:center;gap:14px;z-index:10;flex-shrink:0">
     ${ctaBadgeHtml}
     <span data-field="cta_text" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
   </div>
@@ -1006,7 +1008,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
 
 // ─── 포토오버레이-센터패널형 ───
 // 레이아웃: 배경이미지 전체 + 비네팅 + 중앙 글래스모픽 패널에 카피
-function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const bgBase = bgColor || '#1a1a1a';
   const bgStyle = bgImageBase64
@@ -1015,8 +1017,10 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
     ? `background:${cssBackground}`
     : `background:linear-gradient(155deg,${bgBase} 0%,#050505 100%)`;
 
+  const ctaBg = ctaColor || 'linear-gradient(90deg,#FF4B6E,#FF7040)';
+
   const ctaBadgeHtml = d.cta_badge
-    ? `<span data-field="cta_badge" style="display:inline-block;font-size:21px;font-weight:800;color:#fff;background:rgba(255,255,255,0.2);padding:5px 18px;border-radius:30px;white-space:nowrap;margin-bottom:20px">${d.cta_badge}</span>`
+    ? `<span data-field="cta_badge" style="font-size:21px;font-weight:800;color:#fff;background:rgba(255,255,255,0.2);padding:5px 18px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
     : '';
 
   const hl1 = d.headline_line1 || '';
@@ -1061,16 +1065,16 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
     <div data-field="hook" style="font-size:32px;font-weight:600;color:rgba(255,255,255,0.7);letter-spacing:-0.5px;line-height:1.4;margin-bottom:22px">${d.hook || ''}</div>
 
     <!-- 메인카피 -->
-    <div style="font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2.5px;line-height:1.06;margin-bottom:36px">
+    <div style="font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2.5px;line-height:1.06">
       <span data-field="headline_line1">${hl1}</span><br>
       <span data-field="headline_line2">${hl2}</span>
     </div>
+  </div>
 
-    <!-- CTA 뱃지 + 텍스트 -->
+  <!-- CTA 바 (하단) -->
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:22px 64px;background:${ctaBg};display:flex;align-items:center;gap:14px;z-index:10">
     ${ctaBadgeHtml}
-    <div style="display:flex;align-items:center;gap:12px">
-      <span data-field="cta_text" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.3px">${d.cta_text || '지금 바로 시작하기 →'}</span>
-    </div>
+    <span data-field="cta_text" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
   </div>
 
 </div>
@@ -1080,7 +1084,7 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
 
 // ─── 포토오버레이-사이드형 ───
 // 레이아웃: 배경이미지 + 좌측 다크 그라디언트 + 상단→하단 세로 흐름 텍스트
-function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const bgBase = bgColor || '#1a1a1a';
   const bgStyle = bgImageBase64
@@ -1089,8 +1093,10 @@ function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, css
     ? `background:${cssBackground}`
     : `background:linear-gradient(135deg,${bgBase} 0%,#080808 100%)`;
 
+  const ctaBg = ctaColor || 'linear-gradient(90deg,#FF4B6E,#FF7040)';
+
   const ctaBadgeHtml = d.cta_badge
-    ? `<span data-field="cta_badge" style="font-size:20px;font-weight:800;color:#fff;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.25);padding:6px 18px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
+    ? `<span data-field="cta_badge" style="font-size:20px;font-weight:800;color:#fff;background:rgba(255,255,255,0.2);padding:6px 18px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>`
     : '';
 
   const hl1 = d.headline_line1 || '';
@@ -1116,7 +1122,7 @@ function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, css
   <!-- 좌측 사이드 다크 그라디언트 -->
   <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.94) 0%,rgba(0,0,0,0.82) 38%,rgba(0,0,0,0.48) 62%,rgba(0,0,0,0.1) 80%,transparent 100%);z-index:1;pointer-events:none"></div>
   <!-- 하단 어둠 (CTA 영역) -->
-  <div style="position:absolute;bottom:0;left:0;right:0;height:160px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,0.85));z-index:1;pointer-events:none"></div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,0.6));z-index:1;pointer-events:none"></div>
 
   <!-- 브랜드 태그 (상단 좌) -->
   <div style="position:absolute;left:64px;top:56px;display:flex;align-items:center;gap:10px;z-index:10">
@@ -1135,11 +1141,8 @@ function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, css
     <span data-field="headline_line2">${hl2}</span>
   </div>
 
-  <!-- 구분선 -->
-  <div style="position:absolute;left:64px;bottom:140px;width:280px;height:2px;background:rgba(255,255,255,0.25);z-index:10"></div>
-
-  <!-- CTA 영역 (하단 좌) -->
-  <div style="position:absolute;left:64px;bottom:52px;display:flex;align-items:center;gap:14px;z-index:10">
+  <!-- CTA 바 (하단) -->
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 64px;background:${ctaBg};display:flex;align-items:center;gap:14px;z-index:10">
     ${ctaBadgeHtml}
     <span data-field="cta_text" style="font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.3px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
   </div>
@@ -1636,10 +1639,10 @@ app.post('/api/generate-image', async (req, res) => {
 
 // ─── 배경 이미지 적용 후 HTML 재생성 ───
 app.post('/api/regenerate-with-bg', (req, res) => {
-  const { adData, bgColor, bgImageBase64, cssBackground, font } = req.body;
+  const { adData, bgColor, bgImageBase64, cssBackground, font, ctaColor } = req.body;
   if (!adData) return res.status(400).json({ error: 'adData 필요' });
   try {
-    const html = generateAdHTML(adData, bgColor || '#1B5BD4', bgImageBase64 || null, cssBackground || null, font || 'Pretendard');
+    const html = generateAdHTML(adData, bgColor || '#1B5BD4', bgImageBase64 || null, cssBackground || null, font || 'Pretendard', ctaColor || null);
     res.json({ html });
   } catch (err) {
     console.error('[HTML 재생성 실패]', err.message);
