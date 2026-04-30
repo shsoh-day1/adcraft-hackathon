@@ -72,6 +72,43 @@ function readLayouts() {
 }
 function writeLayouts(arr) { writeFileSync(LAYOUTS_FILE, JSON.stringify(arr, null, 2), 'utf8'); }
 
+// ─── 커스텀 카탈로그 저장소 ───
+const CATALOG_CUSTOM_FILE = join(__dirname, 'catalog-custom.json');
+if (!existsSync(CATALOG_CUSTOM_FILE)) {
+  writeFileSync(CATALOG_CUSTOM_FILE, '[]', 'utf8');
+  console.log('[커스텀 카탈로그] catalog-custom.json 초기화 완료');
+}
+function readCatalogCustom() {
+  if (!existsSync(CATALOG_CUSTOM_FILE)) return [];
+  try { return JSON.parse(readFileSync(CATALOG_CUSTOM_FILE, 'utf8')); } catch { return []; }
+}
+function writeCatalogCustom(arr) { writeFileSync(CATALOG_CUSTOM_FILE, JSON.stringify(arr, null, 2), 'utf8'); }
+
+// GET /api/catalog-custom
+app.get('/api/catalog-custom', (req, res) => {
+  res.json(readCatalogCustom());
+});
+
+// POST /api/catalog-custom
+app.post('/api/catalog-custom', (req, res) => {
+  const { label, icon, description, type_hint } = req.body;
+  if (!label) return res.status(400).json({ error: 'label 필요' });
+  const items = readCatalogCustom();
+  const newItem = { id: Date.now().toString(), label, icon: icon || '📌', description: description || '', type_hint: type_hint || '' };
+  items.push(newItem);
+  writeCatalogCustom(items);
+  res.json(newItem);
+});
+
+// DELETE /api/catalog-custom/:id
+app.delete('/api/catalog-custom/:id', (req, res) => {
+  const { id } = req.params;
+  const items = readCatalogCustom();
+  const filtered = items.filter(item => item.id !== id);
+  writeCatalogCustom(filtered);
+  res.json({ ok: true });
+});
+
 // ─── 헬스체크 ───
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', api_key_set: !!process.env.ANTHROPIC_API_KEY });
@@ -91,6 +128,7 @@ app.post('/api/generate-ad', async (req, res) => {
     custom_bg_image = null,
     custom_bg_css = null,
     font = 'Pretendard',
+    layout_types = ['photo-overlay'],  // 선택 레이아웃: 'photo-overlay' | 'twitter'
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -135,17 +173,20 @@ app.post('/api/generate-ad', async (req, res) => {
       styleAnalysis: imageResult.styleAnalysis,
     });
 
-    // ── STEP 5: 조합 에이전트 (카피 + 이미지 → HTML) ──
+    // ── STEP 5: 조합 에이전트 (카피 × 레이아웃 → HTML) ──
+    const effectiveLayouts = layout_types.length > 0 ? layout_types : ['photo-overlay'];
     const variations = assemblyAgent({
       adDataList,
       bgColor: effectiveBgColor,
       bgImageBase64: imageResult.bgImageBase64,
       bgCss: imageResult.bgCss,
       font,
+      layoutTypes: effectiveLayouts,
     });
 
     console.log('─'.repeat(50));
     console.log('[✅ 생성 완료]', variations.length, '종 | 컬러:', effectiveBgColor, `(${colorSource})`);
+    console.log('[🎨 레이아웃]', effectiveLayouts.join(', '));
     console.log('─'.repeat(50) + '\n');
 
     res.json({
@@ -265,7 +306,7 @@ async function copyAgent({ pageContent, pageInfo, styleAnalysis }) {
 
   const adDataList = await extractAdDataVariations(pageContent, styleAnalysis, pageInfo);
 
-  console.log('[✍️ 카피 에이전트] 완료 |', adDataList.map(v => `${v.variation_label}(${v.validation_score}/11)`).join(' · '));
+  console.log('[✍️ 카피 에이전트] 완료 |', adDataList.map(v => `${v.variation_label}(${v.validation_score}/15)`).join(' · '));
   return { adDataList };
 }
 
@@ -273,13 +314,31 @@ async function copyAgent({ pageContent, pageInfo, styleAnalysis }) {
 // 역할: 카피 데이터 + 배경 이미지 → 1080×1080 HTML 소재 3종 조립
 // 독립성: 카피 에이전트 + 이미지 에이전트 결과만 있으면 즉시 실행.
 // 특성: 동기(sync) 함수 — Claude API 호출 없이 순수 템플릿 렌더링.
-function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard' }) {
-  console.log('[🔧 조합 에이전트] 시작 | 배경컬러:', bgColor, '| 이미지:', bgImageBase64 ? 'O' : 'X', '| CSS배경:', bgCss ? 'O' : 'X');
+function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'] }) {
+  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', layoutTypes.join(', '), '| 카피:', adDataList.length, '종 | 이미지:', bgImageBase64 ? 'O' : 'X');
 
-  const variations = adDataList.map(adData => ({
-    adData,
-    html: generateAdHTML(adData, bgColor, bgImageBase64, bgCss, font),
-  }));
+  const variations = [];
+  const layoutLabels = { 'photo-overlay': '[기본형]', 'twitter': '[트위터]' };
+
+  for (const layoutType of layoutTypes) {
+    for (const adData of adDataList) {
+      const prefix = layoutLabels[layoutType] || `[${layoutType}]`;
+      const labeledData = {
+        ...adData,
+        variation_label: `${prefix} ${adData.variation_label || ''}`.trim(),
+        layout_type: layoutType,
+      };
+      let html;
+      if (layoutType === 'photo-overlay') {
+        html = generateFigmaPhotoHTML(labeledData, bgColor, bgImageBase64, bgCss, font);
+      } else if (layoutType === 'twitter') {
+        html = generateFigmaTwitterHTML(labeledData, bgColor, font);
+      } else {
+        html = generateAdHTML(labeledData, bgColor, bgImageBase64, bgCss, font);
+      }
+      variations.push({ adData: labeledData, html });
+    }
+  }
 
   console.log('[🔧 조합 에이전트] 완료 | HTML 소재', variations.length, '종 생성');
   return variations;
@@ -503,7 +562,7 @@ ${checklistContent}
 - 3초 후킹: 스크롤 중 멈추게 만드는 요소 필수
 - 참고 패턴: "못 참지", "지금 해야 제일 싸요", "코딩 1도 모르던 문과생"
 
-## 자기 검증 — 각 배리에이션 JSON에 반드시 포함 (11개 항목 평가)
+## 자기 검증 — 각 배리에이션 JSON에 반드시 포함 (15개 항목 평가)
 카피 작성 후 아래 기준으로 스스로 평가해 각 배리에이션 JSON에 validation 필드를 추가하라:
 - C1(숫자혜택): 할인율·가격·인원 등 숫자로 혜택 명시 여부
 - C2(긴박감): "마감", "선착순", "지금 해야" 등 긴박감·희소성 트리거 포함 여부
@@ -514,9 +573,13 @@ ${checklistContent}
 - V1(헤드강조): 헤드라인이 시각적으로 압도적으로 강조되는 구조인가
 - V2(숫자강조): 핵심 숫자·키워드가 강조되는가
 - V3(가독성): 배경-텍스트 가독성 확보 가능한가
+- V4(메인카피2줄): 메인카피(headline_line1+line2)가 각 줄 20자 이내인가
+- V5(서브카피2줄): hook이 20자 이내인가 (서브카피 기준)
+- V6(시선흐름): 헤드라인→핵심숫자→서브카피→CTA 순서 구조인가
+- V7(크기계층): 헤드라인이 서브카피보다 1.5배 이상 크게 표현되는 구조인가
 - S1(구체수치): 수강생 수·조회수 등 구체적 수치로 소셜 증명 있는가
 - P1(3초후킹): 3초 안에 혜택 파악 가능한 후킹 요소 있는가
-→ "validation":{"C1":true/false,...11개...}, "validation_score":N(true 개수/11), "validation_fails":["C2: 이유"] 를 반드시 추가.
+→ "validation":{"C1":true/false,...15개...}, "validation_score":N(true 개수/15), "validation_fails":["C2: 이유"] 를 반드시 추가.
 ` : '';
 
   // 디자인 스펙 컨텍스트
@@ -532,47 +595,26 @@ ${figmaStylesContent}
 → 아래 JSON의 layout_type은 위 Figma 패턴명과 동일하게 지정할 것.
 ` : '';
 
-  // 포토오버레이 3종 × 카피 앵글 3종 = 9가지 배리에이션
+  // 카피 1종 (레이아웃은 사용자가 별도 선택)
   const layoutSpec = `
-## 배리에이션 — 총 9종 (포토오버레이 3종 × 카피 앵글 3종)
-모든 배리에이션은 포토오버레이 계열이다. 배경 이미지 + 오버레이 + 텍스트 구조.
+## 카피 — 1종
+레이아웃은 사용자가 별도 선택하므로 카피에만 집중하라. 가장 성과가 좋을 것 같은 최선의 카피 1개를 작성하라.
 
-### 공통 필드 (9종 전부 동일)
-hook(최대28자, 서브카피·상황공감), headline_line1(최대14자, 메인카피1줄),
-headline_line2(최대14자, 메인카피2줄), cta_badge(이모지+최대12자), cta_text(최대24자, "→"로 끝)
-
-### 포토오버레이-시네마틱형 (A1·A2·A3): 하단 다크 그라디언트 + 대형 헤드라인
-배경이미지 하단 60%에 강한 다크 오버레이. 헤드라인이 80px 이상으로 화면 하단 압도.
-- A1(혜택강조형): 구체적 혜택·수강생 성과·수치 전면 부각
-- A2(공감형): 타겟 고민 먼저 공감 → 해결책으로 이어지는 흐름
-- A3(소셜증명형): 수강생 수·후기·누적 성과로 사회적 증거 강조
-
-### 포토오버레이-센터패널형 (B1·B2·B3): 중앙 반투명 패널 + 비네팅
-배경 전체 비네팅(어두운 엣지) + 중앙 글래스모픽 패널 안에 카피. 중심감 강함.
-- B1(변화동기형): 수강 전→후 변화·성장 스토리
-- B2(마감긴박형): 선착순·마감·지금 해야 하는 긴박감
-- B3(기회비용형): 지금 안 하면 놓치는 것·미래 손해
-
-### 포토오버레이-사이드형 (C1·C2·C3): 좌측 다크 그라디언트 + 세로 레이아웃
-배경 좌측 70%에 다크 사이드 그라디언트. 텍스트 좌정렬, 상단→하단 흐름.
-- C1(호기심자극형): 의외성·반전·질문으로 스크롤 멈추게
-- C2(결단촉구형): 결심·다짐·지금 시작하는 결단 응원
-- C3(긴박행동형): 즉각 행동을 끌어내는 강한 CTA
+공통 필드:
+- hook: 서브카피·상황공감 (최대 28자, 의문문 권장)
+- headline_line1: 메인카피 1줄 (최대 14자, 임팩트 강하게)
+- headline_line2: 메인카피 2줄 (최대 14자, 핵심 키워드)
+- cta_badge: CTA 뱃지 (이모지+최대 12자)
+- cta_text: CTA 문구 (최대 24자, "→"로 끝)
+- visual_stat1_value: 핵심 수치 (예: "4만명+", "92%", "3일 남음")
+- visual_stat1_label: 수치 설명 (예: "누적 수강생", "취업 성공률")
 
 JSON 배열만 반환 (주석·설명 없이):
 [
-  {"variation_label":"A1 - 혜택강조형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-시네마틱형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"A2 - 공감형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-시네마틱형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"A3 - 소셜증명형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-시네마틱형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B1 - 변화동기형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-센터패널형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B2 - 마감긴박형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-센터패널형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"B3 - 기회비용형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-센터패널형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C1 - 호기심자극형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-사이드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C2 - 결단촉구형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-사이드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]},
-  {"variation_label":"C3 - 긴박행동형","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","footnote":null,"layout_type":"포토오버레이-사이드형","validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"S1":true,"P1":true},"validation_score":11,"validation_fails":[]}
+  {"variation_label":"광고 소재","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","visual_stat1_value":"","visual_stat1_label":"","footnote":null,"validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"V4":true,"V5":true,"V6":true,"V7":true,"S1":true,"P1":true},"validation_score":15,"validation_fails":[]}
 ]`;
 
-  const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피를 9가지 배리에이션으로 작성하라.
+  const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피 1개를 작성하라.
 
 ## 소재 기본 정보
 - 과정 타겟: ${target}
@@ -589,23 +631,40 @@ ${layoutSpec}`;
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 6000,
+    max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
   });
 
   const raw = msg.content[0].text.trim();
-  // 코드블록(```json ... ```) 안의 배열 또는 raw 배열 모두 허용
-  const stripped = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-  const match = stripped.match(/\[[\s\S]+\]/);
-  if (!match) {
-    console.error('[파싱 실패] Claude 응답:', raw.slice(0, 500));
-    throw new Error('배리에이션 데이터 파싱 실패 — 페이지 콘텐츠를 불러올 수 없거나 Claude 응답이 예상 형식과 다릅니다.');
-  }
-  const parsed = JSON.parse(match[0]);
+  // 코드블록(```json ... ```) 제거 후 배열 추출
+  const stripped = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 
-  // 자동 재시도: validation_score < 8인 배리에이션이 있으면 1회 재생성
+  // ① 배열 직접 매칭
+  let parsed = null;
+  const arrMatch = stripped.match(/\[[\s\S]+?\]/);
+  if (arrMatch) {
+    try { parsed = JSON.parse(arrMatch[0]); } catch { parsed = null; }
+  }
+  // ② 배열 없고 객체만 있으면 배열로 감싸기
+  if (!parsed) {
+    const objMatch = stripped.match(/\{[\s\S]+\}/);
+    if (objMatch) {
+      try { parsed = [JSON.parse(objMatch[0])]; } catch { parsed = null; }
+    }
+  }
+  // ③ 파싱 완전 실패 → 재시도 (최대 3회)
+  if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+    if (_attempt < 3) {
+      console.warn(`[파싱 실패 — 재시도 ${_attempt + 1}/3] Claude 응답:`, raw.slice(0, 200));
+      return extractAdDataVariations(pageContent, styleAnalysis, info, _attempt + 1);
+    }
+    console.error('[파싱 최종 실패] Claude 응답:', raw.slice(0, 500));
+    throw new Error('카피 생성 실패 — Claude 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.');
+  }
+
+  // 자동 재시도: validation_score < 8이면 1회 재생성
   if (_attempt === 1) {
-    const hasLowScore = parsed.some(v => typeof v.validation_score === 'number' && v.validation_score < 8);
+    const hasLowScore = parsed.some(v => typeof v.validation_score === 'number' && v.validation_score < 11);
     if (hasLowScore) {
       const fails = [...new Set(parsed.flatMap(v => v.validation_fails || []))];
       console.log('[체크리스트 점수 미달 — 자동 재생성]', fails.join(', '));
@@ -708,7 +767,7 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300', font = 'Pretendard') {
 <div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:linear-gradient(168deg,#F0E8D5 0%,#F0E8D5 36%,#FFBE00 58%,#FF9500 100%)">
 
   <!-- 브랜드 태그 -->
-  <div style="position:absolute;left:52px;top:42px;display:flex;align-items:center;gap:12px;z-index:10">
+  <div data-brand-block style="position:absolute;left:52px;top:42px;display:flex;align-items:center;gap:12px;z-index:10">
     <div style="width:30px;height:30px;background:#1a1a1a;border-radius:6px"></div>
     <span data-field="brand" style="font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px">${d.brand || '브랜드'}</span>
   </div>
@@ -882,7 +941,7 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null, c
   <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);background-size:32px 32px;z-index:0;pointer-events:none"></div>
 
   <!-- 브랜드 태그 -->
-  <div style="position:absolute;left:52px;top:36px;display:flex;align-items:center;gap:12px;z-index:10">
+  <div data-brand-block style="position:absolute;left:52px;top:36px;display:flex;align-items:center;gap:12px;z-index:10">
     <div style="width:28px;height:28px;background:rgba(255,255,255,0.85);border-radius:6px"></div>
     <span data-field="brand" style="font-size:24px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
   </div>
@@ -978,7 +1037,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
   <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.12) 35%,rgba(0,0,0,0.62) 52%,rgba(0,0,0,0.90) 68%,rgba(0,0,0,0.97) 82%,#000 100%);z-index:1;pointer-events:none"></div>
 
   <!-- 브랜드 태그 (상단) -->
-  <div style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
+  <div data-brand-block style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
     <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
     <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${d.brand || '브랜드'}</span>
   </div>
@@ -1049,7 +1108,7 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
   <div style="position:absolute;top:0;left:0;right:0;height:200px;background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);z-index:1;pointer-events:none"></div>
 
   <!-- 브랜드 태그 (상단) -->
-  <div style="position:absolute;left:64px;top:54px;display:flex;align-items:center;gap:10px;z-index:10">
+  <div data-brand-block style="position:absolute;left:64px;top:54px;display:flex;align-items:center;gap:10px;z-index:10">
     <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
     <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 6px rgba(0,0,0,0.6)">${d.brand || '브랜드'}</span>
   </div>
@@ -1125,7 +1184,7 @@ function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, css
   <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,0.6));z-index:1;pointer-events:none"></div>
 
   <!-- 브랜드 태그 (상단 좌) -->
-  <div style="position:absolute;left:64px;top:56px;display:flex;align-items:center;gap:10px;z-index:10">
+  <div data-brand-block style="position:absolute;left:64px;top:56px;display:flex;align-items:center;gap:10px;z-index:10">
     <div style="width:24px;height:24px;background:rgba(255,255,255,0.9);border-radius:4px;flex-shrink:0"></div>
     <span data-field="brand" style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
   </div>
@@ -1223,7 +1282,7 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
   <div style="flex:1;display:flex;flex-direction:column;padding:56px 64px 24px;position:relative;z-index:1">
 
     <!-- 브랜드 -->
-    <div style="font-size:26px;font-weight:700;color:#fff;margin-bottom:32px;display:flex;align-items:center;gap:10px">
+    <div data-brand-block style="font-size:26px;font-weight:700;color:#fff;margin-bottom:32px;display:flex;align-items:center;gap:10px">
       <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
       <span data-field="brand">${d.brand || '브랜드'}</span>
     </div>
@@ -1357,7 +1416,7 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
 <div style="width:1080px;height:1080px;background:${pal.bg};position:relative;display:flex;flex-direction:column;overflow:hidden">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,${pal.burst} 0%,transparent 60%);pointer-events:none"></div>
   <div style="flex:1;display:flex;flex-direction:column;padding:68px 80px 24px;position:relative;z-index:1">
-    <div style="font-size:26px;font-weight:700;color:#fff;margin-bottom:40px;display:flex;align-items:center;gap:10px">
+    <div data-brand-block style="font-size:26px;font-weight:700;color:#fff;margin-bottom:40px;display:flex;align-items:center;gap:10px">
       <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
       <span data-field="brand">${d.brand || '브랜드'}</span>
     </div>
@@ -1425,6 +1484,140 @@ function generateCommunityHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
       <div data-field="cta_text" style="background:${bgColor};color:#fff;border-radius:30px;padding:12px 32px;font-size:22px;font-weight:700;white-space:nowrap">${d.cta_text || '지금 확인하기 →'}</div>
     </div>
   </div>
+</div>
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ─── [FIGMA] 기본형 포토오버레이 — 피그마 6461:516 그대로 ───
+// ─────────────────────────────────────────────────────────────────
+function generateFigmaPhotoHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+
+  // 배경: 이미지 우선, 없으면 다크 그라디언트
+  const hasBg = !!bgImageBase64;
+  const bgStyle = hasBg
+    ? `background:#000`
+    : cssBackground
+    ? `background:${cssBackground}`
+    : `background:linear-gradient(150deg,${bgColor} 0%,#060606 100%)`;
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;${bgStyle}">
+
+  ${hasBg ? `
+  <!-- 배경 사진 (full-bleed) -->
+  <img src="${bgImageBase64}" style="position:absolute;inset:0;width:1080px;height:1080px;object-fit:cover;object-position:center top;z-index:0;pointer-events:none" />` : ''}
+
+  <!-- 피그마 그라디언트 오버레이 레이어 (하단→중앙 다크) -->
+  <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.97) 0%,rgba(0,0,0,0.92) 12%,rgba(0,0,0,0.72) 38%,rgba(0,0,0,0.30) 58%,rgba(0,0,0,0.05) 75%,transparent 100%);z-index:1;pointer-events:none"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;height:560px;background:linear-gradient(to top,rgba(0,0,0,0.95) 0%,rgba(0,0,0,0.6) 40%,transparent 100%);z-index:1;pointer-events:none"></div>
+
+  <!-- 브랜드 태그 (상단 좌) -->
+  <div data-brand-block style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
+    <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
+    <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 6px rgba(0,0,0,0.6)">${d.brand || '브랜드'}</span>
+  </div>
+
+  <!-- 훅 문구 (피그마 top≈502px, 50px Regular) -->
+  <div data-field="hook" style="position:absolute;left:75px;top:502px;right:80px;z-index:10;font-size:42px;font-weight:400;color:rgba(255,255,255,0.88);letter-spacing:-0.84px;line-height:1.4;text-shadow:0 2px 8px rgba(0,0,0,0.5)">
+    ${d.hook || ''}
+  </div>
+
+  <!-- 메인 헤드라인 (피그마 top≈589px, 80px Bold) -->
+  <!-- line1: 흰색 / line2: 시안(#01f7ff) — 피그마 accent 색상 -->
+  <div style="position:absolute;left:75px;top:600px;right:60px;z-index:10;font-size:80px;font-weight:900;letter-spacing:-2px;line-height:1.08;text-shadow:0 3px 14px rgba(0,0,0,0.7)">
+    <span data-field="headline_line1" style="color:#fff">${d.headline_line1 || ''}</span><br>
+    <span data-field="headline_line2" style="color:#01f7ff">${d.headline_line2 || ''}</span>
+  </div>
+
+  <!-- CTA 바 (피그마: #20f4f4 배경, 검정 텍스트, height 120px) -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:#20f4f4;display:flex;align-items:center;justify-content:center;gap:16px;z-index:10;padding:0 62px">
+    ${d.cta_badge ? `<span data-field="cta_badge" style="font-size:22px;font-weight:800;color:#000;background:rgba(0,0,0,0.1);padding:5px 16px;border-radius:30px;white-space:nowrap;flex-shrink:0">${d.cta_badge}</span>` : ''}
+    <span data-field="cta_text" style="font-size:40px;font-weight:900;color:#000;letter-spacing:-1.5px;white-space:nowrap">${d.cta_text || '지금 바로 시작하기 →'}</span>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ─── [FIGMA] 커뮤니티형 트위터 — 피그마 6461:170 그대로 ───
+// ─────────────────────────────────────────────────────────────────
+function generateFigmaTwitterHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+
+  // 아바타 색: bgColor 기준 (브랜드 컬러)
+  const avatarColor = bgColor || '#1B5BD4';
+  const brandInitial = (d.brand || 'B').charAt(0).toUpperCase();
+  const twitterHandle = '@' + (d.brand || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+  // 조회수: visual_stat1_value 재활용, 없으면 기본값
+  const views = d.visual_stat1_value || '24만';
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}</style>
+</head>
+<body>
+<div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:#171f2a">
+
+  <!-- 브랜드 블록 표시 여부 토글 영역 (상단 프로필) -->
+  <div data-brand-block>
+    <!-- 프로필 원형 아바타 (피그마 left:47, top:49, 190px) -->
+    <div style="position:absolute;left:47px;top:49px;width:190px;height:190px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+      <span style="font-size:84px;font-weight:900;color:#fff">${brandInitial}</span>
+    </div>
+    <!-- 유저명 (피그마: 60px, top≈66px) -->
+    <div data-field="brand" style="position:absolute;left:264px;top:56px;font-size:52px;font-weight:600;color:rgba(255,255,255,0.92);letter-spacing:-0.5px;white-space:nowrap;line-height:1.2">${d.brand || '브랜드'}</div>
+    <!-- @핸들 (피그마: 60px gray, top≈142px) -->
+    <div style="position:absolute;left:264px;top:134px;font-size:46px;font-weight:400;color:#858d98;white-space:nowrap;line-height:1.2">${twitterHandle}</div>
+  </div>
+
+  <!-- 더보기 점 (우상단, 피그마 right:159px top:33px) -->
+  <div style="position:absolute;right:47px;top:52px;font-size:40px;color:#858d98;letter-spacing:5px">···</div>
+
+  <!-- 메인 트윗 본문 (피그마 left:53, top:286, 63px, line-height:100px) -->
+  <div style="position:absolute;left:53px;top:286px;right:53px;z-index:10;line-height:100px;letter-spacing:-1.26px">
+    <div data-field="hook" style="font-size:57px;font-weight:400;color:#fff">${d.hook || ''}</div>
+    <div data-field="headline_line1" style="font-size:57px;font-weight:400;color:#fff">${d.headline_line1 || ''}</div>
+    <div data-field="headline_line2" style="font-size:57px;font-weight:700;color:#fff">${d.headline_line2 || ''}</div>
+  </div>
+
+  <!-- 조회수 + 시간 (피그마 left:53, top:633) -->
+  <div style="position:absolute;left:53px;top:608px;font-size:40px;color:#858d98;line-height:1;white-space:nowrap">
+    오후 7:35 · 2025. 12. 18. · 조회 <strong style="color:#fff">${views}</strong>회
+  </div>
+
+  <!-- 구분선 (피그마 top:733, left:72) -->
+  <div style="position:absolute;top:693px;left:72px;right:83px;height:1px;background:rgba(255,255,255,0.15)"></div>
+
+  <!-- 리플 프로필 (피그마 left:51, top:800, 185px) -->
+  <div style="position:absolute;left:51px;top:728px;width:148px;height:148px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+    <span style="font-size:60px;font-weight:900;color:#fff">${brandInitial}</span>
+  </div>
+
+  <!-- 리플 유저명 + 핸들 + 날짜 (피그마 left:264, top:771) -->
+  <div style="position:absolute;left:220px;top:744px;font-size:34px;color:rgba(255,255,255,0.88);white-space:nowrap;line-height:1.2">
+    ${d.brand || '브랜드'} <span style="color:#858d98">${twitterHandle} · 2025. 12. 18</span>
+  </div>
+
+  <!-- 리플 CTA 텍스트 (피그마 left:266, top:849, 45px) -->
+  <div data-field="cta_text" style="position:absolute;left:220px;top:802px;right:53px;font-size:40px;font-weight:400;color:#fff;line-height:68px">
+    ${d.cta_text || '지금 신청하기 →'}
+  </div>
+
 </div>
 </body>
 </html>`;

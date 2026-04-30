@@ -434,6 +434,121 @@
     .btn-inline-edit.editing { background:linear-gradient(135deg,#16a34a,#15803d); }
     .edit-mode-notice { display:none;font-size:11px;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 10px;margin-top:8px;line-height:1.5; }
     [data-theme="dark"] .edit-mode-notice { background:#1e3a5f;border-color:#1d4ed8;color:#93c5fd; }
+
+    /* ── 레이아웃 카탈로그 모달 ──────────────────────── */
+    .catalog-overlay {
+      display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;
+      align-items:center;justify-content:center;backdrop-filter:blur(3px);
+    }
+    .catalog-overlay.open { display:flex; }
+    .catalog-modal {
+      background:var(--panel-bg);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.35);
+      width:min(900px,95vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;
+    }
+    .catalog-header {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:18px 24px;border-bottom:1px solid var(--bdr);flex-shrink:0;
+    }
+    .catalog-header h3 { font-size:16px;font-weight:700;color:var(--tx); }
+    .catalog-header p { font-size:12px;color:var(--tx-sub);margin-top:2px; }
+    .catalog-close { background:none;border:none;font-size:20px;cursor:pointer;color:var(--tx-muted);padding:4px 8px;border-radius:6px;line-height:1; }
+    .catalog-close:hover { background:var(--bdr); }
+    .catalog-body { padding:20px 24px;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
+    .catalog-group-label {
+      grid-column:1/-1;font-size:11px;font-weight:700;color:var(--tx-muted);
+      text-transform:uppercase;letter-spacing:.8px;padding:4px 0 2px;
+      border-bottom:1px solid var(--bdr);
+    }
+    .catalog-card {
+      border:1.5px solid var(--bdr);border-radius:10px;padding:14px 16px;cursor:pointer;
+      transition:all .15s;background:var(--panel-bg);position:relative;
+    }
+    .catalog-card:hover { border-color:var(--accent);background:var(--accent-lt); }
+    .catalog-card.selected { border-color:var(--accent);background:var(--accent-lt); }
+    .catalog-card.selected .catalog-check { display:flex; }
+    .catalog-check {
+      display:none;position:absolute;top:10px;right:10px;
+      width:20px;height:20px;background:var(--accent);border-radius:50%;
+      align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;
+    }
+    .catalog-icon { font-size:28px;margin-bottom:8px; }
+    .catalog-card-id { font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px; }
+    .catalog-card-name { font-size:13px;font-weight:700;color:var(--tx);margin-bottom:4px; }
+    .catalog-card-desc { font-size:11px;color:var(--tx-sub);line-height:1.5; }
+    .catalog-card-type { font-size:10px;color:var(--tx-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr); }
+    .catalog-footer {
+      padding:16px 24px;border-top:1px solid var(--bdr);display:flex;align-items:center;
+      justify-content:space-between;flex-shrink:0;gap:10px;
+    }
+    .catalog-footer-left { font-size:12px;color:var(--tx-sub); }
+    .catalog-footer-left strong { color:var(--accent); }
+    .btn-catalog-all { font-size:12px;font-weight:600;color:var(--tx-sub);background:none;border:1.5px solid var(--bdr);border-radius:7px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all .15s; }
+    .btn-catalog-all:hover { border-color:var(--accent);color:var(--accent); }
+    .btn-catalog-confirm { background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s; }
+    .btn-catalog-confirm:hover { opacity:.88; }
+
+    /* ── 배리에이션 선택 섹션 ─────────────────────────── */
+    .variation-selector { margin-bottom:14px; }
+    .variation-selector-header {
+      display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;
+    }
+    .variation-selector-header label { font-size:12px;font-weight:600;color:var(--tx-sub); }
+    .btn-catalog-link {
+      font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;
+      font-family:inherit;font-weight:600;padding:0;text-decoration:underline;
+    }
+    .variation-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:6px; }
+    .var-chip {
+      display:flex;align-items:center;gap:5px;padding:6px 8px;
+      border:1.5px solid var(--inp-bdr);border-radius:7px;cursor:pointer;
+      font-size:11px;font-weight:600;color:var(--tx-sub);transition:all .15s;
+      background:var(--inp-bg);user-select:none;
+    }
+    .var-chip:hover { border-color:var(--accent);color:var(--accent); }
+    .var-chip.checked { border-color:var(--accent);color:var(--accent);background:var(--accent-lt); }
+    .var-chip input[type=checkbox] { display:none; }
+    .var-chip-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+
+    /* 브랜드 토글 버튼 */
+    .btn-brand-toggle { border:1.5px solid var(--bdr);background:var(--panel-bg);color:var(--tx);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px; }
+    .btn-brand-toggle:hover { border-color:#f59e0b;color:#f59e0b;background:#fffbeb; }
+    .btn-brand-toggle.hidden-brand { border-color:#ef4444;color:#ef4444;background:#fff5f5; }
+    [data-theme="dark"] .btn-brand-toggle:hover { background:#2d2510; }
+    [data-theme="dark"] .btn-brand-toggle.hidden-brand { background:#2d1010; }
+
+    /* 스티커 이미지 추가 버튼 */
+    .btn-sticker { border:1.5px solid var(--bdr);background:var(--panel-bg);color:var(--tx);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px; }
+    .btn-sticker:hover { border-color:#8b5cf6;color:#8b5cf6;background:#f5f3ff; }
+    [data-theme="dark"] .btn-sticker:hover { background:#1e1040; }
+    #stickerFileInput { display:none; }
+
+    /* ── 단일 컬럼 레이아웃 (sc-wrap) ─────────────────── */
+    .sc-wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px; display: flex; flex-direction: column; gap: 16px; }
+    .sc-header-area { text-align: center; padding: 8px 0 4px; }
+    .sc-header-area h1 { font-size: 24px; font-weight: 800; color: var(--tx); }
+    .sc-header-area p { font-size: 13px; color: var(--tx-sub); margin-top: 4px; }
+    .sc-card { background: var(--panel-bg); border-radius: 14px; box-shadow: var(--shadow); padding: 20px; }
+    .sc-url-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .sc-url-row input { flex: 1; border: 1.5px solid var(--inp-bdr); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--tx); outline: none; font-family: inherit; transition: border-color .15s; background: var(--inp-bg); }
+    .sc-url-row input:focus { border-color: var(--accent); }
+    .sc-url-row .btn-generate { width: auto; padding: 11px 24px; white-space: nowrap; margin-bottom: 0; }
+    .sc-toggle-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; background: var(--step-idle); border-radius: 8px; cursor: pointer; margin-bottom: 0; font-size: 13px; font-weight: 600; color: var(--tx); transition: background .15s; user-select: none; }
+    .sc-toggle-header:hover { background: var(--step-on); }
+    .sc-toggle-header small { font-size: 11px; font-weight: 400; color: var(--tx-sub); margin-left: 6px; }
+    .sc-toggle-arrow { font-size: 11px; color: var(--tx-muted); }
+    .sc-section-body { padding: 14px 4px 4px; }
+    /* 기존 2컬럼 컨테이너 숨기기 */
+    .container { display: none !important; }
+    /* ── 레이아웃 선택 카드 ── */
+    .layout-select-card { border: 2px solid var(--bdr); border-radius: 10px; padding: 10px; cursor: pointer; transition: border-color .15s, background .15s; background: var(--inp-bg); display: flex; flex-direction: column; gap: 8px; position: relative; user-select: none; }
+    .layout-select-card:hover { border-color: var(--accent); }
+    .layout-select-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--inp-bg)); }
+    .layout-card-thumb { width: 100%; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #1a1a2e; }
+    .layout-card-info { padding: 0 2px; }
+    .layout-card-name { font-size: 13px; font-weight: 700; color: var(--tx); }
+    .layout-card-desc { font-size: 11px; color: var(--tx-sub); margin-top: 2px; }
+    .layout-card-check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; opacity: 0; transition: opacity .15s; }
+    .layout-select-card.selected .layout-card-check { opacity: 1; }
   </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -442,10 +557,112 @@
 <nav>
   <div class="logo">AdCraft <span>by Claude AI</span></div>
   <div class="nav-right">
+    <button class="btn-theme" onclick="openCatalog()" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3)">📋 레이아웃 카탈로그</button>
     <button id="themeToggle" class="btn-theme" onclick="toggleTheme()">🌙 다크</button>
     <div class="nav-badge"><div class="dot"></div>HTML to Design Ready</div>
   </div>
 </nav>
+
+<!-- ── 레이아웃 카탈로그 모달 ── -->
+<div class="catalog-overlay" id="catalogOverlay" onclick="onCatalogOverlayClick(event)">
+  <div class="catalog-modal">
+    <div class="catalog-header">
+      <div>
+        <h3>🎨 레이아웃 카탈로그</h3>
+        <p>광고 이미지 레이아웃을 선택하세요. 각 레이아웃마다 3가지 카피가 자동 생성됩니다.</p>
+      </div>
+      <button class="catalog-close" onclick="closeCatalog()">×</button>
+    </div>
+    <div class="catalog-body" id="catalogBody" style="padding: 20px 24px;">
+
+      <!-- 기본형 카드 (큰 프리뷰) -->
+      <div class="catalog-group-label">피그마 검증 레이아웃</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+        <div class="catalog-card" data-layout="photo-overlay" onclick="toggleCatalogCard(this)" style="padding:0;overflow:hidden;flex-direction:column;gap:0">
+          <div class="catalog-check">✓</div>
+          <!-- 큰 SVG 프리뷰 -->
+          <div style="background:#1a1a2e;padding:0;aspect-ratio:1;width:100%">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+              <rect width="200" height="200" fill="#2a3050"/>
+              <rect y="0" width="200" height="200" fill="url(#gCat1)"/>
+              <defs>
+                <linearGradient id="gCat1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#444" stop-opacity="0.2"/>
+                  <stop offset="50%" stop-color="#111" stop-opacity="0.7"/>
+                  <stop offset="100%" stop-color="#000" stop-opacity="0.98"/>
+                </linearGradient>
+              </defs>
+              <text x="18" y="105" font-family="sans-serif" font-size="11" fill="rgba(255,255,255,0.6)">이게 가능하다고?</text>
+              <text x="18" y="125" font-family="sans-serif" font-size="17" font-weight="bold" fill="#fff">역량 레벨업</text>
+              <text x="18" y="145" font-family="sans-serif" font-size="17" font-weight="bold" fill="#01f7ff">지금 가능합니다</text>
+              <rect x="0" y="177" width="200" height="23" fill="#20f4f4"/>
+              <text x="100" y="192" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="bold" fill="#000">지금 수강 신청하기 →</text>
+            </svg>
+          </div>
+          <div style="padding:12px 14px">
+            <div class="catalog-card-name" style="font-size:15px">기본형</div>
+            <div class="catalog-card-desc">포토오버레이 · 하단 시안 CTA 바<br>배경 사진 + 다크 그라디언트 + 임팩트 헤드라인</div>
+          </div>
+        </div>
+
+        <div class="catalog-card" data-layout="twitter" onclick="toggleCatalogCard(this)" style="padding:0;overflow:hidden;flex-direction:column;gap:0">
+          <div class="catalog-check">✓</div>
+          <div style="background:#171f2a;padding:0;aspect-ratio:1;width:100%">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+              <rect width="200" height="200" fill="#171f2a"/>
+              <circle cx="28" cy="32" r="18" fill="#1B5BD4"/>
+              <text x="28" y="38" text-anchor="middle" font-size="16" font-weight="bold" fill="#fff">A</text>
+              <text x="54" y="26" font-family="sans-serif" font-size="13" font-weight="600" fill="rgba(255,255,255,0.9)">AI배우는몬스터</text>
+              <text x="54" y="40" font-family="sans-serif" font-size="10" fill="#858d98">@aimonster</text>
+              <text x="10" y="68" font-family="sans-serif" font-size="12" fill="#fff">이제 코딩 몰라도 됨 ㅇㅇ</text>
+              <text x="10" y="84" font-family="sans-serif" font-size="12" fill="#fff">나 문과인데 AI 쫌 배웠더니</text>
+              <text x="10" y="100" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">수익창출도 하는 중</text>
+              <text x="10" y="118" font-family="sans-serif" font-size="9" fill="#858d98">오후 7:35 · 2025. 12. 18. · 조회 121만회</text>
+              <rect x="10" y="128" width="172" height="1" fill="rgba(255,255,255,0.15)"/>
+              <circle cx="26" cy="148" r="13" fill="#1B5BD4"/>
+              <text x="10" y="170" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.8)">AI 툴 어떻게 배웠냐고 DM 많이</text>
+              <text x="10" y="183" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.8)">와서 국비지원 강의 링크 남겨둘게 →</text>
+            </svg>
+          </div>
+          <div style="padding:12px 14px">
+            <div class="catalog-card-name" style="font-size:15px">커뮤니티형</div>
+            <div class="catalog-card-desc">트위터 스타일 · 소셜 증명<br>실제 SNS 게시물처럼 보이는 네이티브 광고 형식</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 커스텀 항목 -->
+      <div id="customCatalogGroup" style="display:none">
+        <div class="catalog-group-label" style="color:#f59e0b">⭐ 우리 팀 자주 쓰는 광고 형식</div>
+      </div>
+    </div>
+    <!-- 커스텀 항목 추가 폼 -->
+    <div id="customCatalogForm" style="display:none; padding:16px 24px; border-top:1px solid var(--bdr); background:var(--preset-bg);">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:12px">새 광고 형식 메모 추가</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <input id="ccLabel" placeholder="이름 (예: 상품이미지 강조형)" style="border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" />
+        <input id="ccIcon" placeholder="이모지" style="border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none" value="📌" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" />
+      </div>
+      <textarea id="ccDesc" rows="2" placeholder="설명" style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;resize:vertical;margin-bottom:8px;box-sizing:border-box" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'"></textarea>
+      <input id="ccTypeHint" placeholder="레이아웃 힌트" style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;margin-bottom:10px;box-sizing:border-box" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" />
+      <div style="display:flex;gap:8px">
+        <button onclick="saveCustomCatalogItem()" class="btn-catalog-confirm">저장</button>
+        <button onclick="document.getElementById('customCatalogForm').style.display='none'" class="btn-catalog-all">취소</button>
+      </div>
+    </div>
+    <div class="catalog-footer">
+      <div class="catalog-footer-left">선택됨: <strong id="catalogSelectedCount">1</strong>종</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-catalog-all" onclick="openCustomCatalogForm()">+ 메모 추가</button>
+        <button class="btn-catalog-all" onclick="catalogSelectAll()">전체 선택</button>
+        <button class="btn-catalog-all" onclick="catalogClearAll()">전체 해제</button>
+        <button class="btn-catalog-confirm" onclick="confirmCatalogSelection()">✓ 적용하기</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="container">
 
@@ -683,8 +900,24 @@
         </label>
       </div>
 
+      <!-- 배리에이션 선택 -->
+      <div class="variation-selector">
+        <div class="variation-selector-header">
+          <label>배리에이션 선택 <span style="font-weight:400;color:var(--tx-muted)">(생성할 종류 체크)</span></label>
+          <button class="btn-catalog-link" onclick="openCatalog()">📋 카탈로그 보기</button>
+        </div>
+        <div class="variation-grid" id="variationGrid">
+          <!-- JS로 렌더링 -->
+        </div>
+        <div style="display:flex;gap:6px;margin-top:7px">
+          <button onclick="selectAllVariations(true)" style="font-size:11px;color:var(--tx-sub);background:none;border:1px solid var(--bdr);border-radius:5px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--tx-sub)'">전체 선택</button>
+          <button onclick="selectAllVariations(false)" style="font-size:11px;color:var(--tx-sub);background:none;border:1px solid var(--bdr);border-radius:5px;padding:4px 10px;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--tx-sub)'">전체 해제</button>
+          <span id="varSelectionCount" style="font-size:11px;color:var(--tx-muted);margin-left:4px;line-height:2"></span>
+        </div>
+      </div>
+
       <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
-        ✨ 광고소재 생성하기 (배리에이션 3종)
+        ✨ 광고소재 생성하기
       </button>
 
     </div>
@@ -702,6 +935,9 @@
         <button class="btn-action btn-download" onclick="downloadPNG()" id="btnDownloadPNG">📸 PNG</button>
         <button class="btn-action" onclick="copyHTML()" id="btnCopyHTML">📋 복사</button>
         <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
+        <button class="btn-brand-toggle" id="btnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
+        <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
+        <input type="file" id="stickerFileInput" accept="image/*" onchange="addStickerImage(event)">
       </div>
     </div>
 
@@ -739,9 +975,9 @@
       <div class="preview-section">
         <div class="preview-label" style="display:flex;align-items:center;justify-content:space-between">
           <span>🖼️ 광고소재 미리보기 (1080×1080)</span>
-          <button id="btnInlineEdit" class="btn-inline-edit" onclick="toggleInlineEdit()" style="display:none">✏️ 직접 편집</button>
+          <span id="editHint" style="display:none;font-size:11px;color:var(--tx-muted)">✏️ 텍스트 클릭해서 바로 수정</span>
         </div>
-        <div class="edit-mode-notice" id="editModeNotice">클릭하면 텍스트를 직접 수정할 수 있어요. 완료 후 "편집 완료" 버튼을 누르면 HTML이 저장됩니다.</div>
+        <div class="edit-mode-notice" id="editModeNotice" style="display:none">텍스트를 클릭하면 바로 수정할 수 있어요.</div>
         <div class="preview-container">
           <div class="preview-scaler">
             <iframe id="previewFrame" srcdoc=""></iframe>
@@ -824,6 +1060,316 @@
 
 </div>
 
+<!-- ── 단일 컬럼 UI (sc-wrap) ── -->
+<div class="sc-wrap">
+
+  <!-- 헤더 -->
+  <div class="sc-header-area">
+    <h1>AdCraft</h1>
+    <p>상세페이지 URL을 입력하면 META 인스타그램 광고소재를 자동 생성합니다</p>
+  </div>
+
+  <!-- 메인 입력 카드 -->
+  <div class="sc-card">
+
+    <!-- ① URL + 생성 버튼 -->
+    <div class="sc-url-row">
+      <input type="url" id="scUrlProxy" placeholder="https://example.com/product/..."
+        oninput="document.getElementById('urlInput').value=this.value" />
+      <button class="btn-generate" onclick="document.getElementById('urlInput').value=document.getElementById('scUrlProxy').value;startGeneration()">✨ 광고소재 생성하기</button>
+    </div>
+
+    <!-- ② 소재 정보 토글 — 기본 펼침 -->
+    <div class="sc-toggle-header" onclick="toggleSection('scBasic')">
+      <span>① 소재 정보 <small>타겟 · USP</small></span>
+      <span class="sc-toggle-arrow" id="scBasicArrow">▼</span>
+    </div>
+    <div id="scBasic" class="sc-section-body">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px">
+        <input type="text" placeholder="과정 타겟 (예: 30대 직장인)" style="border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" oninput="document.getElementById('targetInput').value=this.value" id="scTargetProxy" />
+        <input type="text" placeholder="USP 1 (예: 실무 현업 강사진)" style="border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" oninput="document.getElementById('usp1Input').value=this.value" id="scUsp1Proxy" />
+        <input type="text" placeholder="USP 2 (예: 12개월 무제한 수강)" style="border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" oninput="document.getElementById('usp2Input').value=this.value" id="scUsp2Proxy" />
+        <input type="text" placeholder="USP 3 (예: 취업 연계 지원)" style="border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" oninput="document.getElementById('usp3Input').value=this.value" id="scUsp3Proxy" />
+      </div>
+      <textarea rows="2" placeholder="광고세트 메시지 (예: 지금 당장 데이터 역량을 키워야 하는 이유)" style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;resize:vertical;transition:border-color .15s;margin-bottom:8px;box-sizing:border-box" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" oninput="document.getElementById('adSetMessageInput').value=this.value" id="scAdSetProxy"></textarea>
+      <textarea rows="2" placeholder="소재 메시지 (예: 12개월 무제한 + 실무 프로젝트 중심)" style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;resize:vertical;transition:border-color .15s;box-sizing:border-box" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'" oninput="document.getElementById('creativeMessageInput').value=this.value" id="scCreativeProxy"></textarea>
+    </div>
+
+    <!-- ③ 레퍼런스 이미지 토글 — 기본 펼침 -->
+    <div class="sc-toggle-header" onclick="toggleSection('scImages')" style="margin-top:8px">
+      <span>② 레퍼런스 이미지 <small>선택</small></span>
+      <span class="sc-toggle-arrow" id="scImagesArrow">▼</span>
+    </div>
+    <div id="scImages" class="sc-section-body">
+      <div class="tab-group">
+        <button id="scTabUpload" class="tab-btn active" onclick="switchTab('upload');document.getElementById('scTabUpload').classList.add('active');document.getElementById('scTabUpload').classList.remove('inactive');document.getElementById('scTabUrl').classList.add('inactive');document.getElementById('scTabUrl').classList.remove('active')">파일 업로드</button>
+        <button id="scTabUrl" class="tab-btn inactive" onclick="switchTab('url');document.getElementById('scTabUrl').classList.add('active');document.getElementById('scTabUrl').classList.remove('inactive');document.getElementById('scTabUpload').classList.add('inactive');document.getElementById('scTabUpload').classList.remove('active')">Meta 광고 라이브러리 URL</button>
+      </div>
+      <div id="scPanelUpload">
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text">클릭해서 이미지 추가<br><strong>JPG, PNG</strong></div>
+        </div>
+      </div>
+      <div id="scPanelUrl" style="display:none">
+        <div class="meta-notice">
+          <strong>사용 방법:</strong> facebook.com/ads/library 에서 광고 이미지 우클릭 → "이미지 주소 복사" 후 붙여넣기<br>
+          <span>계정 연결 없음 · 공개 이미지만 수집</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="url" id="scImgUrlInput" placeholder="https://scontent-*.fbcdn.net/v/..." style="flex:1;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:8px 10px;font-size:12px;outline:none;font-family:inherit;background:var(--inp-bg);color:var(--tx)" oninput="document.getElementById('imgUrlInput').value=this.value" />
+          <button onclick="document.getElementById('imgUrlInput').value=document.getElementById('scImgUrlInput').value;addImgUrl()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">추가</button>
+        </div>
+        <div style="font-size:11px;color:var(--tx-muted);margin-top:4px">최대 3장</div>
+      </div>
+      <div class="img-previews" id="scImgPreviews"></div>
+    </div>
+
+    <!-- ④ 레이아웃 선택 토글 — 기본 펼침 -->
+    <div class="sc-toggle-header" onclick="toggleSection('scVariations')" style="margin-top:8px">
+      <span>③ 레이아웃 선택 <small id="scVarCount"></small></span>
+      <span class="sc-toggle-arrow" id="scVariationsArrow">▼</span>
+    </div>
+    <div id="scVariations" class="sc-section-body">
+      <p style="font-size:12px;color:var(--tx-sub);margin-bottom:10px">생성할 광고 레이아웃을 선택하세요. 각 레이아웃마다 3가지 카피 배리에이션이 생성됩니다.</p>
+      <div id="layoutCardGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+        <!-- 기본형 카드 -->
+        <div class="layout-select-card selected" data-layout="photo-overlay" onclick="toggleLayout('photo-overlay',this)">
+          <div class="layout-card-thumb">
+            <!-- 포토오버레이 미니 SVG 프리뷰 -->
+            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+              <rect width="108" height="108" fill="#2a2a3a"/>
+              <rect y="0" width="108" height="108" fill="url(#gPhoto)"/>
+              <defs>
+                <linearGradient id="gPhoto" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#444" stop-opacity="0.3"/>
+                  <stop offset="55%" stop-color="#111" stop-opacity="0.7"/>
+                  <stop offset="100%" stop-color="#000" stop-opacity="0.98"/>
+                </linearGradient>
+              </defs>
+              <!-- 훅 텍스트 -->
+              <rect x="8" y="46" width="55" height="4" rx="2" fill="rgba(255,255,255,0.55)"/>
+              <!-- 헤드라인 -->
+              <rect x="8" y="54" width="70" height="8" rx="2" fill="#fff"/>
+              <rect x="8" y="65" width="52" height="8" rx="2" fill="#01f7ff"/>
+              <!-- CTA 바 -->
+              <rect x="0" y="96" width="108" height="12" fill="#20f4f4"/>
+              <rect x="14" y="99" width="65" height="6" rx="2" fill="rgba(0,0,0,0.5)"/>
+            </svg>
+          </div>
+          <div class="layout-card-info">
+            <div class="layout-card-name">기본형</div>
+            <div class="layout-card-desc">포토오버레이</div>
+          </div>
+          <div class="layout-card-check">✓</div>
+        </div>
+
+        <!-- 커뮤니티형 카드 -->
+        <div class="layout-select-card" data-layout="twitter" onclick="toggleLayout('twitter',this)">
+          <div class="layout-card-thumb">
+            <!-- 트위터 미니 SVG 프리뷰 -->
+            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+              <rect width="108" height="108" fill="#171f2a"/>
+              <!-- 아바타 원 -->
+              <circle cx="14" cy="16" r="10" fill="#1B5BD4"/>
+              <text x="14" y="20" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">B</text>
+              <!-- 유저명 + 핸들 -->
+              <rect x="28" y="10" width="35" height="4" rx="2" fill="rgba(255,255,255,0.8)"/>
+              <rect x="28" y="17" width="25" height="3" rx="1.5" fill="#858d98"/>
+              <!-- 트윗 본문 3줄 -->
+              <rect x="5" y="30" width="90" height="6" rx="2" fill="rgba(255,255,255,0.85)"/>
+              <rect x="5" y="39" width="75" height="6" rx="2" fill="rgba(255,255,255,0.85)"/>
+              <rect x="5" y="48" width="85" height="6" rx="2" fill="#fff"/>
+              <!-- 조회수 줄 -->
+              <rect x="5" y="62" width="65" height="3" rx="1.5" fill="#858d98"/>
+              <!-- 구분선 -->
+              <rect x="5" y="70" width="90" height="1" fill="rgba(255,255,255,0.15)"/>
+              <!-- 리플 아바타 -->
+              <circle cx="14" cy="82" r="7" fill="#1B5BD4"/>
+              <!-- 리플 텍스트 -->
+              <rect x="26" y="77" width="55" height="4" rx="2" fill="rgba(255,255,255,0.7)"/>
+              <rect x="26" y="84" width="70" height="4" rx="2" fill="rgba(255,255,255,0.6)"/>
+              <rect x="26" y="91" width="60" height="4" rx="2" fill="rgba(255,255,255,0.6)"/>
+            </svg>
+          </div>
+          <div class="layout-card-info">
+            <div class="layout-card-name">커뮤니티형</div>
+            <div class="layout-card-desc">트위터 스타일</div>
+          </div>
+          <div class="layout-card-check">✓</div>
+        </div>
+
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--tx-muted)" id="scVarSelCount"></div>
+    </div>
+
+    <!-- ⑤ 고급 옵션 토글 — 기본 접힘 -->
+    <div class="sc-toggle-header" onclick="toggleSection('scAdvanced')" style="margin-top:8px">
+      <span>⚙ 고급 옵션 <small>컬러 · 폰트 · AI 배경 · 프리셋</small></span>
+      <span class="sc-toggle-arrow" id="scAdvancedArrow">▶</span>
+    </div>
+    <div id="scAdvanced" style="display:none" class="sc-section-body">
+
+      <!-- 배경 컬러 -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--tx-sub);margin-bottom:8px">배경 컬러</div>
+        <div class="color-mode-group">
+          <button class="color-mode-btn active" onclick="setColorMode(true)">✨ 자동 추출</button>
+          <button class="color-mode-btn inactive" onclick="setColorMode(false)">직접 선택</button>
+        </div>
+        <div id="scAutoColorDesc" class="info-blue">레퍼런스 이미지 컬러 → 페이지 테마컬러 → AI 브랜드 추론 순서로 자동 적용됩니다</div>
+        <div id="scManualColor" style="display:none">
+          <div class="color-picker-wrap" onclick="document.getElementById('colorPicker').click()">
+            <div class="color-swatch-btn" id="scColorSwatch" style="background:#1B5BD4"></div>
+            <span style="flex:1;font-size:13px;font-family:monospace;color:var(--tx)" id="scHexDisplay">#1B5BD4</span>
+            <span class="eyedropper-icon">🎨</span>
+          </div>
+          <div class="preset-dots" style="margin-top:8px">
+            <div class="preset-dot active" data-color="#1B5BD4" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#0A0A1A" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#064E3B" style="background:#064E3B" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#C2185B" style="background:#C2185B" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#7C3AED" style="background:#7C3AED" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#B45309" style="background:#B45309" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#1E3A5F" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
+            <div class="preset-dot" data-color="#1a1a1a" style="background:#1a1a1a;border:1px solid #555" onclick="applyPreset(this)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 배경 이미지 -->
+      <div id="scAiBgFormGroup" style="margin-bottom:14px">
+        <div class="ai-bg-row" onclick="toggleLeftAiBg()">
+          <div class="ai-bg-row-label">🖼 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
+          <span class="ai-bg-row-arrow">▶</span>
+        </div>
+      </div>
+
+      <!-- 폰트 선택 -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--tx-sub);margin-bottom:8px">광고 폰트</div>
+        <select id="scFontProxy" style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;cursor:pointer" onchange="document.getElementById('fontSelect').value=this.value">
+          <option value="Pretendard">Pretendard (기본 · 추천)</option>
+          <option value="Noto Sans KR">Noto Sans KR (구글 폰트)</option>
+          <option value="Nanum Gothic">나눔고딕 (네이버)</option>
+          <option value="Black Han Sans">Black Han Sans (임팩트체)</option>
+        </select>
+      </div>
+
+      <!-- 레이아웃 레퍼런스 -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--tx-sub);margin-bottom:8px">소재 레이아웃 레퍼런스 <span style="font-weight:400;color:var(--tx-muted)">(선택)</span></div>
+        <div id="scLayoutGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+        <label class="layout-add-btn" onclick="document.getElementById('layoutFileInput').click()">+ 레이아웃 레퍼런스 추가</label>
+      </div>
+
+      <!-- 프리셋 바 -->
+      <div class="preset-bar">
+        <span>💾 프리셋</span>
+        <select id="scPresetProxy" onchange="document.getElementById('presetSelect').value=this.value">
+          <option value="">-- 저장된 과정 선택 --</option>
+        </select>
+        <button class="btn-preset-load" onclick="document.getElementById('presetSelect').value=document.getElementById('scPresetProxy').value;loadPreset()">불러오기</button>
+        <button class="btn-preset-save" onclick="savePreset()">저장</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- 로딩 카드 -->
+  <div id="scLoadingWrap" class="sc-card" style="display:none">
+    <div class="loading-top">
+      <span>생성 중...</span>
+      <span class="loading-pct" id="scLoadingPct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="scProgressFill"></div></div>
+    <div class="step-list">
+      <div class="step-item" id="scStep1"><div class="step-dot"></div>상세페이지 크롤링</div>
+      <div class="step-item" id="scStep2"><div class="step-dot"></div>레퍼런스 이미지 스타일 분석</div>
+      <div class="step-item" id="scStep3"><div class="step-dot"></div>소재 정보 추출 &amp; 구조화</div>
+      <div class="step-item" id="scStep4"><div class="step-dot"></div>카피 배리에이션 9종 생성 (A1~C3)</div>
+      <div class="step-item" id="scStep5"><div class="step-dot"></div>1080×1080 HTML 소재 9종 렌더링</div>
+    </div>
+  </div>
+
+  <!-- 에러 -->
+  <div id="scErrorWrap"></div>
+
+  <!-- 결과 카드 -->
+  <div class="sc-card" id="scResultBody" style="display:none">
+
+    <!-- 탭 -->
+    <div id="scVarTabs" class="var-tabs" style="margin:-20px -20px 16px;border-radius:14px 14px 0 0;overflow:hidden"></div>
+
+    <!-- 배리에이션 정보 -->
+    <div class="var-info">
+      <span style="font-size:12px;font-weight:600;color:var(--tx-sub)">현재 보기:</span>
+      <span class="var-badge" id="scVarBadge">A - 혜택형</span>
+    </div>
+
+    <!-- 액션 버튼 -->
+    <div id="scResultActions" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn-action btn-download" onclick="downloadHTML()">⬇ HTML</button>
+      <button class="btn-action btn-download" onclick="downloadPNG()" id="scBtnDownloadPNG">📸 PNG</button>
+      <button class="btn-action" onclick="copyHTML()">📋 복사</button>
+      <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
+      <button class="btn-brand-toggle" id="scBtnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
+      <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
+    </div>
+
+    <!-- 편집 힌트 -->
+    <span id="scEditHint" style="display:none;font-size:11px;color:var(--tx-muted)">✏️ 텍스트 클릭해서 바로 수정</span>
+
+    <!-- 미리보기 -->
+    <div class="preview-container" style="margin-bottom:16px">
+      <div class="preview-scaler">
+        <iframe id="scPreviewFrame" srcdoc="" style="width:1080px;height:1080px;border:none;transform:scale(0.5);transform-origin:top left"></iframe>
+      </div>
+    </div>
+
+    <!-- 검증 패널 -->
+    <div id="scValidationPanel"></div>
+
+    <!-- 카피 수정 패널 -->
+    <div class="copy-edit-panel" id="scCopyEditPanel" style="display:none">
+      <div class="copy-edit-header" onclick="scToggleCopyEdit()">
+        <div class="copy-edit-title">✏️ 카피 수정</div>
+        <span class="copy-edit-arrow" id="scCopyEditArrow">▶</span>
+      </div>
+      <div id="scCopyEditBody" style="display:none">
+        <div class="copy-edit-body" id="scCopyEditFields"></div>
+        <div style="padding:0 16px 14px">
+          <button class="btn-update-preview" id="scBtnUpdatePreview" onclick="scApplyEditChanges()">🔄 미리보기 업데이트</button>
+          <div style="font-size:10px;color:var(--tx-muted);text-align:center;margin-top:5px" id="scCopyEditStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 이미지 패널 -->
+    <div id="scAiImagePanel" style="display:none"></div>
+
+    <!-- JSON / HTML 코드 -->
+    <div class="code-section" style="margin-bottom:12px">
+      <div class="code-header">
+        <div class="code-label">🗂 광고 데이터 JSON</div>
+        <button class="btn-copy-code" onclick="copyJson()">복사</button>
+      </div>
+      <div class="code-box" id="scJsonBox" style="color:#f9c784"></div>
+    </div>
+    <div class="code-section">
+      <div class="code-header">
+        <div class="code-label">📄 HTML 코드</div>
+        <button class="btn-copy-code" onclick="copyCode()">복사</button>
+      </div>
+      <div class="code-box" id="scCodeBox"></div>
+    </div>
+
+  </div>
+
+</div>
+
 <!-- Figma 열기 모달 -->
 <div class="figma-modal-overlay" id="figmaModalOverlay" onclick="if(event.target===this)closeFigmaModal()">
   <div class="figma-modal">
@@ -891,13 +1437,15 @@
   function renderLayoutGrid() {
     const grid = document.getElementById('layoutGrid');
     const empty = document.getElementById('layoutEmptyNote');
+    const scGrid = document.getElementById('scLayoutGrid');
     if (!cachedLayouts.length) {
-      grid.innerHTML = '';
-      empty.style.display = 'block';
+      if (grid) grid.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+      if (scGrid) scGrid.innerHTML = '';
       return;
     }
-    empty.style.display = 'none';
-    grid.innerHTML = cachedLayouts.map(l => {
+    if (empty) empty.style.display = 'none';
+    const gridHtml = cachedLayouts.map(l => {
       const selected = selectedLayoutRefId === l.id;
       return `<div onclick="selectLayoutRef('${l.id}')"
         style="position:relative;cursor:pointer;border-radius:8px;overflow:hidden;
@@ -913,6 +1461,8 @@
           style="position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:50%;background:#ff4b6e;color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
       </div>`;
     }).join('');
+    if (grid) grid.innerHTML = gridHtml;
+    if (scGrid) scGrid.innerHTML = gridHtml;
   }
 
   function selectLayoutRef(id) {
@@ -951,10 +1501,12 @@
   function savePresets(arr) { localStorage.setItem('adcraft_presets', JSON.stringify(arr)); }
 
   function renderPresetDropdown() {
+    const optHtml = '<option value="">-- 저장된 과정 선택 --</option>' +
+      getPresets().map(p => `<option value="${p.name}">${p.name}</option>`).join('');
     const sel = document.getElementById('presetSelect');
-    const presets = getPresets();
-    sel.innerHTML = '<option value="">-- 저장된 과정 선택 --</option>' +
-      presets.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    if (sel) sel.innerHTML = optHtml;
+    const scSel = document.getElementById('scPresetProxy');
+    if (scSel) scSel.innerHTML = optHtml;
   }
 
   function savePreset() {
@@ -989,6 +1541,13 @@
     document.getElementById('usp3Input').value   = preset.usp3   || '';
     document.getElementById('adSetMessageInput').value   = preset.ad_set_message   || '';
     document.getElementById('creativeMessageInput').value = preset.creative_message || '';
+    // sc-wrap proxy 동기화
+    const scTarget = document.getElementById('scTargetProxy'); if (scTarget) scTarget.value = preset.target || '';
+    const scUsp1 = document.getElementById('scUsp1Proxy'); if (scUsp1) scUsp1.value = preset.usp1 || '';
+    const scUsp2 = document.getElementById('scUsp2Proxy'); if (scUsp2) scUsp2.value = preset.usp2 || '';
+    const scUsp3 = document.getElementById('scUsp3Proxy'); if (scUsp3) scUsp3.value = preset.usp3 || '';
+    const scAdSet = document.getElementById('scAdSetProxy'); if (scAdSet) scAdSet.value = preset.ad_set_message || '';
+    const scCreative = document.getElementById('scCreativeProxy'); if (scCreative) scCreative.value = preset.creative_message || '';
   }
 
   renderPresetDropdown();
@@ -997,28 +1556,43 @@
   function switchVariation(idx) {
     if (!variations[idx]) return;
     activeVariation = idx;
-    // 편집 모드 초기화
-    const iframe = document.getElementById('previewFrame');
-    const btn = document.getElementById('btnInlineEdit');
-    const notice = document.getElementById('editModeNotice');
-    if (btn && btn.classList.contains('editing')) {
-      iframe.style.pointerEvents = 'none';
-      btn.classList.remove('editing');
-      btn.textContent = '✏️ 직접 편집';
-      if (notice) notice.style.display = 'none';
-    }
     document.querySelectorAll('.var-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
     const v = variations[idx];
-    document.getElementById('previewFrame').srcdoc = v.html;
+    const iframe = document.getElementById('previewFrame');
+    iframe.srcdoc = v.html;
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
     document.getElementById('codeBox').textContent = v.html;
     document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${idx + 1}`;
-    // 해당 배리에이션의 CTA 색상 복원
     if (v.ctaColor) selectedCtaColor = v.ctaColor;
     renderValidationPanel(v.adData);
     renderCopyEditPanel(v.adData);
-    // 직접 편집 버튼 표시
-    if (btn) btn.style.display = 'flex';
+    // 탭 전환 시 브랜드 토글 상태 초기화
+    brandHidden = false;
+    ['btnBrandToggle', 'scBtnBrandToggle'].forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) { btn.textContent = '🏷 브랜드 숨기기'; btn.classList.remove('hidden-brand'); }
+    });
+    // iframe 로드 후 클릭 편집 활성화
+    iframe.addEventListener('load', activateClickEdit, { once: true });
+    // 편집 힌트 표시
+    const hint = document.getElementById('editHint');
+    if (hint) hint.style.display = 'inline';
+    // sc-wrap 결과 동기화
+    const scIframe = document.getElementById('scPreviewFrame');
+    if (scIframe) {
+      scIframe.srcdoc = v.html;
+      scIframe.addEventListener('load', activateScClickEdit, { once: true });
+    }
+    const scJsonBox = document.getElementById('scJsonBox');
+    if (scJsonBox) scJsonBox.textContent = JSON.stringify(v.adData, null, 2);
+    const scCodeBox = document.getElementById('scCodeBox');
+    if (scCodeBox) scCodeBox.textContent = v.html;
+    const scVarBadge = document.getElementById('scVarBadge');
+    if (scVarBadge) scVarBadge.textContent = v.adData.variation_label || `버전 ${idx + 1}`;
+    renderScCopyEditPanel(v.adData);
+    // sc 편집 힌트 표시
+    const scHint = document.getElementById('scEditHint');
+    if (scHint) scHint.style.display = 'inline';
   }
 
   // ── 카피 수정 패널 ──
@@ -1167,19 +1741,25 @@
   // ── 검증 패널 ──
   function renderValidationPanel(adData) {
     const panel = document.getElementById('validationPanel');
+    const scPanel = document.getElementById('scValidationPanel');
     const validation = adData.validation;
-    if (!validation) { panel.style.display = 'none'; return; }
+    if (!validation) {
+      if (panel) panel.style.display = 'none';
+      if (scPanel) scPanel.style.display = 'none';
+      return;
+    }
     const score = typeof adData.validation_score === 'number'
       ? adData.validation_score
       : Object.values(validation).filter(Boolean).length;
     const fails = adData.validation_fails || [];
-    const total = 11;
-    const scoreColor = score >= 10 ? '#16a34a' : score >= 8 ? '#ca8a04' : '#dc2626';
-    const scoreLabel = score >= 10 ? '우수' : score >= 8 ? '보통' : '개선 필요';
+    const total = 15;
+    const scoreColor = score >= 13 ? '#16a34a' : score >= 11 ? '#ca8a04' : '#dc2626';
+    const scoreLabel = score >= 13 ? '우수' : score >= 11 ? '보통' : '개선 필요';
     const criteriaLabels = {
       C1:'숫자 혜택 명시', C2:'긴박감 트리거', C3:'짧은 헤드라인',
       C4:'CTA 명시', C5:'의문문·반문', C6:'타겟 공감 먼저',
       V1:'헤드라인 강조', V2:'핵심 숫자 강조', V3:'가독성 확보',
+      V4:'메인카피 2줄·20자', V5:'서브카피 20자', V6:'시선 흐름 순서', V7:'헤드라인 크기 계층',
       S1:'구체적 수치', P1:'3초 후킹',
     };
     const items = Object.entries(criteriaLabels).map(([id, label]) => {
@@ -1200,6 +1780,8 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">${items}</div>
       ${fails.length ? `<div style="margin-top:8px;padding:7px 10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:11px;color:#92400e"><strong>개선 필요:</strong> ${fails.join(' / ')}</div>` : ''}`;
+    // scValidationPanel 동기화
+    if (scPanel) { scPanel.style.display = 'block'; scPanel.innerHTML = panel.innerHTML; }
   }
 
   // ── 컬러 피커 ──
@@ -1252,6 +1834,11 @@
     document.getElementById('colorModeManual').className = 'color-mode-btn ' + (auto ? 'inactive' : 'active');
     document.getElementById('autoColorDesc').style.display = auto ? 'block' : 'none';
     document.getElementById('manualColorSection').style.display = auto ? 'none' : 'block';
+    // sc-wrap 동기화
+    const scAutoDesc = document.getElementById('scAutoColorDesc');
+    if (scAutoDesc) scAutoDesc.style.display = auto ? 'block' : 'none';
+    const scManual = document.getElementById('scManualColor');
+    if (scManual) scManual.style.display = auto ? 'none' : 'block';
   }
 
   function applyExtractedColor(hex) {
@@ -1577,80 +2164,551 @@
     }
   }
 
-  // ── 인라인 편집 모드 ──
-  function toggleInlineEdit() {
+  // ── 클릭 즉시 편집 (버튼 없이 바로 클릭) ──
+  function activateClickEdit() {
     const iframe = document.getElementById('previewFrame');
-    const btn = document.getElementById('btnInlineEdit');
-    const notice = document.getElementById('editModeNotice');
     const doc = iframe.contentDocument;
     if (!doc) return;
 
-    const isEditing = btn.classList.contains('editing');
+    // iframe 항상 인터랙티브
+    iframe.style.pointerEvents = 'auto';
 
-    if (!isEditing) {
-      // 편집 모드 ON
-      iframe.style.pointerEvents = 'auto';
-      btn.classList.add('editing');
-      btn.textContent = '✅ 편집 완료';
-      notice.style.display = 'block';
-      doc.querySelectorAll('[data-field]').forEach(el => {
+    doc.querySelectorAll('[data-field]').forEach(el => {
+      el.style.cursor = 'text';
+      el.style.transition = 'outline 0.1s';
+
+      // 호버 시 편집 힌트 outline
+      el.addEventListener('mouseenter', () => {
+        if (el.contentEditable !== 'true') {
+          el.style.outline = '2px dashed rgba(37,99,235,0.5)';
+          el.style.borderRadius = '3px';
+        }
+      });
+      el.addEventListener('mouseleave', () => {
+        if (el.contentEditable !== 'true') {
+          el.style.outline = '';
+        }
+      });
+
+      // 클릭 시 편집 시작
+      el.addEventListener('click', () => {
+        // 다른 편집 중인 요소 저장
+        doc.querySelectorAll('[contenteditable="true"]').forEach(other => {
+          if (other !== el) finishEditing(other, doc);
+        });
         el.contentEditable = 'true';
-        el.style.outline = '2px dashed rgba(37,99,235,0.7)';
+        el.style.outline = '2px solid rgba(37,99,235,0.8)';
         el.style.borderRadius = '3px';
-        el.style.cursor = 'text';
         el.style.minWidth = '1em';
-        el.addEventListener('input', onIframeFieldEdit);
+        el.focus();
+        // 커서를 텍스트 끝으로
+        const range = doc.createRange();
+        const sel = doc.getSelection();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
       });
-    } else {
-      // 편집 모드 OFF
-      iframe.style.pointerEvents = 'none';
-      btn.classList.remove('editing');
-      btn.textContent = '✏️ 직접 편집';
-      notice.style.display = 'none';
-      doc.querySelectorAll('[data-field]').forEach(el => {
-        el.contentEditable = 'false';
-        el.style.outline = '';
-        el.style.borderRadius = '';
-        el.style.cursor = '';
-        el.removeEventListener('input', onIframeFieldEdit);
+
+      // blur 시 편집 저장
+      el.addEventListener('blur', () => {
+        finishEditing(el, doc);
       });
-      // iframe HTML 저장
-      const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-      if (variations[activeVariation]) {
-        variations[activeVariation].html = html;
-        document.getElementById('codeBox').textContent = html;
-      }
-    }
+
+      // Enter 키로 편집 완료
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          el.blur();
+        }
+      });
+
+      // 실시간 동기화
+      el.addEventListener('input', () => {
+        const key = el.dataset.field;
+        const val = el.textContent;
+        if (variations[activeVariation]) variations[activeVariation].adData[key] = val;
+        // 양쪽 textarea 동기화
+        ['copyEditFields', 'scCopyEditFields'].forEach(fid => {
+          const ta = document.querySelector(`#${fid} [data-key="${key}"]`);
+          if (ta) ta.value = val;
+        });
+        // 반대쪽 iframe도 동기화
+        const otherFrameId = 'scPreviewFrame';
+        const otherDoc = document.getElementById(otherFrameId)?.contentDocument;
+        if (otherDoc) {
+          const otherEl = otherDoc.querySelector(`[data-field="${key}"]`);
+          if (otherEl && otherEl.contentEditable !== 'true') otherEl.textContent = val;
+        }
+      });
+    });
   }
 
-  function onIframeFieldEdit(e) {
-    const key = e.target.dataset.field;
-    const val = e.target.textContent;
+  // ── sc 클릭 즉시 편집 ──
+  function activateScClickEdit() {
+    const iframe = document.getElementById('scPreviewFrame');
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    iframe.style.pointerEvents = 'auto';
+    doc.querySelectorAll('[data-field]').forEach(el => {
+      el.style.cursor = 'text';
+      el.style.transition = 'outline 0.1s';
+      el.addEventListener('mouseenter', () => {
+        if (el.contentEditable !== 'true') { el.style.outline = '2px dashed rgba(37,99,235,0.5)'; el.style.borderRadius = '3px'; }
+      });
+      el.addEventListener('mouseleave', () => {
+        if (el.contentEditable !== 'true') el.style.outline = '';
+      });
+      el.addEventListener('click', () => {
+        doc.querySelectorAll('[contenteditable="true"]').forEach(other => {
+          if (other !== el) finishEditingSc(other, doc);
+        });
+        el.contentEditable = 'true';
+        el.style.outline = '2px solid rgba(37,99,235,0.8)';
+        el.style.borderRadius = '3px';
+        el.style.minWidth = '1em';
+        el.focus();
+        const range = doc.createRange();
+        const sel = doc.getSelection();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+      el.addEventListener('blur', () => { finishEditingSc(el, doc); });
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+      });
+      el.addEventListener('input', () => {
+        const key = el.dataset.field;
+        const val = el.textContent;
+        if (variations[activeVariation]) variations[activeVariation].adData[key] = val;
+        ['copyEditFields', 'scCopyEditFields'].forEach(fid => {
+          const ta = document.querySelector(`#${fid} [data-key="${key}"]`);
+          if (ta) ta.value = val;
+        });
+        // 반대쪽 iframe 동기화
+        const otherDoc = document.getElementById('previewFrame')?.contentDocument;
+        if (otherDoc) {
+          const otherEl = otherDoc.querySelector(`[data-field="${key}"]`);
+          if (otherEl && otherEl.contentEditable !== 'true') otherEl.textContent = val;
+        }
+      });
+    });
+  }
+
+  function finishEditingSc(el, doc) {
+    el.contentEditable = 'false';
+    el.style.outline = '';
+    el.style.borderRadius = '';
+    const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
     if (variations[activeVariation]) {
-      variations[activeVariation].adData[key] = val;
+      variations[activeVariation].html = html;
+      const scCodeBox = document.getElementById('scCodeBox');
+      if (scCodeBox) scCodeBox.textContent = html;
     }
-    // 사이드 패널 textarea 동기화
-    const textarea = document.querySelector(`#copyEditFields [data-key="${key}"]`);
-    if (textarea) textarea.value = val;
   }
 
-  // ── 실시간 미리보기 업데이트 (side panel → iframe, API 호출 없음) ──
+  // ── sc 카피 수정 패널 ──
+  function renderScCopyEditPanel(adData) {
+    const panel = document.getElementById('scCopyEditPanel');
+    const body = document.getElementById('scCopyEditBody');
+    const arrow = document.getElementById('scCopyEditArrow');
+    const fieldsEl = document.getElementById('scCopyEditFields');
+    if (!panel || !body || !fieldsEl) return;
+    panel.style.display = 'block';
+    body.style.display = 'block';
+    if (arrow) arrow.classList.add('open');
+
+    const layout = adData.layout_type || '';
+    let fields = [];
+    if (layout === '수치카드형') {
+      fields = [
+        { key: 'hook', label: '훅 (최대 25자)', rows: 1 },
+        { key: 'headline_line1', label: '헤드라인 1줄 (최대 12자)', rows: 1 },
+        { key: 'headline_line2', label: '헤드라인 2줄 (최대 12자)', rows: 1 },
+        { key: 'visual_stat1_value', label: '수치 1 값', rows: 1 },
+        { key: 'visual_stat1_label', label: '수치 1 설명', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
+      ];
+    } else {
+      fields = [
+        { key: 'hook', label: '서브카피/훅 (최대 28자)', rows: 1 },
+        { key: 'headline_line1', label: '메인카피 1줄 (최대 14자)', rows: 1 },
+        { key: 'headline_line2', label: '메인카피 2줄 (최대 14자)', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
+        { key: 'visual_stat1_value', label: '핵심 수치 값', rows: 1 },
+        { key: 'visual_stat1_label', label: '수치 설명', rows: 1 },
+      ];
+    }
+
+    fieldsEl.innerHTML = fields.map(f => {
+      const val = adData[f.key] != null ? adData[f.key] : '';
+      return `<div class="copy-field-row">
+        <label class="copy-field-label">${f.label}</label>
+        <textarea class="copy-field-input" rows="${f.rows}" data-key="${f.key}" oninput="scLiveUpdatePreview(this)">${val}</textarea>
+      </div>`;
+    }).join('');
+
+    // CTA 색상 섹션
+    const curCta = (variations[activeVariation] && variations[activeVariation].ctaColor) || selectedCtaColor;
+    const swatchesHtml = CTA_PRESETS.map(p => {
+      const isActive = p.value === curCta;
+      return `<div class="cta-swatch${isActive ? ' active' : ''}" data-cta="${p.value}" style="background:${p.value}" title="${p.label}" onclick="selectCtaColor(this)"></div>`;
+    }).join('');
+    const existing = document.getElementById('scDesignEditSection');
+    if (existing) existing.remove();
+    body.insertAdjacentHTML('beforeend', `<div class="design-edit-section" id="scDesignEditSection">
+      <div class="design-edit-title">🎨 CTA 바 색상</div>
+      <div class="cta-color-presets">${swatchesHtml}</div>
+    </div>`);
+  }
+
+  function scToggleCopyEdit() {
+    const body = document.getElementById('scCopyEditBody');
+    const arrow = document.getElementById('scCopyEditArrow');
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.classList.toggle('open', !isOpen);
+  }
+
+  async function scApplyEditChanges() {
+    const v = variations[activeVariation];
+    if (!v) return;
+    const btn = document.getElementById('scBtnUpdatePreview');
+    const status = document.getElementById('scCopyEditStatus');
+    btn.disabled = true;
+    status.textContent = '⏳ 업데이트 중...';
+
+    const updatedAdData = { ...v.adData };
+    document.querySelectorAll('#scCopyEditFields [data-key]').forEach(el => {
+      const key = el.dataset.key;
+      const val = el.value.trim();
+      updatedAdData[key] = val === '' ? null : val;
+    });
+
+    try {
+      const res = await fetch('/api/regenerate-with-bg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adData: updatedAdData,
+          bgColor: isAutoColor ? '' : selectedColor,
+          bgImageBase64: leftAiBgImg || selectedBgImage || null,
+          cssBackground: leftAiBgCss || null,
+          ctaColor: selectedCtaColor,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      variations[activeVariation] = { adData: updatedAdData, html: data.html, ctaColor: selectedCtaColor };
+      document.getElementById('scPreviewFrame').srcdoc = data.html;
+      const scJsonBox = document.getElementById('scJsonBox');
+      if (scJsonBox) scJsonBox.textContent = JSON.stringify(updatedAdData, null, 2);
+      const scCodeBox = document.getElementById('scCodeBox');
+      if (scCodeBox) scCodeBox.textContent = data.html;
+      status.textContent = '✅ 완료';
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function finishEditing(el, doc) {
+    el.contentEditable = 'false';
+    el.style.outline = '';
+    el.style.borderRadius = '';
+    // HTML 저장
+    const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    if (variations[activeVariation]) {
+      variations[activeVariation].html = html;
+      document.getElementById('codeBox').textContent = html;
+    }
+  }
+
+  // ══ 레이아웃 선택 ══════════════════════════════════════
+
+  // 선택된 레이아웃 타입 (기본: 기본형만)
+  let selectedLayouts = new Set(['photo-overlay']);
+
+  function toggleLayout(layoutId, cardEl) {
+    if (selectedLayouts.has(layoutId)) {
+      if (selectedLayouts.size <= 1) return; // 최소 1개 보장
+      selectedLayouts.delete(layoutId);
+      cardEl.classList.remove('selected');
+    } else {
+      selectedLayouts.add(layoutId);
+      cardEl.classList.add('selected');
+    }
+    updateLayoutCount();
+  }
+
+  function updateLayoutCount() {
+    const total = selectedLayouts.size; // 레이아웃 1개당 결과 1개
+    const names = [];
+    if (selectedLayouts.has('photo-overlay')) names.push('기본형');
+    if (selectedLayouts.has('twitter')) names.push('커뮤니티형');
+    const scVarSelCount = document.getElementById('scVarSelCount');
+    if (scVarSelCount) scVarSelCount.textContent = `${names.join(' + ')} · ${total}개 생성`;
+    const scVarCount = document.getElementById('scVarCount');
+    if (scVarCount) scVarCount.textContent = `${total}개`;
+    const btn = document.getElementById('generateBtn');
+    if (btn) btn.textContent = `✨ 광고소재 생성하기`;
+    const varSelectionCount = document.getElementById('varSelectionCount');
+    if (varSelectionCount) varSelectionCount.textContent = `${total}개 선택됨`;
+  }
+
+  function getSelectedLayouts() {
+    return Array.from(selectedLayouts);
+  }
+
+  // ── 카탈로그 모달 (레이아웃 카드 전용으로 단순화) ──
+  function openCatalog() {
+    loadCustomCatalog();
+    document.getElementById('catalogOverlay').classList.add('open');
+  }
+
+  function closeCatalog() {
+    document.getElementById('catalogOverlay').classList.remove('open');
+  }
+
+  function onCatalogOverlayClick(e) {
+    if (e.target === document.getElementById('catalogOverlay')) closeCatalog();
+  }
+
+  function toggleCatalogCard(card) {
+    // 카탈로그 모달의 레이아웃 카드 클릭 → 메인 UI에 반영
+    const layoutId = card.dataset.layout;
+    if (!layoutId) return;
+    const mainCard = document.querySelector(`.layout-select-card[data-layout="${layoutId}"]`);
+    if (mainCard) toggleLayout(layoutId, mainCard);
+    card.classList.toggle('selected', selectedLayouts.has(layoutId));
+  }
+
+  function updateCatalogCount() {
+    const count = selectedLayouts.size;
+    const el = document.getElementById('catalogSelectedCount');
+    if (el) el.textContent = count;
+  }
+
+  function catalogSelectAll() {
+    ['photo-overlay','twitter'].forEach(id => {
+      selectedLayouts.add(id);
+      const card = document.querySelector(`.layout-select-card[data-layout="${id}"]`);
+      if (card) card.classList.add('selected');
+    });
+    updateLayoutCount();
+  }
+
+  function catalogClearAll() {
+    selectedLayouts.clear();
+    selectedLayouts.add('photo-overlay');
+    document.querySelectorAll('.layout-select-card').forEach(c => {
+      c.classList.toggle('selected', c.dataset.layout === 'photo-overlay');
+    });
+    updateLayoutCount();
+  }
+
+  function confirmCatalogSelection() {
+    closeCatalog();
+  }
+
+  // 초기 카운트 표시
+  updateLayoutCount();
+
+  // ── 실시간 미리보기 업데이트 (side panel → iframe) ──
   function liveUpdatePreview(el) {
     const key = el.dataset.key;
     const val = el.value;
+    if (variations[activeVariation]) variations[activeVariation].adData[key] = val;
+    ['previewFrame', 'scPreviewFrame'].forEach(id => {
+      const iframe = document.getElementById(id);
+      if (!iframe) return;
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      const target = doc.querySelector(`[data-field="${key}"]`);
+      if (target && target.contentEditable !== 'true') target.textContent = val;
+    });
+  }
+
+  // sc 버전 (scCopyEditFields textarea에서 호출)
+  function scLiveUpdatePreview(el) { liveUpdatePreview(el); }
+
+  // ── 브랜드 태그 ON/OFF 토글 ──
+  let brandHidden = false;
+  function toggleBrandBlock() {
+    brandHidden = !brandHidden;
+
+    // 보이는 iframe(scPreviewFrame) + 숨겨진 iframe(previewFrame) 모두 처리
+    ['scPreviewFrame', 'previewFrame'].forEach(frameId => {
+      const iframe = document.getElementById(frameId);
+      if (!iframe) return;
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      doc.querySelectorAll('[data-brand-block]').forEach(el => {
+        el.style.display = brandHidden ? 'none' : '';
+      });
+      // HTML 저장 (scPreviewFrame 기준)
+      if (frameId === 'scPreviewFrame') {
+        const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+        if (variations[activeVariation]) {
+          variations[activeVariation].html = html;
+          const scCodeBox = document.getElementById('scCodeBox');
+          if (scCodeBox) scCodeBox.textContent = html;
+        }
+      }
+    });
+
+    // 버튼 텍스트 업데이트 (sc + 기존 둘 다)
+    const label = brandHidden ? '🏷 브랜드 보이기' : '🏷 브랜드 숨기기';
+    ['scBtnBrandToggle', 'btnBrandToggle'].forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.textContent = label;
+      btn.classList.toggle('hidden-brand', brandHidden);
+    });
+  }
+
+  // ── 드래그 스티커 이미지 추가 ──
+  function addStickerImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      injectSticker(e.target.result);
+    };
+    reader.readAsDataURL(file);
+    // 파일 input 초기화 (같은 파일 재선택 가능)
+    event.target.value = '';
+  }
+
+  function injectSticker(src) {
     const iframe = document.getElementById('previewFrame');
     const doc = iframe.contentDocument;
     if (!doc) return;
-    const target = doc.querySelector(`[data-field="${key}"]`);
-    if (target && !btn_editing()) target.textContent = val;
-    if (variations[activeVariation]) {
-      variations[activeVariation].adData[key] = val;
-    }
+
+    const stickerEl = doc.createElement('div');
+    const stickerId = 'sticker-' + Date.now();
+    stickerEl.id = stickerId;
+
+    // 1080×1080 기준 중앙에 초기 배치 (200×200px)
+    const initLeft = 440, initTop = 440, initW = 200, initH = 200;
+
+    stickerEl.style.cssText = `
+      position: absolute;
+      left: ${initLeft}px; top: ${initTop}px;
+      width: ${initW}px; height: ${initH}px;
+      z-index: 999;
+      cursor: move;
+      box-sizing: border-box;
+      user-select: none;
+    `;
+    stickerEl.innerHTML = `
+      <img src="${src}" style="width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;" draggable="false" />
+      <button data-sticker-delete="${stickerId}" style="
+        position:absolute;top:-10px;right:-10px;
+        width:22px;height:22px;background:#ef4444;color:#fff;
+        border:none;border-radius:50%;font-size:13px;font-weight:700;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;
+        line-height:1;z-index:1000;padding:0;
+      ">×</button>
+      <div data-sticker-resize="${stickerId}" style="
+        position:absolute;bottom:-6px;right:-6px;
+        width:14px;height:14px;background:#3b82f6;
+        border-radius:2px;cursor:se-resize;z-index:1000;
+      "></div>
+    `;
+
+    doc.body.appendChild(stickerEl);
+    bindStickerEvents(doc, stickerEl, stickerId);
+    // HTML 저장
+    const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    if (variations[activeVariation]) variations[activeVariation].html = html;
   }
 
-  function btn_editing() {
-    const btn = document.getElementById('btnInlineEdit');
-    return btn && btn.classList.contains('editing');
+  function bindStickerEvents(doc, el, id) {
+    let dragging = false, resizing = false;
+    let startX, startY, startLeft, startTop, startW, startH;
+
+    // 삭제 버튼
+    const deleteBtn = el.querySelector(`[data-sticker-delete="${id}"]`);
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.remove();
+        const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+        if (variations[activeVariation]) variations[activeVariation].html = html;
+      });
+    }
+
+    // 리사이즈 핸들
+    const resizeHandle = el.querySelector(`[data-sticker-resize="${id}"]`);
+    if (resizeHandle) {
+      resizeHandle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizing = true;
+        startX = e.clientX; startY = e.clientY;
+        // iframe 내 좌표로 변환 (스케일 고려)
+        const iframe = document.getElementById('previewFrame');
+        const scaleX = 1080 / iframe.offsetWidth;
+        const scaleY = 1080 / iframe.offsetHeight;
+        startW = el.offsetWidth; startH = el.offsetHeight;
+        const onMove = (e2) => {
+          if (!resizing) return;
+          const dx = (e2.clientX - startX) * scaleX;
+          const dy = (e2.clientY - startY) * scaleY;
+          const newW = Math.max(40, startW + dx);
+          const newH = Math.max(40, startH + dy);
+          el.style.width = newW + 'px';
+          el.style.height = newH + 'px';
+        };
+        const onUp = () => {
+          resizing = false;
+          doc.removeEventListener('mousemove', onMove);
+          doc.removeEventListener('mouseup', onUp);
+          const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+          if (variations[activeVariation]) variations[activeVariation].html = html;
+        };
+        doc.addEventListener('mousemove', onMove);
+        doc.addEventListener('mouseup', onUp);
+      });
+    }
+
+    // 드래그 (이미지 본체)
+    el.addEventListener('mousedown', (e) => {
+      if (e.target === deleteBtn || e.target === resizeHandle) return;
+      e.preventDefault();
+      dragging = true;
+      const iframe = document.getElementById('previewFrame');
+      const scaleX = 1080 / iframe.offsetWidth;
+      const scaleY = 1080 / iframe.offsetHeight;
+      startX = e.clientX; startY = e.clientY;
+      startLeft = parseInt(el.style.left) || 0;
+      startTop  = parseInt(el.style.top)  || 0;
+      const onMove = (e2) => {
+        if (!dragging) return;
+        const dx = (e2.clientX - startX) * scaleX;
+        const dy = (e2.clientY - startY) * scaleY;
+        el.style.left = (startLeft + dx) + 'px';
+        el.style.top  = (startTop  + dy) + 'px';
+      };
+      const onUp = () => {
+        dragging = false;
+        doc.removeEventListener('mousemove', onMove);
+        doc.removeEventListener('mouseup', onUp);
+        const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+        if (variations[activeVariation]) variations[activeVariation].html = html;
+      };
+      doc.addEventListener('mousemove', onMove);
+      doc.addEventListener('mouseup', onUp);
+    });
   }
 
   async function startGeneration() {
@@ -1664,6 +2722,13 @@
     document.getElementById('resultActions').style.display = 'none';
     document.getElementById('varTabs').style.display = 'none';
     document.getElementById('loadingWrap').style.display = 'block';
+    // sc-wrap 로딩 표시
+    const scLoadingWrap = document.getElementById('scLoadingWrap');
+    if (scLoadingWrap) scLoadingWrap.style.display = 'block';
+    const scResultBody = document.getElementById('scResultBody');
+    if (scResultBody) scResultBody.style.display = 'none';
+    const scErrorWrap = document.getElementById('scErrorWrap');
+    if (scErrorWrap) scErrorWrap.textContent = '';
     resetSteps();
     setProgress(0);
 
@@ -1698,6 +2763,7 @@
           custom_bg_image: leftAiBgImg || selectedBgImage || null,
           custom_bg_css: leftAiBgCss || null,
           font: document.getElementById('fontSelect').value || 'Pretendard',
+          layout_types: getSelectedLayouts(),
         }),
       });
 
@@ -1745,9 +2811,13 @@
 
     } catch (err) {
       document.getElementById('loadingWrap').style.display = 'none';
+      if (scLoadingWrap) scLoadingWrap.style.display = 'none';
       const errEl = document.getElementById('errorWrap');
       errEl.textContent = '❌ ' + err.message;
       errEl.style.display = 'block';
+      if (scErrorWrap) {
+        scErrorWrap.innerHTML = `<div class="error-wrap" style="display:block;margin:0">❌ ${err.message}</div>`;
+      }
     } finally {
       btn.disabled = false;
     }
@@ -1755,11 +2825,10 @@
 
   function showVariations() {
     document.getElementById('loadingWrap').style.display = 'none';
-    const tabsEl = document.getElementById('varTabs');
-    tabsEl.innerHTML = variations.map((v, i) => {
+    const tabsHtml = variations.map((v, i) => {
       const score = v.adData.validation_score;
-      const total = 11;
-      const scoreColor = score == null ? '' : score >= 10 ? '#16a34a' : score >= 8 ? '#ca8a04' : '#dc2626';
+      const total = 15;
+      const scoreColor = score == null ? '' : score >= 13 ? '#16a34a' : score >= 11 ? '#ca8a04' : '#dc2626';
       const scoreBadge = score != null
         ? `<span style="display:inline-block;background:${scoreColor};color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:5px;vertical-align:middle">${score}/${total}</span>`
         : '';
@@ -1770,9 +2839,20 @@
         <span class="tab-label">${parts[1] || ''}</span>
       </button>`;
     }).join('');
+    const tabsEl = document.getElementById('varTabs');
+    tabsEl.innerHTML = tabsHtml;
     tabsEl.style.display = 'flex';
     document.getElementById('resultBody').style.display = 'block';
     document.getElementById('resultActions').style.display = 'flex';
+    // sc-wrap 결과 카드 표시
+    const scLoadingWrap = document.getElementById('scLoadingWrap');
+    if (scLoadingWrap) scLoadingWrap.style.display = 'none';
+    const scResultBody = document.getElementById('scResultBody');
+    if (scResultBody) scResultBody.style.display = 'block';
+    const scVarTabs = document.getElementById('scVarTabs');
+    if (scVarTabs) { scVarTabs.innerHTML = tabsHtml; scVarTabs.style.display = 'flex'; }
+    const scResultActions = document.getElementById('scResultActions');
+    if (scResultActions) scResultActions.style.display = 'flex';
     switchVariation(0);
   }
 
@@ -2121,6 +3201,131 @@
       if (file && file.type.startsWith('image/')) handleBgUpload(file);
     });
   });
+
+  // ── 섹션 토글 (sc-wrap) ──
+  function toggleSection(id) {
+    const el = document.getElementById(id);
+    const arrow = document.getElementById(id + 'Arrow');
+    if (!el) return;
+    const isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+  }
+
+  // ── sc-wrap 이미지 탭 동기화 ──
+  (function() {
+    const origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
+    // switchTab은 이미 정의되어 있으므로 sc 탭 UI를 switchTab 호출 후 동기화
+    const scUpload = document.getElementById('scPanelUpload');
+    const scUrl = document.getElementById('scPanelUrl');
+    if (scUpload && scUrl) {
+      document.getElementById('scTabUpload').addEventListener('click', function() {
+        scUpload.style.display = 'block';
+        scUrl.style.display = 'none';
+      });
+      document.getElementById('scTabUrl').addEventListener('click', function() {
+        scUpload.style.display = 'none';
+        scUrl.style.display = 'block';
+      });
+    }
+  })();
+
+  // ── sc-wrap: 생성 후 결과 동기화 ──
+  // imgPreviews에 이미지가 추가될 때 scImgPreviews도 동기화
+  (function() {
+    const orig = document.getElementById('imgPreviews');
+    const sc = document.getElementById('scImgPreviews');
+    if (orig && sc) {
+      const obs = new MutationObserver(() => {
+        sc.innerHTML = orig.innerHTML;
+      });
+      obs.observe(orig, { childList: true, subtree: true });
+    }
+  })();
+
+  // ── 커스텀 카탈로그 ──
+  async function loadCustomCatalog() {
+    try {
+      const res = await fetch('/api/catalog-custom');
+      const items = await res.json();
+      renderCustomCatalogItems(items);
+    } catch(e) { /* 조용히 실패 */ }
+  }
+
+  function renderCustomCatalogItems(items) {
+    const group = document.getElementById('customCatalogGroup');
+    if (!group) return;
+    if (!items.length) { group.style.display = 'none'; return; }
+    // 기존 커스텀 카드 제거
+    document.querySelectorAll('.catalog-card[data-custom]').forEach(c => c.remove());
+    const body = document.getElementById('catalogBody');
+    const firstLabel = body.querySelector('.catalog-group-label:not(#customCatalogGroup .catalog-group-label)');
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'catalog-card';
+      card.dataset.var = item.id;
+      card.dataset.custom = '1';
+      card.dataset.typeHint = item.type_hint || '';
+      card.style.position = 'relative';
+      card.innerHTML = `
+        <div class="catalog-check">✓</div>
+        <div class="catalog-icon">${item.icon || '📌'}</div>
+        <div class="catalog-card-id" style="color:#f59e0b">커스텀</div>
+        <div class="catalog-card-name">${item.label}</div>
+        <div class="catalog-card-desc">${item.description || ''}</div>
+        <div class="catalog-card-type">${item.type_hint || ''}</div>
+        <button onclick="deleteCustomCatalog('${item.id}',event)" style="position:absolute;bottom:8px;right:8px;background:none;border:none;font-size:12px;color:var(--tx-muted);cursor:pointer">🗑</button>
+      `;
+      card.addEventListener('click', (e) => { if(e.target.tagName==='BUTTON') return; toggleCatalogCard(card); });
+      if (firstLabel) {
+        body.insertBefore(card, firstLabel);
+      } else {
+        body.appendChild(card);
+      }
+    });
+    group.style.display = 'contents';
+    // group label도 첫 번째 기본 라벨 앞에 삽입
+    if (firstLabel && group.parentNode !== body) {
+      body.insertBefore(group, firstLabel);
+    }
+    group.style.display = 'block';
+  }
+
+  function openCustomCatalogForm() {
+    const form = document.getElementById('customCatalogForm');
+    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function saveCustomCatalogItem() {
+    const label = document.getElementById('ccLabel').value.trim();
+    if (!label) { alert('이름을 입력해주세요'); return; }
+    const item = {
+      label,
+      icon: document.getElementById('ccIcon').value.trim() || '📌',
+      description: document.getElementById('ccDesc').value.trim(),
+      type_hint: document.getElementById('ccTypeHint').value.trim(),
+    };
+    try {
+      const res = await fetch('/api/catalog-custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+      if (!res.ok) throw new Error('저장 실패');
+      document.getElementById('ccLabel').value = '';
+      document.getElementById('ccDesc').value = '';
+      document.getElementById('ccTypeHint').value = '';
+      document.getElementById('customCatalogForm').style.display = 'none';
+      loadCustomCatalog();
+    } catch(e) { alert('저장 오류: ' + e.message); }
+  }
+
+  async function deleteCustomCatalog(id, e) {
+    e.stopPropagation();
+    if (!confirm('삭제하시겠어요?')) return;
+    await fetch(`/api/catalog-custom/${id}`, { method: 'DELETE' });
+    loadCustomCatalog();
+  }
 </script>
 </body>
 </html>
