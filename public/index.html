@@ -971,7 +971,7 @@
       <!-- ✨ AI 배경 이미지 생성 패널 -->
       <div id="aiImagePanel" class="ai-image-panel" style="display:none">
         <div class="ai-image-panel-head">
-          <div class="ai-image-panel-title">✨ AI 배경 이미지 생성 — Claude → gpt-image-1</div>
+          <div class="ai-image-panel-title">✨ AI 배경 이미지 생성 — GPT 2.0 (gpt-image-1)</div>
           <button class="btn-regen" onclick="toggleAiImagePanel()" style="font-size:16px;padding:1px 7px;line-height:1">×</button>
         </div>
         <div class="ai-image-panel-body">
@@ -1207,7 +1207,7 @@
       <!-- AI 배경 이미지 -->
       <div id="scAiBgFormGroup" style="margin-bottom:14px">
         <div class="ai-bg-row" onclick="toggleLeftAiBg()">
-          <div class="ai-bg-row-label">🖼 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
+          <div class="ai-bg-row-label">🖼 배경 이미지 <span class="ai-bg-row-badge">GPT 2.0</span></div>
           <span class="ai-bg-row-arrow" id="scAiBgArrow">▶</span>
         </div>
         <div id="scAiBgBody" style="display:none">
@@ -1234,7 +1234,7 @@
                 <div class="bg-upload-sub">JPG, PNG, WEBP · 클릭 또는 드래그</div>
               </label>
             </div>
-            <button class="btn-gen-left-bg" id="btnGenLeftBg" onclick="generateLeftAiBg()">🎨 AI 배경 생성하기</button>
+            <button class="btn-gen-left-bg" id="btnGenLeftBg" onclick="generateLeftAiBg()">🎨 GPT 2.0으로 배경 생성하기</button>
             <div class="ai-bg-status" id="aiBgStatus"></div>
             <div class="ai-bg-preview-wrap" id="aiBgPreviewWrap" style="display:none">
               <div class="ai-bg-preview-div" id="aiBgPreviewDiv"></div>
@@ -2116,7 +2116,7 @@
     selectedBgImage = null;
     document.getElementById('aiBgPreviewWrap').style.display = 'none';
     document.getElementById('aiBgStatus').textContent = '';
-    document.getElementById('btnGenLeftBg').textContent = '🎨 AI 배경 생성하기';
+    document.getElementById('btnGenLeftBg').textContent = '🎨 GPT 2.0으로 배경 생성하기';
     // 파일 인풋 초기화 (같은 파일 재업로드 가능하게)
     const input = document.getElementById('bgUploadInput');
     if (input) input.value = '';
