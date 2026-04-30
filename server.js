@@ -1843,11 +1843,16 @@ app.post('/api/regenerate-with-bg', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log('='.repeat(50));
-  console.log('  AI 광고소재 자동화');
-  console.log(`  http://localhost:${PORT}`);
-  console.log(`  Anthropic: ${process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ ANTHROPIC_API_KEY 필요'}`);
-  console.log(`  Gemini:    ${process.env.GEMINI_API_KEY ? '✅ 설정됨' : '⚠️  GEMINI_API_KEY 없음 (이미지 생성 비활성)'}`);
-  console.log('='.repeat(50));
-});
+// 로컬 개발 환경에서만 listen (Vercel 서버리스는 export default 사용)
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log('='.repeat(50));
+    console.log('  AI 광고소재 자동화');
+    console.log(`  http://localhost:${PORT}`);
+    console.log(`  Anthropic: ${process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ ANTHROPIC_API_KEY 필요'}`);
+    console.log(`  Gemini:    ${process.env.GEMINI_API_KEY ? '✅ 설정됨' : '⚠️  GEMINI_API_KEY 없음 (이미지 생성 비활성)'}`);
+    console.log('='.repeat(50));
+  });
+}
+
+export default app;
