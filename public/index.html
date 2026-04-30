@@ -843,41 +843,7 @@
           <div class="ai-bg-row-label">🖼 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
           <span class="ai-bg-row-arrow" id="aiBgArrow">▶</span>
         </div>
-        <div id="aiBgBody" style="display:none">
-          <div class="ai-bg-body">
-            <div style="display:flex;gap:6px;margin-bottom:10px">
-              <button class="ai-bg-mode-btn active" id="btnModeAuto" onclick="setAiBgMode('auto')">🤖 자동 생성</button>
-              <button class="ai-bg-mode-btn" id="btnModeManual" onclick="setAiBgMode('manual')">✍️ 직접 입력</button>
-              <button class="ai-bg-mode-btn" id="btnModeUpload" onclick="setAiBgMode('upload')">📁 직접 업로드</button>
-            </div>
-            <div id="aiBgHintWrap" style="display:none;margin-bottom:8px">
-              <textarea id="aiBgHintInput" class="copy-field-input" rows="2" placeholder="예: 밤하늘, 별빛, 감성적 / 도심 야경, 네온 / 자연, 숲, 새벽빛" style="font-size:12px"></textarea>
-              <button class="btn-develop-prompt" id="btnDevelopPrompt" onclick="developPrompt()" style="margin-top:6px">✨ 프롬프트 발전시키기</button>
-              <div id="aiBgDevelopedWrap" style="display:none;margin-top:8px">
-                <div class="copy-field-label" style="margin-bottom:4px">Claude가 발전시킨 프롬프트 <span style="font-weight:400;color:var(--tx-muted)">(직접 수정 가능)</span></div>
-                <textarea id="aiBgDevelopedPrompt" class="copy-field-input" rows="4" style="font-size:11px;line-height:1.5"></textarea>
-              </div>
-            </div>
-            <!-- 📁 직접 업로드 영역 -->
-            <div id="aiBgUploadWrap" style="display:none;margin-bottom:8px">
-              <label class="bg-upload-area" id="bgUploadArea">
-                <input type="file" id="bgUploadInput" accept="image/*" style="display:none" onchange="handleBgUpload(this.files[0])" />
-                <div class="bg-upload-icon">📁</div>
-                <div class="bg-upload-text">강사 사진 · 상품 이미지 등 업로드</div>
-                <div class="bg-upload-sub">JPG, PNG, WEBP · 클릭 또는 드래그</div>
-              </label>
-            </div>
-            <button class="btn-gen-left-bg" id="btnGenLeftBg" onclick="generateLeftAiBg()">🎨 AI 배경 생성하기</button>
-            <div class="ai-bg-status" id="aiBgStatus"></div>
-            <div class="ai-bg-preview-wrap" id="aiBgPreviewWrap" style="display:none">
-              <div class="ai-bg-preview-div" id="aiBgPreviewDiv"></div>
-              <div style="font-size:10px;color:var(--tx-muted);margin-top:4px;text-align:center" id="aiBgModelLabel"></div>
-              <button id="btnApplyLeftBg" class="btn-apply-left-bg" onclick="applyLeftAiBg()">✅ 현재 광고에 적용</button>
-              <div class="ai-bg-applied-badge" id="leftBgAppliedBadge">다음 생성 시 자동 포함됩니다</div>
-              <button class="btn-clear-bg" onclick="clearLeftAiBg()">✕ 배경 제거</button>
-            </div>
-          </div>
-        </div>
+        <div id="aiBgBody" style="display:none"></div>
       </div>
 
       <div class="form-group">
@@ -1242,7 +1208,42 @@
       <div id="scAiBgFormGroup" style="margin-bottom:14px">
         <div class="ai-bg-row" onclick="toggleLeftAiBg()">
           <div class="ai-bg-row-label">🖼 배경 이미지 <span class="ai-bg-row-badge">선택</span></div>
-          <span class="ai-bg-row-arrow">▶</span>
+          <span class="ai-bg-row-arrow" id="scAiBgArrow">▶</span>
+        </div>
+        <div id="scAiBgBody" style="display:none">
+          <div class="ai-bg-body">
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button class="ai-bg-mode-btn active" id="btnModeAuto" onclick="setAiBgMode('auto')">🤖 자동 생성</button>
+              <button class="ai-bg-mode-btn" id="btnModeManual" onclick="setAiBgMode('manual')">✍️ 직접 입력</button>
+              <button class="ai-bg-mode-btn" id="btnModeUpload" onclick="setAiBgMode('upload')">📁 직접 업로드</button>
+            </div>
+            <div id="aiBgHintWrap" style="display:none;margin-bottom:8px">
+              <textarea id="aiBgHintInput" class="copy-field-input" rows="2" placeholder="예: 밤하늘, 별빛, 감성적 / 도심 야경, 네온 / 자연, 숲, 새벽빛" style="font-size:12px"></textarea>
+              <button class="btn-develop-prompt" id="btnDevelopPrompt" onclick="developPrompt()" style="margin-top:6px">✨ 프롬프트 발전시키기</button>
+              <div id="aiBgDevelopedWrap" style="display:none;margin-top:8px">
+                <div class="copy-field-label" style="margin-bottom:4px">Claude가 발전시킨 프롬프트 <span style="font-weight:400;color:var(--tx-muted)">(직접 수정 가능)</span></div>
+                <textarea id="aiBgDevelopedPrompt" class="copy-field-input" rows="4" style="font-size:11px;line-height:1.5"></textarea>
+              </div>
+            </div>
+            <!-- 📁 직접 업로드 영역 -->
+            <div id="aiBgUploadWrap" style="display:none;margin-bottom:8px">
+              <label class="bg-upload-area" id="bgUploadArea">
+                <input type="file" id="bgUploadInput" accept="image/*" style="display:none" onchange="handleBgUpload(this.files[0])" />
+                <div class="bg-upload-icon">📁</div>
+                <div class="bg-upload-text">강사 사진 · 상품 이미지 등 업로드</div>
+                <div class="bg-upload-sub">JPG, PNG, WEBP · 클릭 또는 드래그</div>
+              </label>
+            </div>
+            <button class="btn-gen-left-bg" id="btnGenLeftBg" onclick="generateLeftAiBg()">🎨 AI 배경 생성하기</button>
+            <div class="ai-bg-status" id="aiBgStatus"></div>
+            <div class="ai-bg-preview-wrap" id="aiBgPreviewWrap" style="display:none">
+              <div class="ai-bg-preview-div" id="aiBgPreviewDiv"></div>
+              <div style="font-size:10px;color:var(--tx-muted);margin-top:4px;text-align:center" id="aiBgModelLabel"></div>
+              <button id="btnApplyLeftBg" class="btn-apply-left-bg" onclick="applyLeftAiBg()">✅ 현재 광고에 적용</button>
+              <div class="ai-bg-applied-badge" id="leftBgAppliedBadge">다음 생성 시 자동 포함됩니다</div>
+              <button class="btn-clear-bg" onclick="clearLeftAiBg()">✕ 배경 제거</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1313,7 +1314,7 @@
     <div id="scResultActions" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <button class="btn-action btn-download" onclick="downloadHTML()">⬇ HTML</button>
       <button class="btn-action btn-download" onclick="downloadPNG()" id="scBtnDownloadPNG">📸 PNG</button>
-      <button class="btn-action" onclick="copyHTML()">📋 복사</button>
+      <button class="btn-action" id="scBtnCopyHTML" onclick="copyHTML()">📋 복사</button>
       <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
       <button class="btn-brand-toggle" id="scBtnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
       <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
@@ -1354,14 +1355,14 @@
     <div class="code-section" style="margin-bottom:12px">
       <div class="code-header">
         <div class="code-label">🗂 광고 데이터 JSON</div>
-        <button class="btn-copy-code" onclick="copyJson()">복사</button>
+        <button class="btn-copy-code" id="scBtnCopyJson" onclick="copyJson()">복사</button>
       </div>
       <div class="code-box" id="scJsonBox" style="color:#f9c784"></div>
     </div>
     <div class="code-section">
       <div class="code-header">
         <div class="code-label">📄 HTML 코드</div>
-        <button class="btn-copy-code" onclick="copyCode()">복사</button>
+        <button class="btn-copy-code" id="scBtnCopyCode" onclick="copyCode()">복사</button>
       </div>
       <div class="code-box" id="scCodeBox"></div>
     </div>
@@ -2009,11 +2010,12 @@
   }
 
   function toggleLeftAiBg() {
-    const body = document.getElementById('aiBgBody');
-    const arrow = document.getElementById('aiBgArrow');
+    const body = document.getElementById('scAiBgBody');
+    const arrow = document.getElementById('scAiBgArrow');
+    if (!body) return;
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : 'block';
-    arrow.classList.toggle('open', !isOpen);
+    if (arrow) arrow.classList.toggle('open', !isOpen);
   }
 
   async function generateLeftAiBg() {
@@ -2873,12 +2875,16 @@
   async function downloadPNG() {
     const v = variations[activeVariation];
     if (!v) return;
-    const btn = document.getElementById('btnDownloadPNG');
-    btn.textContent = '⏳ 변환 중...';
-    btn.disabled = true;
+    const setPngBtns = (text, disabled) => {
+      ['btnDownloadPNG', 'scBtnDownloadPNG'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) { b.textContent = text; b.disabled = disabled; }
+      });
+    };
+    setPngBtns('⏳ 변환 중...', true);
     try {
-      const iframe = document.getElementById('previewFrame');
-      // iframe이 로드될 때까지 잠시 대기
+      // scPreviewFrame 우선 사용 (항상 가시 영역에 있음)
+      const iframe = document.getElementById('scPreviewFrame') || document.getElementById('previewFrame');
       await new Promise(r => setTimeout(r, 300));
       const iDoc = iframe.contentDocument || iframe.contentWindow.document;
       const canvas = await html2canvas(iDoc.documentElement, {
@@ -2897,8 +2903,7 @@
     } catch (e) {
       alert('PNG 변환 실패: ' + e.message);
     } finally {
-      btn.textContent = '📸 PNG';
-      btn.disabled = false;
+      setPngBtns('📸 PNG', false);
     }
   }
 
@@ -2906,19 +2911,21 @@
     const v = variations[activeVariation];
     if (!v) return;
     navigator.clipboard.writeText(v.html).then(() => {
-      const btn = document.getElementById('btnCopyHTML');
-      btn.textContent = '✓ 복사됨';
-      setTimeout(() => { btn.textContent = '📋 HTML 복사'; }, 2000);
+      ['btnCopyHTML', 'scBtnCopyHTML'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.textContent = '✓ 복사됨'; setTimeout(() => { btn.textContent = '📋 복사'; }, 2000); }
+      });
     });
   }
 
   function copyJson() {
-    const text = document.getElementById('jsonBox').textContent;
+    const v = variations[activeVariation];
+    const text = v ? JSON.stringify(v.adData, null, 2) : document.getElementById('scJsonBox').textContent;
     navigator.clipboard.writeText(text).then(() => {
-      const btn = document.getElementById('btnCopyJson');
-      btn.textContent = '✓ 복사됨';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+      ['btnCopyJson', 'scBtnCopyJson'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.textContent = '✓'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000); }
+      });
     });
   }
 
@@ -2926,10 +2933,10 @@
     const v = variations[activeVariation];
     if (!v) return;
     navigator.clipboard.writeText(v.html).then(() => {
-      const btn = document.getElementById('btnCopyCode');
-      btn.textContent = '✓ 복사됨';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+      ['btnCopyCode', 'scBtnCopyCode'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.textContent = '✓'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000); }
+      });
     });
   }
 
