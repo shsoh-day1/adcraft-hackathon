@@ -64,25 +64,37 @@ try {
   console.warn('[Figma 스타일 없음] FIGMA_STYLES.md를 찾을 수 없습니다.');
 }
 
-// ─── 레이아웃 레퍼런스 저장소 ───
+// ─── 레이아웃 레퍼런스 저장소 (Vercel: 인메모리, 로컬: 파일) ───
 const LAYOUTS_FILE = join(__dirname, 'layouts.json');
+let _layoutsCache = null;
 function readLayouts() {
-  if (!existsSync(LAYOUTS_FILE)) return [];
-  try { return JSON.parse(readFileSync(LAYOUTS_FILE, 'utf8')); } catch { return []; }
+  if (_layoutsCache !== null) return _layoutsCache;
+  if (existsSync(LAYOUTS_FILE)) {
+    try { _layoutsCache = JSON.parse(readFileSync(LAYOUTS_FILE, 'utf8')); return _layoutsCache; } catch {}
+  }
+  _layoutsCache = [];
+  return _layoutsCache;
 }
-function writeLayouts(arr) { writeFileSync(LAYOUTS_FILE, JSON.stringify(arr, null, 2), 'utf8'); }
+function writeLayouts(arr) {
+  _layoutsCache = arr;
+  try { writeFileSync(LAYOUTS_FILE, JSON.stringify(arr, null, 2), 'utf8'); } catch {}
+}
 
-// ─── 커스텀 카탈로그 저장소 ───
+// ─── 커스텀 카탈로그 저장소 (Vercel: 인메모리, 로컬: 파일) ───
 const CATALOG_CUSTOM_FILE = join(__dirname, 'catalog-custom.json');
-if (!existsSync(CATALOG_CUSTOM_FILE)) {
-  writeFileSync(CATALOG_CUSTOM_FILE, '[]', 'utf8');
-  console.log('[커스텀 카탈로그] catalog-custom.json 초기화 완료');
-}
+let _catalogCache = null;
 function readCatalogCustom() {
-  if (!existsSync(CATALOG_CUSTOM_FILE)) return [];
-  try { return JSON.parse(readFileSync(CATALOG_CUSTOM_FILE, 'utf8')); } catch { return []; }
+  if (_catalogCache !== null) return _catalogCache;
+  if (existsSync(CATALOG_CUSTOM_FILE)) {
+    try { _catalogCache = JSON.parse(readFileSync(CATALOG_CUSTOM_FILE, 'utf8')); return _catalogCache; } catch {}
+  }
+  _catalogCache = [];
+  return _catalogCache;
 }
-function writeCatalogCustom(arr) { writeFileSync(CATALOG_CUSTOM_FILE, JSON.stringify(arr, null, 2), 'utf8'); }
+function writeCatalogCustom(arr) {
+  _catalogCache = arr;
+  try { writeFileSync(CATALOG_CUSTOM_FILE, JSON.stringify(arr, null, 2), 'utf8'); } catch {}
+}
 
 // GET /api/catalog-custom
 app.get('/api/catalog-custom', (req, res) => {
