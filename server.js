@@ -1777,20 +1777,21 @@ app.post('/api/generate-image-prompt', async (req, res) => {
   }
 
   const hintLine = userHint ? `\n- 사용자 추가 힌트: ${userHint}` : '';
-  const claudePrompt = `아래 META 인스타그램 광고소재를 위한 AI 이미지 생성 프롬프트를 영어로 작성하라.
+  const claudePrompt = `아래 META 인스타그램 광고소재를 위한 gpt-image-1 이미지 생성 프롬프트를 영어로 작성하라.
 
 광고 정보:
 - 브랜드/도메인: ${brand}
 - 광고 컨텍스트: ${contextDesc || '프리미엄 교육/서비스 광고'}${hintLine}
 
 요구사항:
-1. 텍스트가 올라갈 배경 이미지이므로 복잡하지 않고 깔끔하게
-2. 어두운 톤 필수 (검정/네이비/진한 퍼플 계열 그라디언트) — 흰 카피 가독성 우선
-3. 추상적 디자인: 빛 효과, 기하학 패턴, 부드러운 bokeh, 그라디언트 등 활용
-4. 1:1 비율, 1080×1080 Instagram 광고 배경
-5. 브랜드/서비스 특성에 맞는 시각적 모티프 활용
+1. 텍스트(흰색 카피)가 올라갈 배경 이미지 — 복잡하지 않고 깔끔하게
+2. 어두운 톤 (검정/네이비/딥퍼플 계열) 또는 브랜드 특성에 맞는 무드
+3. 추상적/시네마틱 스타일: 빛 줄기, 보케, 그라디언트, 기하학적 패턴 등 활용
+4. 1:1 정사각형, 1080×1080px Instagram 광고 배경
+5. 브랜드/서비스 특성에 맞는 시각적 모티프 (교육이면 집중/성장, 테크면 미래/네트워크 등)
+6. photorealistic or highly detailed digital art, no text in image
 
-이미지 프롬프트 (영어, 2-3문장만, 기호 없이 순수 텍스트):`;
+프롬프트 형식: 영어, 3-4문장, 구체적인 시각적 묘사 포함, 기호 없이 순수 텍스트만:`;
 
   try {
     const msg = await anthropic.messages.create({
@@ -1805,20 +1806,58 @@ app.post('/api/generate-image-prompt', async (req, res) => {
   }
 });
 
-// ─── Pollinations.ai + Unsplash 폴백으로 이미지 생성 ───
+// ─── 이미지 생성 (1순위: gpt-image-1 / 폴백: Pollinations FLUX) ───
 app.post('/api/generate-image', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt 필요' });
 
   console.log('[🎨 이미지 생성] 시작 | 프롬프트:', prompt.slice(0, 80) + '...');
 
-  // 1순위: Pollinations.ai (무료, API 키 불필요, FLUX 모델)
+  // 1순위: gpt-image-1 (OpenAI)
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      console.log('[🖼 gpt-image-1] 요청 중...');
+      const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-image-1',
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024',
+          quality: 'medium',
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
+
+      const openaiData = await openaiRes.json();
+
+      if (openaiRes.ok && openaiData.data?.[0]?.b64_json) {
+        const b64 = openaiData.data[0].b64_json;
+        console.log('[🖼 gpt-image-1] 성공');
+        return res.json({
+          imageData: `data:image/png;base64,${b64}`,
+          model: 'gpt-image-1',
+          type: 'image',
+        });
+      } else {
+        console.warn('[gpt-image-1 실패]', openaiData.error?.message || JSON.stringify(openaiData));
+      }
+    } catch (err) {
+      console.warn('[gpt-image-1 오류]', err.message);
+    }
+  }
+
+  // 2순위 폴백: Pollinations.ai (무료, API 키 불필요)
   try {
     const seed = Math.floor(Math.random() * 99999);
     const encoded = encodeURIComponent(prompt);
     const polUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1080&height=1080&nologo=true&seed=${seed}&model=flux`;
 
-    console.log('[🌸 Pollinations] 요청 중...');
+    console.log('[🌸 Pollinations 폴백] 요청 중...');
     const polRes = await fetch(polUrl, { signal: AbortSignal.timeout(60000) });
 
     if (polRes.ok) {
@@ -1838,8 +1877,7 @@ app.post('/api/generate-image', async (req, res) => {
     console.warn('[Pollinations 오류]', err.message);
   }
 
-  // Pollinations 실패 시 에러 반환
-  return res.status(500).json({ error: 'Pollinations 이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+  return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
 });
 
 // ─── 배경 이미지 적용 후 HTML 재생성 ───
@@ -1862,7 +1900,7 @@ if (process.env.VERCEL !== '1') {
     console.log('  AI 광고소재 자동화');
     console.log(`  http://localhost:${PORT}`);
     console.log(`  Anthropic: ${process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ ANTHROPIC_API_KEY 필요'}`);
-    console.log(`  Gemini:    ${process.env.GEMINI_API_KEY ? '✅ 설정됨' : '⚠️  GEMINI_API_KEY 없음 (이미지 생성 비활성)'}`);
+    console.log(`  OpenAI:    ${process.env.OPENAI_API_KEY ? '✅ 설정됨 (gpt-image-1 활성)' : '⚠️  OPENAI_API_KEY 없음 (Pollinations 폴백)'}`);
     console.log('='.repeat(50));
   });
 }
