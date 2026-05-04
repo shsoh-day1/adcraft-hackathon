@@ -726,6 +726,11 @@ function luminance(hex) {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
+// ─── 줄바꿈 → <br> 변환 헬퍼 ───
+function nl2br(str) {
+  return (str || '').replace(/\n/g, '<br>');
+}
+
 // ─── HTML 생성 (레이아웃 dispatcher) ───
 function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   // 포토오버레이 3종 (메인)
@@ -796,7 +801,7 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300', font = 'Pretendard') {
 
   <!-- 훅 텍스트 (비주얼 영역 좌측) -->
   <div style="position:absolute;left:52px;top:460px;max-width:540px;z-index:6">
-    <div data-field="hook" style="font-size:34px;font-weight:600;color:rgba(0,0,0,0.65);line-height:1.5;letter-spacing:-0.5px">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:34px;font-weight:600;color:rgba(0,0,0,0.65);line-height:1.5;letter-spacing:-0.5px">${nl2br(d.hook)}</div>
   </div>
 
   <!-- 수치 카드 (우측 중단) -->
@@ -1056,7 +1061,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
 
   <!-- 서브카피 (피그마: 42px, top≈688 비율 기준) -->
   <div data-field="hook" style="position:absolute;left:62px;top:634px;right:80px;z-index:10;font-size:40px;font-weight:700;color:rgba(255,255,255,0.82);letter-spacing:-0.84px;line-height:1.28;text-shadow:0 2px 8px rgba(0,0,0,0.6)">
-    ${d.hook || ''}
+    ${nl2br(d.hook)}
   </div>
 
   <!-- 메인카피 (피그마: 80px Bold, 2줄 15자 이내, top≈786 비율) -->
@@ -1133,7 +1138,7 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
     padding:52px 60px 48px">
 
     <!-- 훅 (서브카피) -->
-    <div data-field="hook" style="font-size:32px;font-weight:600;color:rgba(255,255,255,0.7);letter-spacing:-0.5px;line-height:1.4;margin-bottom:22px">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:32px;font-weight:600;color:rgba(255,255,255,0.7);letter-spacing:-0.5px;line-height:1.4;margin-bottom:22px">${nl2br(d.hook)}</div>
 
     <!-- 메인카피 -->
     <div style="font-size:${hlSize}px;font-weight:900;color:#fff;letter-spacing:-2.5px;line-height:1.06">
@@ -1203,7 +1208,7 @@ function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, css
 
   <!-- 훅 (중상단) -->
   <div data-field="hook" style="position:absolute;left:64px;top:200px;right:420px;z-index:10;
-    font-size:36px;font-weight:600;color:rgba(255,255,255,0.72);letter-spacing:-0.8px;line-height:1.4">${d.hook || ''}</div>
+    font-size:36px;font-weight:600;color:rgba(255,255,255,0.72);letter-spacing:-0.8px;line-height:1.4">${nl2br(d.hook)}</div>
 
   <!-- 메인카피 (중앙 좌) -->
   <div style="position:absolute;left:64px;top:380px;right:380px;z-index:10;
@@ -1300,7 +1305,7 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
     </div>
 
     <!-- 훅 -->
-    <div data-field="hook" style="font-size:30px;font-weight:500;color:${pal.hook};margin-bottom:14px;letter-spacing:-0.5px">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:30px;font-weight:500;color:${pal.hook};margin-bottom:14px;letter-spacing:-0.5px">${nl2br(d.hook)}</div>
 
     <!-- 헤드라인 -->
     <div style="font-size:80px;font-weight:900;line-height:1.08;color:${pal.headline};letter-spacing:-2px">
@@ -1432,13 +1437,13 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
       <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
       <span data-field="brand">${d.brand || '브랜드'}</span>
     </div>
-    <div data-field="hook" style="font-size:28px;font-weight:500;color:${pal.hook};margin-bottom:18px;letter-spacing:-0.3px">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:28px;font-weight:500;color:${pal.hook};margin-bottom:18px;letter-spacing:-0.3px">${nl2br(d.hook)}</div>
     <div data-field="headline" style="font-size:96px;font-weight:900;line-height:1.02;color:${pal.headline};letter-spacing:-4px;margin-bottom:56px">${d.headline || ''}</div>
     <div style="display:flex;flex-direction:column;gap:22px">
       ${[d.sub_copy1, d.sub_copy2, d.sub_copy3].filter(Boolean).map((copy, idx) => `
       <div style="display:flex;align-items:center;gap:18px">
         <div style="width:30px;height:30px;border-radius:50%;background:${pal.check};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:900">✓</div>
-        <div data-field="sub_copy${idx+1}" style="font-size:34px;font-weight:600;color:${pal.sub};letter-spacing:-0.5px">${copy}</div>
+        <div data-field="sub_copy${idx+1}" style="font-size:34px;font-weight:600;color:${pal.sub};letter-spacing:-0.5px;white-space:pre-wrap">${nl2br(copy)}</div>
       </div>`).join('')}
     </div>
   </div>
@@ -1541,7 +1546,7 @@ function generateFigmaPhotoHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cs
 
   <!-- 훅 문구 (피그마 top≈502px, 50px Regular) -->
   <div data-field="hook" style="position:absolute;left:75px;top:502px;right:80px;z-index:10;font-size:42px;font-weight:400;color:rgba(255,255,255,0.88);letter-spacing:-0.84px;line-height:1.4;text-shadow:0 2px 8px rgba(0,0,0,0.5)">
-    ${d.hook || ''}
+    ${nl2br(d.hook)}
   </div>
 
   <!-- 메인 헤드라인 (피그마 top≈589px, 80px Bold) -->
@@ -1602,7 +1607,7 @@ function generateFigmaTwitterHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
 
   <!-- 메인 트윗 본문 (피그마 left:53, top:286, 63px, line-height:100px) -->
   <div style="position:absolute;left:53px;top:286px;right:53px;z-index:10;line-height:100px;letter-spacing:-1.26px">
-    <div data-field="hook" style="font-size:57px;font-weight:400;color:#fff">${d.hook || ''}</div>
+    <div data-field="hook" style="font-size:57px;font-weight:400;color:#fff">${nl2br(d.hook)}</div>
     <div data-field="headline_line1" style="font-size:57px;font-weight:400;color:#fff">${d.headline_line1 || ''}</div>
     <div data-field="headline_line2" style="font-size:57px;font-weight:700;color:#fff">${d.headline_line2 || ''}</div>
   </div>
@@ -1777,7 +1782,7 @@ app.post('/api/generate-image-prompt', async (req, res) => {
   }
 
   const hintLine = userHint ? `\n- 사용자 추가 힌트: ${userHint}` : '';
-  const claudePrompt = `아래 META 인스타그램 광고소재를 위한 gpt-image-1 이미지 생성 프롬프트를 영어로 작성하라.
+  const claudePrompt = `아래 META 인스타그램 광고소재를 위한 gpt-image-1 이미지 생성 프롬프트를 한국어와 영어 두 가지로 작성하라.
 
 광고 정보:
 - 브랜드/도메인: ${brand}
@@ -1789,9 +1794,14 @@ app.post('/api/generate-image-prompt', async (req, res) => {
 3. 추상적/시네마틱 스타일: 빛 줄기, 보케, 그라디언트, 기하학적 패턴 등 활용
 4. 1:1 정사각형, 1080×1080px Instagram 광고 배경
 5. 브랜드/서비스 특성에 맞는 시각적 모티프 (교육이면 집중/성장, 테크면 미래/네트워크 등)
-6. photorealistic or highly detailed digital art, no text in image
+6. 이미지 안에 텍스트 없음
 
-프롬프트 형식: 영어, 3-4문장, 구체적인 시각적 묘사 포함, 기호 없이 순수 텍스트만:`;
+출력 형식 (아래 형식 그대로, 레이블 포함):
+[한국어]
+(한국어 프롬프트 3-4문장)
+
+[English]
+(영어 프롬프트 3-4문장)`;
 
   try {
     const msg = await anthropic.messages.create({

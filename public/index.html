@@ -292,6 +292,13 @@
     .btn-apply-bg { width:100%;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s; }
     .btn-apply-bg:hover { opacity:.88; }
     .btn-apply-bg:disabled { opacity:.5;cursor:not-allowed; }
+    .img-grid-item { position:relative;aspect-ratio:1/1;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:border-color .15s; }
+    .img-grid-item:hover { border-color:var(--accent); }
+    .img-grid-item.selected { border-color:#16a34a; }
+    .img-grid-item img { width:100%;height:100%;object-fit:cover;display:block; }
+    .img-grid-item .img-loading { width:100%;height:100%;background:var(--inp-bg);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx-muted); }
+    .img-grid-item .img-apply-badge { position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:10px;font-weight:700;color:#fff;background:rgba(22,163,74,.9);padding:2px 0;opacity:0;transition:opacity .15s; }
+    .img-grid-item:hover .img-apply-badge, .img-grid-item.selected .img-apply-badge { opacity:1; }
     [data-theme="dark"] .ai-image-panel-head { background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(37,99,235,.12)); }
 
     /* AI 배경 모드 토글 */
@@ -902,6 +909,7 @@
         <button class="btn-action" onclick="copyHTML()" id="btnCopyHTML">📋 복사</button>
         <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
         <button class="btn-brand-toggle" id="btnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
+        <button class="btn-sticker" id="btnAiImage" onclick="toggleAiImagePanel()">✨ AI 이미지 생성</button>
         <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
         <input type="file" id="stickerFileInput" accept="image/*" onchange="addStickerImage(event)">
       </div>
@@ -975,22 +983,27 @@
           <button class="btn-regen" onclick="toggleAiImagePanel()" style="font-size:16px;padding:1px 7px;line-height:1">×</button>
         </div>
         <div class="ai-image-panel-body">
-          <div>
-            <div class="ai-prompt-label">🤖 Claude가 만든 Gemini 이미지 프롬프트 <span style="font-weight:400;color:var(--tx-muted)">(직접 수정 가능)</span></div>
-            <textarea class="ai-prompt-textarea" id="aiImgPromptText" placeholder="프롬프트 생성 중..."></textarea>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-              <button class="btn-regen" id="btnRegenPrompt" onclick="generateImagePrompt()">🔄 프롬프트 재생성</button>
-              <span class="ai-status" id="aiImgStatus"></span>
-            </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="ai-status" id="aiImgStatus"></span>
+            <button class="btn-regen" onclick="togglePromptEdit('ai')" id="btnTogglePrompt" style="font-size:11px">✏️ 프롬프트 수정</button>
           </div>
-          <button class="btn-gen-image" id="btnGenerateAiImg" onclick="generateAiImage()">🎨 AI 배경 생성하기</button>
-          <div id="aiImgPreviewWrap" style="display:none">
-            <div class="ai-img-preview-box">
-              <img id="aiImgPreview" alt="생성된 배경 이미지" style="width:100%;display:block" />
-              <div id="aiCssPreview" style="display:none;width:100%;aspect-ratio:1/1;border-radius:6px"></div>
+          <div id="aiPromptEditArea" style="display:none">
+            <div class="ai-prompt-label" style="justify-content:space-between">
+              <span>🤖 이미지 프롬프트</span>
+              <span style="display:flex;gap:4px">
+                <button id="btnLangKo" onclick="switchPromptLang('ko')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-family:inherit">한국어</button>
+                <button id="btnLangEn" onclick="switchPromptLang('en')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--bdr);background:none;color:var(--tx-sub);cursor:pointer;font-family:inherit">English</button>
+              </span>
             </div>
-            <div style="margin-top:6px;font-size:11px;color:var(--tx-muted);text-align:center" id="aiImgModelLabel"></div>
-            <button class="btn-apply-bg" id="btnApplyAiBg" onclick="applyAiBg()" style="margin-top:8px">✅ 이 배경을 광고에 적용</button>
+            <textarea class="ai-prompt-textarea" id="aiImgPromptText" placeholder="프롬프트를 입력하거나 재생성하세요..."></textarea>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+              <button class="btn-regen" id="btnRegenPrompt" onclick="generateImagePrompt()">🔄 자동 재생성</button>
+            </div>
+            <button class="btn-gen-image" id="btnGenerateAiImg" onclick="generateAiImage()" style="margin-top:8px">🎨 이 프롬프트로 이미지 생성</button>
+          </div>
+          <div id="aiImgPreviewWrap" style="display:none">
+            <div style="font-size:11px;color:var(--tx-muted);margin-bottom:8px" id="aiImgModelLabel"></div>
+            <div id="aiImgGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px"></div>
           </div>
         </div>
       </div>
@@ -1317,6 +1330,7 @@
       <button class="btn-action" id="scBtnCopyHTML" onclick="copyHTML()">📋 복사</button>
       <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
       <button class="btn-brand-toggle" id="scBtnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
+      <button class="btn-sticker" id="scBtnAiImage" onclick="toggleScAiImagePanel()">✨ AI 이미지 생성</button>
       <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
     </div>
 
@@ -1349,7 +1363,36 @@
     </div>
 
     <!-- AI 이미지 패널 -->
-    <div id="scAiImagePanel" style="display:none"></div>
+    <div id="scAiImagePanel" class="ai-image-panel" style="display:none">
+      <div class="ai-image-panel-head">
+        <div class="ai-image-panel-title">✨ AI 배경 이미지 생성 — gpt-image-1</div>
+        <button class="btn-regen" onclick="toggleScAiImagePanel()" style="font-size:16px;padding:1px 7px;line-height:1">×</button>
+      </div>
+      <div class="ai-image-panel-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="ai-status" id="scAiImgStatus"></span>
+          <button class="btn-regen" onclick="togglePromptEdit('sc')" id="scBtnTogglePrompt" style="font-size:11px">✏️ 프롬프트 수정</button>
+        </div>
+        <div id="scPromptEditArea" style="display:none">
+          <div class="ai-prompt-label" style="justify-content:space-between">
+            <span>🤖 이미지 프롬프트</span>
+            <span style="display:flex;gap:4px">
+              <button id="scBtnLangKo" onclick="switchPromptLang('ko')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-family:inherit">한국어</button>
+              <button id="scBtnLangEn" onclick="switchPromptLang('en')" style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--bdr);background:none;color:var(--tx-sub);cursor:pointer;font-family:inherit">English</button>
+            </span>
+          </div>
+          <textarea class="ai-prompt-textarea" id="scAiImgPromptText" placeholder="프롬프트를 입력하거나 재생성하세요..."></textarea>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <button class="btn-regen" id="scBtnRegenPrompt" onclick="scGenerateImagePrompt()">🔄 자동 재생성</button>
+          </div>
+          <button class="btn-gen-image" id="scBtnGenerateAiImg" onclick="scGenerateAiImage()" style="margin-top:8px">🎨 이 프롬프트로 이미지 생성</button>
+        </div>
+        <div id="scAiImgPreviewWrap" style="display:none">
+          <div style="font-size:11px;color:var(--tx-muted);margin-bottom:8px" id="scAiImgModelLabel"></div>
+          <div id="scAiImgGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- JSON / HTML 코드 -->
     <div class="code-section" style="margin-bottom:12px">
@@ -1567,12 +1610,9 @@
     if (v.ctaColor) selectedCtaColor = v.ctaColor;
     renderValidationPanel(v.adData);
     renderCopyEditPanel(v.adData);
-    // 탭 전환 시 브랜드 토글 상태 초기화
+    // 탭 전환 시 브랜드 숨김 상태로 초기화
     brandHidden = false;
-    ['btnBrandToggle', 'scBtnBrandToggle'].forEach(btnId => {
-      const btn = document.getElementById(btnId);
-      if (btn) { btn.textContent = '🏷 브랜드 숨기기'; btn.classList.remove('hidden-brand'); }
-    });
+    toggleBrandBlock();
     // iframe 로드 후 클릭 편집 활성화
     iframe.addEventListener('load', activateClickEdit, { once: true });
     // 편집 힌트 표시
@@ -1650,15 +1690,15 @@
       fields = [
         { key: 'hook', label: '훅 (최대 22자)', rows: 1 },
         { key: 'headline', label: '헤드라인 (최대 20자)', rows: 1 },
-        { key: 'sub_copy1', label: '서브카피 1 (최대 28자)', rows: 1 },
-        { key: 'sub_copy2', label: '서브카피 2 (최대 28자)', rows: 1 },
-        { key: 'sub_copy3', label: '서브카피 3 (최대 28자)', rows: 1 },
+        { key: 'sub_copy1', label: '서브카피 1 (엔터로 줄바꿈)', rows: 2 },
+        { key: 'sub_copy2', label: '서브카피 2 (엔터로 줄바꿈)', rows: 2 },
+        { key: 'sub_copy3', label: '서브카피 3 (엔터로 줄바꿈)', rows: 2 },
         { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
         { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
       ];
     } else {
       fields = [
-        { key: 'hook', label: '서브카피/훅 (최대 28자)', rows: 1 },
+        { key: 'hook', label: '서브카피/훅 (엔터로 줄바꿈)', rows: 2 },
         { key: 'headline_line1', label: '메인카피 1줄 (최대 14자)', rows: 1 },
         { key: 'headline_line2', label: '메인카피 2줄 (최대 14자)', rows: 1 },
         { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
@@ -2336,7 +2376,7 @@
       ];
     } else {
       fields = [
-        { key: 'hook', label: '서브카피/훅 (최대 28자)', rows: 1 },
+        { key: 'hook', label: '서브카피/훅 (엔터로 줄바꿈)', rows: 2 },
         { key: 'headline_line1', label: '메인카피 1줄 (최대 14자)', rows: 1 },
         { key: 'headline_line2', label: '메인카피 2줄 (최대 14자)', rows: 1 },
         { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
@@ -2810,6 +2850,7 @@
       }
 
       showVariations();
+      autoGenerateImage();
 
     } catch (err) {
       document.getElementById('loadingWrap').style.display = 'none';
@@ -3073,6 +3114,34 @@
   let currentAiImageData = null;
   let currentCssBg = null;
   let aiImagePanelOpen = false;
+  let scAiImagePanelOpen = false;
+  let scCurrentAiImageData = null;
+  let scCurrentCssBg = null;
+  let promptLang = 'ko';
+  let promptBothLang = { ko: '', en: '' };
+
+  function parsePromptLangs(raw) {
+    const koMatch = raw.match(/\[한국어\]\s*([\s\S]*?)(?=\[English\]|$)/i);
+    const enMatch = raw.match(/\[English\]\s*([\s\S]*?)$/i);
+    return {
+      ko: koMatch ? koMatch[1].trim() : raw.trim(),
+      en: enMatch ? enMatch[1].trim() : raw.trim(),
+    };
+  }
+
+  function switchPromptLang(lang) {
+    promptLang = lang;
+    const scWrap = document.querySelector('.sc-wrap');
+    const isScMode = scWrap && getComputedStyle(scWrap).display !== 'none';
+    const textareaId = isScMode ? 'scAiImgPromptText' : 'aiImgPromptText';
+    const koKoId = isScMode ? 'scBtnLangKo' : 'btnLangKo';
+    const enBtnId = isScMode ? 'scBtnLangEn' : 'btnLangEn';
+    document.getElementById(textareaId).value = promptBothLang[lang] || '';
+    document.getElementById(koKoId).style.background = lang === 'ko' ? 'var(--accent)' : 'none';
+    document.getElementById(koKoId).style.color = lang === 'ko' ? '#fff' : 'var(--tx-sub)';
+    document.getElementById(enBtnId).style.background = lang === 'en' ? 'var(--accent)' : 'none';
+    document.getElementById(enBtnId).style.color = lang === 'en' ? '#fff' : 'var(--tx-sub)';
+  }
 
   function toggleAiImagePanel() {
     const panel = document.getElementById('aiImagePanel');
@@ -3082,6 +3151,237 @@
     if (aiImagePanelOpen && !document.getElementById('aiImgPromptText').value.trim()) {
       generateImagePrompt();
     }
+  }
+
+  function togglePromptEdit(mode) {
+    const areaId = mode === 'sc' ? 'scPromptEditArea' : 'aiPromptEditArea';
+    const btnId = mode === 'sc' ? 'scBtnTogglePrompt' : 'btnTogglePrompt';
+    const area = document.getElementById(areaId);
+    const isOpen = area.style.display !== 'none';
+    area.style.display = isOpen ? 'none' : 'block';
+    document.getElementById(btnId).textContent = isOpen ? '✏️ 프롬프트 수정' : '✕ 닫기';
+    // 처음 열 때 프롬프트가 없으면 자동 생성
+    if (!isOpen) {
+      const textareaId = mode === 'sc' ? 'scAiImgPromptText' : 'aiImgPromptText';
+      if (!document.getElementById(textareaId).value.trim()) {
+        mode === 'sc' ? scGenerateImagePrompt() : generateImagePrompt();
+      }
+    }
+  }
+
+  function toggleScAiImagePanel() {
+    const panel = document.getElementById('scAiImagePanel');
+    scAiImagePanelOpen = !scAiImagePanelOpen;
+    panel.style.display = scAiImagePanelOpen ? 'block' : 'none';
+    document.getElementById('scBtnAiImage').classList.toggle('active', scAiImagePanelOpen);
+    if (scAiImagePanelOpen && !document.getElementById('scAiImgPromptText').value.trim()) {
+      scGenerateImagePrompt();
+    }
+  }
+
+  async function scGenerateImagePrompt() {
+    const v = variations[activeVariation];
+    if (!v) { document.getElementById('scAiImgStatus').textContent = '먼저 광고소재를 생성하세요'; return; }
+    const status = document.getElementById('scAiImgStatus');
+    const textarea = document.getElementById('scAiImgPromptText');
+    const btn = document.getElementById('scBtnRegenPrompt');
+    status.textContent = '⏳ 프롬프트 작성 중...';
+    btn.disabled = true;
+    textarea.value = '';
+    try {
+      const res = await fetch('/api/generate-image-prompt', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adData: v.adData }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      promptBothLang = parsePromptLangs(data.prompt);
+      textarea.value = promptBothLang[promptLang] || promptBothLang.ko;
+      status.textContent = '✅ 준비 완료 — 수정 후 이미지 생성';
+    } catch (e) {
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function scGenerateAiImage() {
+    const prompt = document.getElementById('scAiImgPromptText').value.trim();
+    if (!prompt) { alert('프롬프트를 먼저 생성해주세요.'); return; }
+    await generateFiveImages(prompt);
+  }
+
+  async function scApplyAiBg() {
+    const v = variations[activeVariation];
+    if (!v || (!scCurrentAiImageData && !scCurrentCssBg)) return;
+    const btn = document.getElementById('scBtnApplyAiBg');
+    btn.disabled = true;
+    btn.textContent = '⏳ 적용 중...';
+    try {
+      const res = await fetch('/api/regenerate-with-bg', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adData: v.adData,
+          bgImageBase64: scCurrentAiImageData || null,
+          cssBackground: scCurrentCssBg || null,
+          font: document.getElementById('fontSelect')?.value || 'Pretendard',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      v.html = data.html;
+      if (scCurrentAiImageData) { leftAiBgImg = scCurrentAiImageData; leftAiBgCss = null; }
+      else { leftAiBgCss = scCurrentCssBg; leftAiBgImg = null; }
+      document.getElementById('previewFrame').srcdoc = data.html;
+      document.getElementById('codeBox').textContent = data.html;
+      const scFrame2 = document.getElementById('scPreviewFrame');
+      if (scFrame2) scFrame2.srcdoc = data.html;
+      const scCodeBox2 = document.getElementById('scCodeBox');
+      if (scCodeBox2) scCodeBox2.textContent = data.html;
+      btn.textContent = '✅ 적용 완료!';
+    } catch (e) {
+      alert('적용 실패: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '✅ 이 배경을 광고에 적용';
+    }
+  }
+
+  function setAllStatus(msg) {
+    ['aiImgStatus', 'scAiImgStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = msg;
+    });
+  }
+
+  function renderImageGrid(images, model) {
+    ['aiImgGrid', 'scAiImgGrid'].forEach(gridId => {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      grid.innerHTML = '';
+      images.forEach((imgData, i) => {
+        const item = document.createElement('div');
+        item.className = 'img-grid-item';
+        item.dataset.index = i;
+        if (imgData) {
+          item.innerHTML = `<img src="${imgData}" /><div class="img-apply-badge">✅ 적용</div>`;
+        } else {
+          item.innerHTML = `<div class="img-loading">실패</div>`;
+        }
+        item.addEventListener('click', () => {
+          if (!imgData) return;
+          grid.querySelectorAll('.img-grid-item').forEach(el => el.classList.remove('selected'));
+          item.classList.add('selected');
+          // 다른 그리드도 같은 인덱스 선택
+          const otherId = gridId === 'aiImgGrid' ? 'scAiImgGrid' : 'aiImgGrid';
+          const otherGrid = document.getElementById(otherId);
+          if (otherGrid) {
+            otherGrid.querySelectorAll('.img-grid-item').forEach(el => el.classList.remove('selected'));
+            const otherItem = otherGrid.querySelector(`[data-index="${i}"]`);
+            if (otherItem) otherItem.classList.add('selected');
+          }
+          applySelectedImage(imgData);
+        });
+        grid.appendChild(item);
+      });
+    });
+    ['aiImgModelLabel', 'scAiImgModelLabel'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = `생성 모델: ${model || 'gpt-image-1'} — 이미지를 클릭해서 적용`;
+    });
+    ['aiImgPreviewWrap', 'scAiImgPreviewWrap'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'block';
+    });
+  }
+
+  async function applySelectedImage(imgData) {
+    const v = variations[activeVariation];
+    if (!v) return;
+    setAllStatus('⏳ 선택한 이미지 적용 중...');
+    currentAiImageData = imgData; scCurrentAiImageData = imgData;
+    try {
+      const applyRes = await fetch('/api/regenerate-with-bg', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adData: v.adData,
+          bgImageBase64: imgData,
+          font: document.getElementById('fontSelect')?.value || 'Pretendard',
+        }),
+      });
+      const applyData = await applyRes.json();
+      if (!applyRes.ok) throw new Error(applyData.error);
+      v.html = applyData.html;
+      document.getElementById('previewFrame').srcdoc = applyData.html;
+      document.getElementById('codeBox').textContent = applyData.html;
+      const scFrame = document.getElementById('scPreviewFrame');
+      if (scFrame) scFrame.srcdoc = applyData.html;
+      const scCodeBox = document.getElementById('scCodeBox');
+      if (scCodeBox) scCodeBox.textContent = applyData.html;
+      setAllStatus('✅ 적용 완료!');
+    } catch (e) {
+      setAllStatus('❌ 적용 실패: ' + e.message);
+    }
+  }
+
+  async function generateFiveImages(prompt) {
+    setAllStatus('⏳ 이미지 5개 생성 중... (10~30초)');
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () =>
+        fetch('/api/generate-image', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        }).then(r => r.json())
+      )
+    );
+    const images = results.map(r => r.status === 'fulfilled' && r.value?.imageData ? r.value.imageData : null);
+    const model = results.find(r => r.status === 'fulfilled' && r.value?.model)?.value?.model || 'gpt-image-1';
+    const valid = images.filter(Boolean);
+    if (!valid.length) { setAllStatus('❌ 이미지 생성 실패'); return; }
+    renderImageGrid(images, model);
+    // 첫 번째 이미지 자동 선택 및 적용
+    const firstValid = images.findIndex(Boolean);
+    ['aiImgGrid', 'scAiImgGrid'].forEach(gridId => {
+      const item = document.getElementById(gridId)?.querySelector(`[data-index="${firstValid}"]`);
+      if (item) item.classList.add('selected');
+    });
+    await applySelectedImage(valid[0]);
+  }
+
+  async function autoGenerateImage() {
+    const v = variations[activeVariation];
+    if (!v) return;
+
+    // 두 패널 모두 열기
+    aiImagePanelOpen = true;
+    scAiImagePanelOpen = true;
+    document.getElementById('aiImagePanel').style.display = 'block';
+    document.getElementById('scAiImagePanel').style.display = 'block';
+
+    // 1. 프롬프트 생성
+    setAllStatus('⏳ AI 이미지 프롬프트 생성 중...');
+    try {
+      const res = await fetch('/api/generate-image-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adData: v.adData }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      promptBothLang = parsePromptLangs(data.prompt);
+      const promptText = promptBothLang[promptLang] || promptBothLang.ko;
+      ['aiImgPromptText', 'scAiImgPromptText'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = promptText;
+      });
+      setAllStatus('⏳ AI 이미지 생성 중...');
+    } catch (e) {
+      setAllStatus('❌ 프롬프트 생성 실패: ' + e.message);
+      return;
+    }
+
+    // 2. 이미지 5개 병렬 생성
+    const prompt = document.getElementById('aiImgPromptText').value;
+    await generateFiveImages(prompt);
   }
 
   async function generateImagePrompt() {
@@ -3101,7 +3401,8 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      textarea.value = data.prompt;
+      promptBothLang = parsePromptLangs(data.prompt);
+      textarea.value = promptBothLang[promptLang] || promptBothLang.ko;
       status.textContent = '✅ 준비 완료 — 수정 후 이미지 생성';
     } catch (e) {
       status.textContent = '❌ ' + e.message;
@@ -3113,51 +3414,7 @@
   async function generateAiImage() {
     const prompt = document.getElementById('aiImgPromptText').value.trim();
     if (!prompt) { alert('프롬프트를 먼저 생성해주세요 (🔄 버튼 클릭).'); return; }
-    const status = document.getElementById('aiImgStatus');
-    const btn = document.getElementById('btnGenerateAiImg');
-    const previewWrap = document.getElementById('aiImgPreviewWrap');
-    btn.disabled = true;
-    btn.textContent = '⏳ AI 배경 생성 중... (10~30초)';
-    status.textContent = '⏳ AI 배경 생성 중...';
-    previewWrap.style.display = 'none';
-    currentAiImageData = null;
-    currentCssBg = null;
-    try {
-      const res = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      if (data.type === 'css' && data.cssBackground) {
-        // Claude CSS Art 폴백
-        currentCssBg = data.cssBackground;
-        document.getElementById('aiImgPreview').style.display = 'none';
-        const cssEl = document.getElementById('aiCssPreview');
-        cssEl.style.display = 'block';
-        cssEl.style.background = currentCssBg;
-        document.getElementById('aiImgModelLabel').textContent = `생성: ${data.model} — CSS 그라디언트 배경`;
-        previewWrap.style.display = 'block';
-        status.textContent = `✅ 생성 완료 (Claude CSS Art)`;
-      } else {
-        // 실제 이미지 (Gemini Imagen)
-        currentAiImageData = data.imageData;
-        document.getElementById('aiCssPreview').style.display = 'none';
-        const imgEl = document.getElementById('aiImgPreview');
-        imgEl.style.display = 'block';
-        imgEl.src = currentAiImageData;
-        document.getElementById('aiImgModelLabel').textContent = `생성 모델: ${data.model || 'Gemini'}`;
-        previewWrap.style.display = 'block';
-        status.textContent = `✅ 생성 완료 (${data.model})`;
-      }
-    } catch (e) {
-      status.textContent = '❌ ' + e.message;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '🎨 AI 배경 생성하기';
-    }
+    await generateFiveImages(prompt);
   }
 
   async function applyAiBg() {
