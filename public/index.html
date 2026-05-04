@@ -3599,7 +3599,7 @@
     loadCustomCatalog();
   }
   // ─── 인증 로직 ───
-  // authModal은 </script> 이후에 위치하므로 DOMContentLoaded 후 실행
+  // authModal은 script 이후에 위치하므로 DOMContentLoaded 후 실행
   window.addEventListener('DOMContentLoaded', function initAuth() {
     const user = JSON.parse(localStorage.getItem('adcraft_user') || 'null');
     if (user) {
