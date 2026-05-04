@@ -564,6 +564,10 @@
 <nav>
   <div class="logo">AdCraft <span>by Claude AI</span></div>
   <div class="nav-right">
+    <div id="userBadge" style="display:none;align-items:center;gap:8px">
+      <span id="userNameDisplay" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.9)"></span>
+      <button onclick="handleLogout()" style="padding:5px 10px;border:1px solid rgba(255,255,255,0.4);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.15);color:#fff">로그아웃</button>
+    </div>
     <button class="btn-theme" onclick="openCatalog()" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3)">📋 레이아웃 카탈로그</button>
     <button id="themeToggle" class="btn-theme" onclick="toggleTheme()">🌙 다크</button>
     <div class="nav-badge"><div class="dot"></div>HTML to Design Ready</div>
@@ -2806,6 +2810,10 @@
           custom_bg_css: leftAiBgCss || null,
           font: document.getElementById('fontSelect').value || 'Pretendard',
           layout_types: getSelectedLayouts(),
+          ...(function() {
+            const u = JSON.parse(localStorage.getItem('adcraft_user') || '{}');
+            return { user_id: u.id || null, user_email: u.email || null, user_name: u.name || null };
+          })(),
         }),
       });
 
@@ -3590,6 +3598,157 @@
     await fetch(`/api/catalog-custom/${id}`, { method: 'DELETE' });
     loadCustomCatalog();
   }
+  // ─── 인증 로직 ───
+  (function initAuth() {
+    const user = JSON.parse(localStorage.getItem('adcraft_user') || 'null');
+    if (user) {
+      applyUserState(user);
+    } else {
+      showAuthModal();
+    }
+  })();
+
+  function showAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function hideAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function applyUserState(user) {
+    const badge = document.getElementById('userBadge');
+    const nameDisplay = document.getElementById('userNameDisplay');
+    if (badge) badge.style.display = 'flex';
+    if (nameDisplay) nameDisplay.textContent = (user.name || user.email) + '님';
+    hideAuthModal();
+  }
+
+  function switchAuthTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('signupForm').style.display = isLogin ? 'none' : 'block';
+    const tabLogin = document.getElementById('tabLogin');
+    const tabSignup = document.getElementById('tabSignup');
+    tabLogin.style.background = isLogin ? '#1B5BD4' : 'transparent';
+    tabLogin.style.color = isLogin ? '#fff' : '#888';
+    tabSignup.style.background = isLogin ? 'transparent' : '#1B5BD4';
+    tabSignup.style.color = isLogin ? '#888' : '#fff';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+    if (!email) { errEl.textContent = '이메일을 입력해주세요.'; errEl.style.display = 'block'; return; }
+    const btn = document.getElementById('loginBtn');
+    btn.textContent = '확인 중...'; btn.disabled = true;
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+      localStorage.setItem('adcraft_user', JSON.stringify(data.user));
+      applyUserState(data.user);
+    } catch (e) {
+      errEl.textContent = '서버 오류가 발생했습니다.'; errEl.style.display = 'block';
+    } finally { btn.textContent = '로그인'; btn.disabled = false; }
+  }
+
+  async function handleSignup() {
+    const name = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const errEl = document.getElementById('signupError');
+    errEl.style.display = 'none';
+    if (!name || !email) { errEl.textContent = '이름과 이메일을 모두 입력해주세요.'; errEl.style.display = 'block'; return; }
+    const btn = document.getElementById('signupBtn');
+    btn.textContent = '가입 중...'; btn.disabled = true;
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+      localStorage.setItem('adcraft_user', JSON.stringify(data.user));
+      applyUserState(data.user);
+    } catch (e) {
+      errEl.textContent = '서버 오류가 발생했습니다.'; errEl.style.display = 'block';
+    } finally { btn.textContent = '가입하기'; btn.disabled = false; }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('adcraft_user');
+    location.reload();
+  }
 </script>
+
+<!-- ─── 로그인/회원가입 모달 ─── -->
+<style>
+  #authModal { position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;display:none;align-items:center;justify-content:center; }
+  .auth-box { background:#fff;border-radius:20px;padding:40px 36px;width:380px;max-width:90vw;box-shadow:0 24px 64px rgba(0,0,0,0.35); }
+  .auth-logo { text-align:center;margin-bottom:28px; }
+  .auth-logo-title { font-size:30px;font-weight:900;color:#1B5BD4;letter-spacing:-1.5px; }
+  .auth-logo-sub { font-size:12px;color:#aaa;margin-top:4px; }
+  .auth-tabs { display:flex;gap:4px;background:#f2f2f2;border-radius:10px;padding:4px;margin-bottom:24px; }
+  .auth-tab { flex:1;padding:9px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s; }
+  .auth-label { font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:6px; }
+  .auth-input { width:100%;padding:12px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;box-sizing:border-box;outline:none;font-family:inherit;transition:border-color .15s; }
+  .auth-input:focus { border-color:#1B5BD4; }
+  .auth-field { margin-bottom:16px; }
+  .auth-btn { width:100%;padding:14px;background:#1B5BD4;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;font-family:inherit;transition:opacity .15s; }
+  .auth-btn:hover { opacity:0.88; }
+  .auth-btn:disabled { opacity:0.5;cursor:not-allowed; }
+  .auth-error { color:#e53e3e;font-size:12px;margin-top:10px;display:none; }
+  /* 다크모드 */
+  body.dark .auth-box { background:#1e1e2e;color:#f0f0f0; }
+  body.dark .auth-tabs { background:#2a2a3a; }
+  body.dark .auth-label { color:#ccc; }
+  body.dark .auth-input { background:#2d2d40;border-color:#444;color:#f0f0f0; }
+  body.dark .auth-input:focus { border-color:#4a90e2; }
+  body.dark .auth-logo-sub { color:#666; }
+</style>
+<div id="authModal">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-title">AdCraft</div>
+      <div class="auth-logo-sub">by Claude AI · Day1Company B2G</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="auth-tab" onclick="switchAuthTab('login')" style="background:#1B5BD4;color:#fff">로그인</button>
+      <button id="tabSignup" class="auth-tab" onclick="switchAuthTab('signup')" style="background:transparent;color:#888">회원가입</button>
+    </div>
+
+    <!-- 로그인 폼 -->
+    <div id="loginForm">
+      <div class="auth-field">
+        <label class="auth-label">이메일</label>
+        <input id="loginEmail" class="auth-input" type="email" placeholder="sh.soh@day1company.co.kr" onkeydown="if(event.key==='Enter')handleLogin()">
+      </div>
+      <button id="loginBtn" class="auth-btn" onclick="handleLogin()">로그인</button>
+      <div id="loginError" class="auth-error"></div>
+    </div>
+
+    <!-- 회원가입 폼 -->
+    <div id="signupForm" style="display:none">
+      <div class="auth-field">
+        <label class="auth-label">이름</label>
+        <input id="signupName" class="auth-input" type="text" placeholder="홍길동">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">이메일</label>
+        <input id="signupEmail" class="auth-input" type="email" placeholder="sh.soh@day1company.co.kr" onkeydown="if(event.key==='Enter')handleSignup()">
+      </div>
+      <button id="signupBtn" class="auth-btn" onclick="handleSignup()">가입하기</button>
+      <div id="signupError" class="auth-error"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
