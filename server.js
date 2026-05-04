@@ -15,6 +15,33 @@ app.use(express.static(join(__dirname, 'public')));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// ─── 🗄 Supabase REST API 헬퍼 ───
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+
+async function supabaseQuery(table, method = 'GET', body = null, queryParams = '') {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return { data: null, error: 'Supabase not configured' };
+  const url = `${SUPABASE_URL}/rest/v1/${table}${queryParams}`;
+  const options = {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : '',
+    },
+  };
+  if (body) options.body = JSON.stringify(body);
+  try {
+    const res = await fetch(url, options);
+    const data = await res.json();
+    if (!res.ok) return { data: null, error: data.message || data.error || 'Supabase error' };
+    return { data: Array.isArray(data) ? data : data, error: null };
+  } catch (e) {
+    return { data: null, error: e.message };
+  }
+}
+
 // ─── reference_images/ 폴더 자동 로드 ───
 const REF_IMAGES_DIR = join(__dirname, 'reference_images');
 function loadReferenceImages() {
@@ -141,6 +168,9 @@ app.post('/api/generate-ad', async (req, res) => {
     custom_bg_css = null,
     font = 'Pretendard',
     layout_types = ['photo-overlay'],  // 선택 레이아웃: 'photo-overlay' | 'twitter'
+    user_id = null,
+    user_email = null,
+    user_name = null,
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -202,6 +232,16 @@ app.post('/api/generate-ad', async (req, res) => {
     console.log('[✅ 생성 완료]', variations.length, '종 | 컬러:', effectiveBgColor, `(${colorSource})`);
     console.log('[🎨 레이아웃]', effectiveLayouts.join(', '));
     console.log('─'.repeat(50) + '\n');
+
+    // 사용자 로그 기록 (비동기, 실패해도 생성은 영향 없음)
+    if (user_id || user_email) {
+      supabaseQuery('generations', 'POST', {
+        user_id: (user_id && user_id !== 'local') ? user_id : null,
+        user_email: user_email || null,
+        user_name: user_name || null,
+        source_url: url,
+      }).catch(() => {});
+    }
 
     res.json({
       variations,
@@ -1938,6 +1978,37 @@ app.post('/api/generate-image', async (req, res) => {
   }
 
   return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+});
+
+// ─── 👤 회원가입 ───
+app.post('/api/auth/signup', async (req, res) => {
+  const { email, name } = req.body;
+  if (!email || !name) return res.status(400).json({ error: '이름과 이메일을 입력해주세요.' });
+
+  // Supabase 미설정 시 개발 모드
+  if (!SUPABASE_URL) return res.json({ user: { id: 'local', email, name } });
+
+  // 이미 가입된 이메일이면 해당 사용자 반환
+  const { data: existing } = await supabaseQuery('users', 'GET', null, `?email=eq.${encodeURIComponent(email)}&limit=1`);
+  if (existing && existing.length > 0) return res.json({ user: existing[0] });
+
+  const { data, error } = await supabaseQuery('users', 'POST', { email, name });
+  if (error) return res.status(500).json({ error });
+  const user = Array.isArray(data) ? data[0] : data;
+  res.json({ user });
+});
+
+// ─── 👤 로그인 (이메일 조회) ───
+app.post('/api/auth/login', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: '이메일을 입력해주세요.' });
+
+  if (!SUPABASE_URL) return res.json({ user: { id: 'local', email, name: '테스트' } });
+
+  const { data, error } = await supabaseQuery('users', 'GET', null, `?email=eq.${encodeURIComponent(email)}&limit=1`);
+  if (error) return res.status(500).json({ error });
+  if (!data || data.length === 0) return res.status(404).json({ error: '가입된 이메일이 없습니다. 먼저 회원가입해주세요.' });
+  res.json({ user: data[0] });
 });
 
 // ─── 배경 이미지 적용 후 HTML 재생성 ───
