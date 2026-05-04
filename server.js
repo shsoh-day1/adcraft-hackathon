@@ -160,13 +160,15 @@ app.post('/api/generate-ad', async (req, res) => {
     // ── STEP 2: 이미지 에이전트 + 소재정보 추출 병렬 실행 ──
     // → 이미지 에이전트: 레퍼런스 분석 + 배경 이미지 fetch (동시)
     // → 소재정보 추출: URL 자동 추출이 필요할 때만
-    const rawPageInfo = { target, usp1, usp2, usp3, ad_set_message, creative_message };
+    const detectedLang = detectLanguage(pageContent);
+    const rawPageInfo = { language: detectedLang, target, usp1, usp2, usp3, ad_set_message, creative_message };
     const needsAutoExtract = !target && !usp1 && !usp2 && !usp3 && !ad_set_message && !creative_message;
 
     const [imageResult, resolvedPageInfo] = await Promise.all([
-      imageAgent({ referenceImages: reference_images, ogImageUrl, customBgImage: custom_bg_image, customBgCss: custom_bg_css }),
+      imageAgent({ referenceImages: reference_images, ogImageUrl, customBgImage: custom_bg_image, customBgCss: custom_bg_css, pageContent }),
       needsAutoExtract ? extractPageInfo(pageContent) : Promise.resolve(rawPageInfo),
     ]);
+    if (!resolvedPageInfo.language) resolvedPageInfo.language = detectedLang;
     const extractedInfo = needsAutoExtract ? resolvedPageInfo : null;
 
     // ── STEP 3: 배경 컬러 결정 (이미지 에이전트 결과 활용) ──
@@ -280,22 +282,42 @@ app.post('/api/fetch-image', async (req, res) => {
 
 // ─── 🖼 이미지 에이전트 ───
 // 역할: 레퍼런스 이미지 스타일 분석 + 배경 이미지 취득
+async function generateImageWithGPT(prompt) {
+  const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({ model: 'gpt-image-1', prompt, n: 1, size: '1024x1024', quality: 'medium' }),
+    signal: AbortSignal.timeout(60000),
+  });
+  const data = await openaiRes.json();
+  if (openaiRes.ok && data.data?.[0]?.b64_json) {
+    return `data:image/png;base64,${data.data[0].b64_json}`;
+  }
+  throw new Error(data.error?.message || 'GPT image generation failed');
+}
+
+function buildAutoBgPrompt(parsedStyle, pageContent) {
+  const mood = Array.isArray(parsedStyle?.style_mood)
+    ? parsedStyle.style_mood.join(', ')
+    : (parsedStyle?.style_mood || 'modern, cinematic, dark');
+  const context = pageContent ? pageContent.slice(0, 200) : '';
+  return `A creative advertising background for Instagram 1:1 ad. Style: ${mood}. Dark tone, abstract or cinematic visual: light rays, bokeh, gradients, or geometric patterns. No text, no logos. 1080x1080px. Context: ${context}`;
+}
+
 // 독립성: 페이지 텍스트 불필요. 이미지 데이터만으로 동작.
 // 병렬성: 카피 에이전트와 동시 실행 가능 (크롤링 후 바로 시작).
-async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBgCss }) {
+async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBgCss, pageContent }) {
   // API 요청에 레퍼런스 없으면 reference_images/ 폴더 자동 사용
   const effectiveRefs = referenceImages.length > 0 ? referenceImages : AUTO_REF_IMAGES;
   console.log('[🖼 이미지 에이전트] 시작 | 레퍼런스:', effectiveRefs.length, '장', effectiveRefs.length > 0 && referenceImages.length === 0 ? '(폴더 자동로드)' : '', '| OG:', ogImageUrl ? 'O' : 'X');
 
-  // 스타일 분석과 배경 이미지 fetch 동시 실행
-  const [styleAnalysis, bgImageBase64] = await Promise.all([
-    effectiveRefs.length > 0
-      ? analyzeReferenceImages(effectiveRefs)
-      : Promise.resolve(null),
-    customBgImage
-      ? Promise.resolve(customBgImage)                             // Unsplash 선택 이미지 우선
-      : (ogImageUrl ? fetchOgImageBase64(ogImageUrl) : Promise.resolve(null)),
-  ]);
+  // 스타일 분석 먼저 실행 (GPT 프롬프트 품질 향상에 사용)
+  const styleAnalysis = effectiveRefs.length > 0
+    ? await analyzeReferenceImages(effectiveRefs)
+    : null;
 
   let parsedStyle = null;
   if (styleAnalysis) {
@@ -303,6 +325,42 @@ async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBg
       const m = styleAnalysis.match(/\{[\s\S]+\}/);
       if (m) parsedStyle = JSON.parse(m[0]);
     } catch (e) { console.warn('[이미지 에이전트] 스타일 파싱 실패', e.message); }
+  }
+
+  // 배경 결정: customBgImage > GPT 자동생성 > OG 이미지 폴백
+  let bgImageBase64 = null;
+  if (customBgImage) {
+    bgImageBase64 = customBgImage;
+  } else {
+    const bgPrompt = buildAutoBgPrompt(parsedStyle, pageContent);
+    // 1순위: GPT (유료), 2순위: Pollinations (무료), 3순위: OG 이미지
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        console.log('[🎨 GPT 배경 자동생성] 시작:', bgPrompt.slice(0, 80) + '...');
+        bgImageBase64 = await generateImageWithGPT(bgPrompt);
+        console.log('[🎨 GPT 배경 자동생성] 성공');
+      } catch (err) {
+        console.warn('[GPT 실패] Pollinations로 대체:', err.message);
+      }
+    }
+    if (!bgImageBase64) {
+      try {
+        console.log('[🌸 Pollinations 배경 자동생성] 시작...');
+        const seed = Math.floor(Math.random() * 99999);
+        const encoded = encodeURIComponent(bgPrompt);
+        const polUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1080&height=1080&nologo=true&seed=${seed}&model=flux`;
+        const polRes = await fetch(polUrl, { signal: AbortSignal.timeout(60000) });
+        if (polRes.ok) {
+          const contentType = polRes.headers.get('content-type') || 'image/jpeg';
+          const arrayBuffer = await polRes.arrayBuffer();
+          bgImageBase64 = `data:${contentType};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+          console.log('[🌸 Pollinations 배경 자동생성] 성공');
+        }
+      } catch (err) {
+        console.warn('[Pollinations 실패] OG 이미지로 대체:', err.message);
+        bgImageBase64 = ogImageUrl ? await fetchOgImageBase64(ogImageUrl) : null;
+      }
+    }
   }
 
   console.log('[🖼 이미지 에이전트] 완료 | 스타일 bg:', parsedStyle?.bg_hex || '없음', '| 배경이미지:', bgImageBase64 ? 'O' : 'X', '| CSS배경:', customBgCss ? 'O' : 'X');
@@ -394,6 +452,18 @@ async function determineBgColor({ bgColor, parsedStyle, layoutRefId, pageThemeCo
 // ══════════════════════════════════════════════════════
 
 // ─── Claude CSS Art 배경 생성 (Gemini 폴백) ───
+
+// ─── 언어 감지 (문자 패턴 기반) ───
+function detectLanguage(text) {
+  const sample = text.slice(0, 2000);
+  const korean = (sample.match(/[가-힣]/g) || []).length;
+  const japanese = (sample.match(/[぀-ヿ]/g) || []).length;
+  const chinese = (sample.match(/[一-鿿]/g) || []).length;
+  const vietnamese = (sample.match(/[àáâãèéêìíòóôõùúýăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/gi) || []).length;
+  const scores = { ko: korean, ja: japanese, zh: chinese - korean - japanese, vi: vietnamese * 3 };
+  const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  return top[1] > 5 ? top[0] : 'ko';
+}
 
 // ─── 페이지 크롤링 ───
 async function fetchPageContent(url) {
@@ -531,17 +601,18 @@ async function extractPageInfo(pageContent) {
 ${pageContent}
 
 추출 항목:
-- target: 이 과정/서비스의 핵심 타겟 고객 (1-2문장, 구체적으로)
-- usp1: 서비스·콘텐츠·커리큘럼 자체의 핵심 차별화 강점 1 (한 줄)
+- language: 페이지의 주요 언어 (예: "ko", "vi", "en", "ja" — ISO 639-1 코드)
+- target: 이 과정/서비스의 핵심 타겟 고객 (1-2문장, 구체적으로, 페이지 언어로 작성)
+- usp1: 서비스·콘텐츠·커리큘럼 자체의 핵심 차별화 강점 1 (한 줄, 페이지 언어로 작성)
   절대 제외: 결제 조건(무이자 할부, 카드 할인), 가격/할인율, 기간 한정 이벤트, 수강료 정보
   포함 대상: 커리큘럼 방식, 강사 역량, 학습 성과, 취업/전환 지원, 독점 콘텐츠, 업계 인지도
-- usp2: 서비스 자체의 차별화 강점 2 (위 기준 동일 적용)
-- usp3: 서비스 자체의 차별화 강점 3 (위 기준 동일 적용)
-- ad_set_message: 이 캠페인의 전체 메시지 방향 (1문장)
-- creative_message: 이 소재에서 강조할 핵심 포인트 (1문장)
+- usp2: 서비스 자체의 차별화 강점 2 (위 기준 동일 적용, 페이지 언어로 작성)
+- usp3: 서비스 자체의 차별화 강점 3 (위 기준 동일 적용, 페이지 언어로 작성)
+- ad_set_message: 이 캠페인의 전체 메시지 방향 (1문장, 페이지 언어로 작성)
+- creative_message: 이 소재에서 강조할 핵심 포인트 (1문장, 페이지 언어로 작성)
 
 JSON만 반환:
-{"target":"","usp1":"","usp2":"","usp3":"","ad_set_message":"","creative_message":""}`;
+{"language":"","target":"","usp1":"","usp2":"","usp3":"","ad_set_message":"","creative_message":""}`;
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
@@ -558,7 +629,12 @@ JSON만 반환:
 // ─── 카피 배리에이션 3종 생성 ───
 async function extractAdDataVariations(pageContent, styleAnalysis, info, _attempt = 1) {
   const styleHint = styleAnalysis ? `\n\n## 레퍼런스 디자인 스타일 (반드시 참고)\n${styleAnalysis}\n→ 위 스타일 분위기에 맞는 카피 톤을 적용하라.` : '';
-  const { target, usp1, usp2, usp3, ad_set_message, creative_message } = info;
+  const { language, target, usp1, usp2, usp3, ad_set_message, creative_message } = info;
+  const langMap = { ko: '한국어', vi: '베트남어', en: '영어', ja: '일본어', zh: '중국어', th: '태국어' };
+  const langName = langMap[language] || language || '한국어';
+  const langInstruction = language && language !== 'ko'
+    ? `\n⚠️ 중요: 모든 카피(hook, headline_line1, headline_line2, cta_badge, cta_text, visual_stat1_label 등)는 반드시 ${langName}로 작성하라. 한국어 사용 절대 금지.\n`
+    : '';
 
   // 주예진 체크리스트 컨텍스트
   const checklistCtx = checklistContent ? `
@@ -627,7 +703,7 @@ JSON 배열만 반환 (주석·설명 없이):
 ]`;
 
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피 1개를 작성하라.
-
+${langInstruction}
 ## 소재 기본 정보
 - 과정 타겟: ${target}
 - USP 1: ${usp1}
@@ -1827,35 +1903,9 @@ app.post('/api/generate-image', async (req, res) => {
   if (process.env.OPENAI_API_KEY) {
     try {
       console.log('[🖼 gpt-image-1] 요청 중...');
-      const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-image-1',
-          prompt: prompt,
-          n: 1,
-          size: '1024x1024',
-          quality: 'medium',
-        }),
-        signal: AbortSignal.timeout(60000),
-      });
-
-      const openaiData = await openaiRes.json();
-
-      if (openaiRes.ok && openaiData.data?.[0]?.b64_json) {
-        const b64 = openaiData.data[0].b64_json;
-        console.log('[🖼 gpt-image-1] 성공');
-        return res.json({
-          imageData: `data:image/png;base64,${b64}`,
-          model: 'gpt-image-1',
-          type: 'image',
-        });
-      } else {
-        console.warn('[gpt-image-1 실패]', openaiData.error?.message || JSON.stringify(openaiData));
-      }
+      const imageData = await generateImageWithGPT(prompt);
+      console.log('[🖼 gpt-image-1] 성공');
+      return res.json({ imageData, model: 'gpt-image-1', type: 'image' });
     } catch (err) {
       console.warn('[gpt-image-1 오류]', err.message);
     }
