@@ -11,7 +11,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '20mb' }));
-app.use(express.static(join(__dirname, 'public')));
+// index.html은 항상 최신 버전으로 (CDN/브라우저 캐시 방지)
+app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(join(__dirname, 'public', 'index.html'));
+});
+app.use(express.static(join(__dirname, 'public'), { maxAge: 0 }));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
