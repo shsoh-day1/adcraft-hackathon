@@ -930,7 +930,7 @@ ${layoutSpec}`;
   if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
     if (_attempt < 3) {
       console.warn(`[파싱 실패 — 재시도 ${_attempt + 1}/3] Claude 응답:`, raw.slice(0, 200));
-      return extractAdDataVariations(pageContent, styleAnalysis, info, _attempt + 1);
+      return extractAdDataVariations(pageContent, styleAnalysis, info, _attempt + 1, layoutTypes);
     }
     console.error('[파싱 최종 실패] Claude 응답:', raw.slice(0, 500));
     throw new Error('카피 생성 실패 — Claude 응답을 파싱할 수 없습니다. 잠시 후 다시 시도해주세요.');
@@ -942,7 +942,7 @@ ${layoutSpec}`;
     if (hasLowScore) {
       const fails = [...new Set(parsed.flatMap(v => v.validation_fails || []))];
       console.log('[체크리스트 점수 미달 — 자동 재생성]', fails.join(', '));
-      return extractAdDataVariations(pageContent, styleAnalysis, info, 2);
+      return extractAdDataVariations(pageContent, styleAnalysis, info, 2, layoutTypes);
     }
   }
 
