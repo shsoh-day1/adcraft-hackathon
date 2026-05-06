@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AdCraft</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #16191f; --bg2: #1e232c; --bg3: #272d38;
+  --bdr: rgba(255,255,255,.09); --bdr2: rgba(255,255,255,.15);
+  --tx: #eef2f7; --tx-sub: #8a9bb5; --tx-muted: #4a5c72;
+  --accent: #3b82f6; --accent2: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+}
+body { background: var(--bg); color: var(--tx); font-family: -apple-system,'Segoe UI',sans-serif; font-size: 12px; line-height: 1.5; }
+
+/* ── 헤더 ── */
+.header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 8px; border-bottom:1px solid var(--bdr); flex-shrink:0; }
+.logo { font-size:14px; font-weight:800; background:linear-gradient(135deg,#3b82f6,#6366f1); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.env-wrap { display:flex; gap:3px; }
+.env-btn { padding:2px 8px; border-radius:5px; border:1px solid var(--bdr); background:transparent; color:var(--tx-muted); font-size:10px; font-weight:700; cursor:pointer; }
+.env-btn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* ── 탭 ── */
+.tabs { display:flex; border-bottom:1px solid var(--bdr); flex-shrink:0; }
+.tab { flex:1; padding:8px 4px; text-align:center; font-size:11px; font-weight:700; color:var(--tx-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .12s; }
+.tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── 스크롤 본문 ── */
+.body { overflow-y:auto; flex:1; }
+.section { padding:11px 14px; border-bottom:1px solid var(--bdr); }
+.lbl { font-size:10px; font-weight:700; color:var(--tx-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
+
+/* ── 프레임 상태 ── */
+.frame-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; border:1px solid var(--bdr); color:var(--tx-sub); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.frame-pill.ok { border-color:rgba(34,197,94,.4); color:var(--green); }
+.frame-pill.warn { border-color:rgba(239,68,68,.3); color:var(--red); }
+
+/* ── 인풋 ── */
+input, textarea, select { width:100%; background:var(--bg3); border:1px solid var(--bdr); border-radius:7px; color:var(--tx); font-size:12px; font-family:inherit; padding:7px 10px; outline:none; transition:border-color .12s; }
+input:focus, textarea:focus { border-color:var(--accent); }
+input::placeholder, textarea::placeholder { color:var(--tx-muted); }
+textarea { resize:vertical; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.field { margin-bottom:7px; }
+.field:last-child { margin-bottom:0; }
+.field-lbl { font-size:10px; color:var(--tx-muted); margin-bottom:3px; font-weight:600; }
+
+/* ── 버튼 ── */
+.btn { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; padding:9px 12px; border-radius:8px; border:none; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .15s; }
+.btn-blue  { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+.btn-green { background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; }
+.btn-ghost { background:var(--bg3); border:1px solid var(--bdr2); color:var(--tx-sub); }
+.btn:hover:not(:disabled) { filter:brightness(1.1); }
+.btn:disabled { opacity:.4; cursor:not-allowed; filter:none; }
+.btn-sm { padding:6px 12px; width:auto; font-size:11px; }
+
+/* ── 상태 메시지 ── */
+.msg { padding:7px 10px; border-radius:7px; font-size:11px; font-weight:500; margin-top:8px; display:none; }
+.msg.ok  { background:rgba(34,197,94,.12);  color:#4ade80; border:1px solid rgba(34,197,94,.25); }
+.msg.err { background:rgba(239,68,68,.12);  color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+.msg.inf { background:rgba(59,130,246,.1);  color:#93c5fd; border:1px solid rgba(59,130,246,.2); }
+
+/* ── 스피너 ── */
+.spin { width:14px; height:14px; border:2px solid rgba(255,255,255,.2); border-top-color:#fff; border-radius:50%; animation:sp .7s linear infinite; flex-shrink:0; }
+@keyframes sp { to { transform:rotate(360deg); } }
+
+/* ── 카피 배리에이션 ── */
+.var-tabs { display:flex; gap:4px; margin-bottom:8px; }
+.var-tab { flex:1; padding:5px; border-radius:6px; border:1px solid var(--bdr); background:transparent; color:var(--tx-muted); font-size:10px; font-weight:700; cursor:pointer; text-align:center; }
+.var-tab.on { background:var(--bg3); border-color:rgba(59,130,246,.4); color:var(--accent); }
+
+/* ── 검증 배지 ── */
+.score { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:10px; font-size:10px; font-weight:700; }
+.score-hi { background:rgba(34,197,94,.15); color:#4ade80; }
+.score-mid { background:rgba(251,191,36,.15); color:#fbbf24; }
+.score-lo  { background:rgba(239,68,68,.15);  color:#fca5a5; }
+
+/* ── 이미지 미리보기 ── */
+.img-preview { width:100%; aspect-ratio:1; border-radius:8px; overflow:hidden; background:var(--bg3); border:1px solid var(--bdr); display:flex; align-items:center; justify-content:center; color:var(--tx-muted); font-size:11px; margin:8px 0; position:relative; }
+.img-preview img { width:100%; height:100%; object-fit:cover; }
+
+/* ── AI 매핑 결과 ── */
+.match-item { display:grid; grid-template-columns:52px 1fr; gap:2px 8px; padding:6px 0; border-bottom:1px solid var(--bdr); }
+.match-item:last-child { border-bottom:none; }
+.match-field { font-size:10px; font-weight:800; color:var(--accent); padding-top:1px; letter-spacing:-.2px; }
+.match-layer { font-size:11px; color:var(--tx-sub); font-weight:600; }
+.match-value { font-size:11px; color:var(--tx-muted); grid-column:2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.match-none { font-size:11px; color:var(--tx-muted); font-style:italic; }
+
+/* ── USP 섹션 ── */
+.usp-grid { display:flex; flex-direction:column; gap:6px; }
+
+/* ── 레이아웃 ── */
+html, body { height:100%; }
+body { display:flex; flex-direction:column; }
+.tab-content { display:none; flex-direction:column; flex:1; overflow:hidden; }
+.tab-content.on { display:flex; }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <span class="logo">AdCraft</span>
+  <div class="env-wrap">
+    <button class="env-btn on" id="btnLocal" onclick="setEnv('local')">로컬</button>
+    <button class="env-btn" id="btnProd"  onclick="setEnv('prod')">프로덕션</button>
+  </div>
+</div>
+
+<!-- 탭 -->
+<div class="tabs">
+  <div class="tab on" onclick="switchTab('copy')">✍️ 카피 생성</div>
+  <div class="tab"    onclick="switchTab('image')">🖼 배경 이미지</div>
+</div>
+
+<!-- ══════════ 탭1: 카피 생성 ══════════ -->
+<div class="tab-content on" id="tab-copy">
+  <div class="body">
+
+    <!-- 선택 프레임 -->
+    <div class="section">
+      <div class="lbl">선택된 프레임</div>
+      <div id="frameStatus" class="frame-pill warn">⚠ 프레임을 선택해주세요</div>
+    </div>
+
+    <!-- URL 입력 -->
+    <div class="section">
+      <div class="lbl">상품 URL</div>
+      <input type="url" id="urlInput" placeholder="https://fastcampus.co.kr/..." style="margin-bottom:7px">
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" id="btnExtract" onclick="extractInfo()" style="flex:1">🔍 정보 추출</button>
+        <button class="btn btn-blue btn-sm" id="btnGen"     onclick="generateCopy()" style="flex:2">✨ 카피 생성</button>
+      </div>
+      <div id="genMsg" class="msg"></div>
+    </div>
+
+    <!-- USP 추출 결과 (숨김 → 추출 후 표시) -->
+    <div class="section" id="uspSection" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <div class="lbl" style="margin-bottom:0">추출된 정보 <span style="color:var(--tx-muted);font-weight:400;text-transform:none">(수정 가능)</span></div>
+      </div>
+      <div class="usp-grid">
+        <div class="field">
+          <div class="field-lbl">타겟</div>
+          <input id="uTarget" placeholder="예: 30대 직장인 데이터 분석 입문자">
+        </div>
+        <div class="row2">
+          <div class="field"><div class="field-lbl">USP 1</div><input id="uUsp1" placeholder="핵심 강점 1"></div>
+          <div class="field"><div class="field-lbl">USP 2</div><input id="uUsp2" placeholder="핵심 강점 2"></div>
+        </div>
+        <div class="field"><div class="field-lbl">USP 3</div><input id="uUsp3" placeholder="핵심 강점 3"></div>
+        <div class="field"><div class="field-lbl">카피 방향</div><input id="uMsg" placeholder="이 소재에서 강조할 핵심 메시지"></div>
+      </div>
+    </div>
+
+    <!-- 생성된 카피 (숨김 → 생성 후 표시) -->
+    <div class="section" id="copySection" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="lbl" style="margin-bottom:0">생성된 카피</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span id="scoreBadge" class="score"></span>
+          <button class="btn btn-ghost btn-sm" onclick="generateCopy()" title="재생성">🔄</button>
+        </div>
+      </div>
+      <div class="usp-grid">
+        <div class="field"><div class="field-lbl">Hook (서브카피)</div><input id="f_hook" maxlength="30"></div>
+        <div class="row2">
+          <div class="field"><div class="field-lbl">Headline 1</div><input id="f_h1" maxlength="14"></div>
+          <div class="field"><div class="field-lbl">Headline 2</div><input id="f_h2" maxlength="14"></div>
+        </div>
+        <div class="field"><div class="field-lbl">CTA 텍스트</div><input id="f_cta" maxlength="28"></div>
+        <div class="row2">
+          <div class="field"><div class="field-lbl">수치 값</div><input id="f_stat_v" maxlength="12"></div>
+          <div class="field"><div class="field-lbl">수치 라벨</div><input id="f_stat_l" maxlength="16"></div>
+        </div>
+        <div class="field"><div class="field-lbl">브랜드명</div><input id="f_brand" maxlength="20"></div>
+      </div>
+    </div>
+
+    <!-- AI 자동 매핑 결과 -->
+    <div class="section" id="matchSection" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="lbl" style="margin-bottom:0">AI 레이어 자동 매핑</div>
+        <span id="matchBadge" class="score"></span>
+      </div>
+      <div id="matchList"></div>
+      <div id="matchMsg" class="msg" style="margin-top:6px;margin-bottom:6px"></div>
+      <button class="btn btn-green" id="btnApply" onclick="applyCopy()" style="margin-top:8px">✅ Figma에 카피 적용</button>
+      <div id="applyMsg" class="msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ 탭2: 배경 이미지 ══════════ -->
+<div class="tab-content" id="tab-image">
+  <div class="body">
+
+    <!-- URL (탭1과 공유) -->
+    <div class="section">
+      <div class="lbl">상품 URL <span style="color:var(--tx-muted);font-weight:400;text-transform:none">(카피 탭과 공유)</span></div>
+      <input type="url" id="urlInput2" placeholder="https://fastcampus.co.kr/...">
+    </div>
+
+    <!-- 이미지 힌트 -->
+    <div class="section">
+      <div class="lbl">이미지 힌트 <span style="color:var(--tx-muted);font-weight:400;text-transform:none">(선택)</span></div>
+      <input id="imgHint" placeholder="예: 밤하늘 감성, 도심 야경, 따뜻한 카페, 강의실" style="margin-bottom:8px">
+      <button class="btn btn-blue" id="btnGenImg" onclick="generateBgImage()">🎨 AI 배경 이미지 생성</button>
+      <div id="imgMsg" class="msg"></div>
+    </div>
+
+    <!-- 이미지 미리보기 -->
+    <div class="section" id="imgPreviewSection" style="display:none">
+      <div class="lbl">미리보기</div>
+      <div class="img-preview" id="imgPreview">이미지 없음</div>
+      <div style="font-size:10px;color:var(--tx-muted);margin-bottom:10px" id="imgModelLabel"></div>
+
+      <!-- 레이어 선택 -->
+      <div class="lbl">적용할 Figma 레이어</div>
+      <select id="imgLayerSelect" style="margin-bottom:8px">
+        <option value="">— 레이어 선택 —</option>
+      </select>
+      <button class="btn btn-green" id="btnApplyImg" onclick="applyBgImage()" disabled>✅ 선택한 레이어에 이미지 적용</button>
+      <div id="imgApplyMsg" class="msg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── 상태 ──
+let env = 'local';
+let textLayers = [], imageLayers = [], hasSelection = false;
+let currentImgBase64 = null;
+let currentAdData = null;   // 마지막으로 생성된 카피 adData
+let currentMapping = {};    // { layerId: "삽입할 텍스트" }
+
+const FIELD_LABELS = {
+  hook: 'Hook', headline_line1: '헤드 1', headline_line2: '헤드 2',
+  cta_text: 'CTA', visual_stat1_value: '수치 값', visual_stat1_label: '수치 라벨', brand: '브랜드',
+};
+
+const ENDPOINTS = {
+  local: 'http://localhost:3000',
+  prod:  'https://adcraft-hackathon.vercel.app',
+};
+
+// ── 환경 전환 ──
+function setEnv(e) {
+  env = e;
+  document.getElementById('btnLocal').classList.toggle('on', e==='local');
+  document.getElementById('btnProd').classList.toggle('on', e==='prod');
+}
+
+// ── 탭 전환 ──
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('on',['copy','image'][i]===t));
+  document.getElementById('tab-copy').classList.toggle('on', t==='copy');
+  document.getElementById('tab-image').classList.toggle('on', t==='image');
+  if (t==='image') document.getElementById('urlInput2').value = document.getElementById('urlInput').value;
+  else document.getElementById('urlInput').value = document.getElementById('urlInput2').value;
+}
+
+// ── code.js 메시지 수신 ──
+window.onmessage = (ev) => {
+  const msg = ev.data.pluginMessage;
+  if (!msg) return;
+
+  if (msg.type === 'no-selection') {
+    hasSelection = false;
+    setFramePill('⚠ 프레임을 선택해주세요', 'warn');
+  }
+  if (msg.type === 'selection-info') {
+    hasSelection = true;
+    textLayers = msg.textLayers || [];
+    imageLayers = msg.imageLayers || [];
+    setFramePill('✓ ' + msg.frameName + ' (' + textLayers.length + '개 텍스트)', 'ok');
+    renderImgLayerSelect();
+    // 카피가 이미 생성된 상태면 자동으로 매핑 시작
+    if (currentAdData && textLayers.length) autoMatchLayers(currentAdData);
+  }
+  if (msg.type === 'apply-done') {
+    showMsg('applyMsg', '✅ Figma에 적용됐습니다!', 'ok');
+    document.getElementById('btnApply').disabled = false;
+    document.getElementById('btnApply').innerHTML = '✅ Figma에 카피 적용';
+  }
+  if (msg.type === 'image-done') {
+    showMsg('imgApplyMsg', '✅ 이미지가 레이어에 적용됐습니다!', 'ok');
+    document.getElementById('btnApplyImg').disabled = false;
+  }
+  if (msg.type === 'error') {
+    showMsg('applyMsg', '❌ ' + msg.message, 'err');
+    showMsg('imgApplyMsg', '❌ ' + msg.message, 'err');
+    document.getElementById('btnApply').disabled = false;
+    document.getElementById('btnApplyImg').disabled = false;
+  }
+};
+
+function setFramePill(text, cls) {
+  const el = document.getElementById('frameStatus');
+  el.textContent = text;
+  el.className = 'frame-pill ' + cls;
+}
+
+// ── 정보 추출 ──
+async function extractInfo() {
+  const url = getUrl();
+  if (!url) return showMsg('genMsg', '❌ URL을 입력해주세요.', 'err');
+  const btn = document.getElementById('btnExtract');
+  btn.disabled = true; btn.innerHTML = '<div class="spin"></div>';
+  showMsg('genMsg', '⏳ 페이지 분석 중...', 'inf');
+  try {
+    const res = await api('/api/extract-info', { url });
+    const { info } = res;
+    document.getElementById('uTarget').value = info.target || '';
+    document.getElementById('uUsp1').value   = info.usp1 || '';
+    document.getElementById('uUsp2').value   = info.usp2 || '';
+    document.getElementById('uUsp3').value   = info.usp3 || '';
+    document.getElementById('uMsg').value    = info.creative_message || '';
+    document.getElementById('uspSection').style.display = 'block';
+    showMsg('genMsg', '✅ 정보 추출 완료! 수정 후 카피 생성하세요.', 'ok');
+  } catch(e) {
+    showMsg('genMsg', '❌ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔍 정보 추출';
+  }
+}
+
+// ── 카피 생성 ──
+async function generateCopy() {
+  const url = getUrl();
+  if (!url) return showMsg('genMsg', '❌ URL을 입력해주세요.', 'err');
+  const btn = document.getElementById('btnGen');
+  btn.disabled = true; btn.innerHTML = '<div class="spin"></div> 생성 중...';
+  showMsg('genMsg', '⏳ AdCraft AI가 카피를 생성하고 있어요...', 'inf');
+  try {
+    const res = await api('/api/generate-ad', {
+      url,
+      target: document.getElementById('uTarget').value || '',
+      usp1:   document.getElementById('uUsp1').value || '',
+      usp2:   document.getElementById('uUsp2').value || '',
+      usp3:   document.getElementById('uUsp3').value || '',
+      creative_message: document.getElementById('uMsg').value || '',
+      layout_types: ['photo-overlay'],
+      auto_bg_image: false,
+    });
+    const ad = res.variations?.[0]?.adData;
+    if (!ad) throw new Error('카피 데이터 없음');
+
+    // 편집 필드 채우기
+    const COPY_MAP = { f_hook:'hook', f_h1:'headline_line1', f_h2:'headline_line2', f_cta:'cta_text', f_stat_v:'visual_stat1_value', f_stat_l:'visual_stat1_label', f_brand:'brand' };
+    for (const [id, key] of Object.entries(COPY_MAP)) {
+      const el = document.getElementById(id);
+      if (el) el.value = ad[key] || '';
+    }
+
+    // 검증 점수
+    const s = ad.validation_score;
+    const badge = document.getElementById('scoreBadge');
+    if (typeof s === 'number') {
+      badge.textContent = '검증 ' + s + '/15';
+      badge.className = 'score ' + (s >= 12 ? 'score-hi' : s >= 8 ? 'score-mid' : 'score-lo');
+    }
+
+    currentAdData = ad;
+    document.getElementById('copySection').style.display = 'block';
+    showMsg('genMsg', '✅ 카피 생성 완료!', 'ok');
+
+    // 프레임이 이미 선택돼 있으면 즉시 AI 매핑
+    if (hasSelection && textLayers.length) {
+      await autoMatchLayers(ad);
+    } else {
+      document.getElementById('matchSection').style.display = 'block';
+      showMsg('matchMsg', '⚠ Figma에서 광고 프레임을 선택하면 자동 매핑이 시작됩니다.', 'inf');
+    }
+  } catch(e) {
+    showMsg('genMsg', '❌ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✨ 카피 생성';
+  }
+}
+
+// ── AI 레이어 자동 매핑 ──
+async function autoMatchLayers(adData) {
+  document.getElementById('matchSection').style.display = 'block';
+  document.getElementById('matchList').innerHTML = '';
+  document.getElementById('btnApply').disabled = true;
+  showMsg('matchMsg', '⏳ AI가 레이어 역할을 분석 중...', 'inf');
+
+  try {
+    const res = await api('/api/match-layers', {
+      layers: textLayers,
+      adCopy: {
+        hook: adData.hook,
+        headline_line1: adData.headline_line1,
+        headline_line2: adData.headline_line2,
+        cta_text: adData.cta_text,
+        visual_stat1_value: adData.visual_stat1_value,
+        visual_stat1_label: adData.visual_stat1_label,
+        brand: adData.brand,
+      }
+    });
+
+    const matches = res.matches || [];
+    const layerById = Object.fromEntries(textLayers.map(l => [l.id, l]));
+
+    // currentMapping 업데이트: layerId → 실제 텍스트 값
+    currentMapping = {};
+    matches.forEach(m => {
+      if (adData[m.field]) currentMapping[m.layerId] = adData[m.field];
+    });
+
+    // 결과 렌더링
+    const list = document.getElementById('matchList');
+    list.innerHTML = '';
+    const allFields = Object.keys(FIELD_LABELS).filter(k => adData[k]);
+    let matchedCount = 0;
+
+    allFields.forEach(field => {
+      const match = matches.find(m => m.field === field);
+      const layer = match ? layerById[match.layerId] : null;
+      if (match && layer) matchedCount++;
+
+      const item = document.createElement('div');
+      item.className = 'match-item';
+      item.innerHTML =
+        '<div class="match-field">' + FIELD_LABELS[field] + '</div>' +
+        '<div class="match-layer">' + (layer
+          ? '"' + layer.name + '"'
+          : '<span class="match-none">레이어 없음</span>') + '</div>' +
+        '<div class="match-value">"' + (adData[field] || '') + '"</div>';
+      list.appendChild(item);
+    });
+
+    // 배지
+    const badge = document.getElementById('matchBadge');
+    badge.textContent = matchedCount + '/' + allFields.length + ' 매핑됨';
+    badge.className = 'score ' + (matchedCount >= Math.ceil(allFields.length * 0.7) ? 'score-hi' : matchedCount > 0 ? 'score-mid' : 'score-lo');
+
+    if (matchedCount > 0) {
+      document.getElementById('matchMsg').style.display = 'none';
+      document.getElementById('btnApply').disabled = false;
+    } else {
+      showMsg('matchMsg', '⚠ 매핑 가능한 레이어를 찾지 못했습니다. 레이어 이름에 역할이 담겨있으면 더 잘 인식해요.', 'err');
+    }
+  } catch(e) {
+    showMsg('matchMsg', '❌ AI 매핑 실패: ' + e.message, 'err');
+  }
+}
+
+// ── 카피 Figma 적용 ──
+function applyCopy() {
+  if (!Object.keys(currentMapping).length) return showMsg('applyMsg', '❌ 매핑된 레이어가 없습니다.', 'err');
+  document.getElementById('btnApply').disabled = true;
+  document.getElementById('btnApply').innerHTML = '<div class="spin"></div> 적용 중...';
+  send({ type:'apply-copy', mapping: currentMapping });
+}
+
+// ── 배경 이미지 생성 ──
+async function generateBgImage() {
+  const url = document.getElementById('urlInput2').value.trim() || getUrl();
+  if (!url) return showMsg('imgMsg', '❌ URL을 입력해주세요.', 'err');
+  const btn = document.getElementById('btnGenImg');
+  btn.disabled = true; btn.innerHTML = '<div class="spin"></div> 생성 중 (30~60초)...';
+  showMsg('imgMsg', '⏳ GPT 2.0으로 한국인 배경 이미지 생성 중...', 'inf');
+  document.getElementById('imgPreviewSection').style.display = 'none';
+  try {
+    const hint = document.getElementById('imgHint').value.trim();
+    const res = await api('/api/generate-bg-image', { url, hint });
+    currentImgBase64 = res.imageData;
+    const preview = document.getElementById('imgPreview');
+    preview.innerHTML = '<img src="' + currentImgBase64 + '">';
+    document.getElementById('imgPreviewSection').style.display = 'block';
+    document.getElementById('btnApplyImg').disabled = !document.getElementById('imgLayerSelect').value;
+    showMsg('imgMsg', '✅ 이미지 생성 완료! 레이어 선택 후 적용하세요.', 'ok');
+  } catch(e) {
+    showMsg('imgMsg', '❌ ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🎨 AI 배경 이미지 생성';
+  }
+}
+
+// ── 배경 이미지 Figma 적용 ──
+function applyBgImage() {
+  const layerId = document.getElementById('imgLayerSelect').value;
+  if (!layerId) return showMsg('imgApplyMsg', '❌ 레이어를 선택해주세요.', 'err');
+  if (!currentImgBase64) return showMsg('imgApplyMsg', '❌ 이미지를 먼저 생성해주세요.', 'err');
+  document.getElementById('btnApplyImg').disabled = true;
+  send({ type:'apply-image', layerId, imageBase64: currentImgBase64 });
+}
+
+// ── 레이어 셀렉트 렌더링 ──
+function renderImgLayerSelect() {
+  const sel = document.getElementById('imgLayerSelect');
+  sel.innerHTML = '<option value="">— 레이어 선택 —</option>';
+  // 이미지 레이어 + 전체 레이어(이미지 fill 가능한 것들)
+  const allLayers = [
+    ...imageLayers,
+    ...textLayers.filter(l => /bg|background|배경|image|img|photo|사진/i.test(l.name)),
+  ];
+  // 중복 제거
+  const seen = new Set();
+  allLayers.forEach(l => {
+    if (seen.has(l.id)) return;
+    seen.add(l.id);
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.name;
+    sel.appendChild(opt);
+  });
+  // 이미지 레이어 없으면 힌트 추가
+  if (seen.size === 0) {
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = '배경 레이어 없음 — 이름에 "bg/배경/image" 포함 시 감지';
+    sel.appendChild(opt);
+  }
+  sel.onchange = () => {
+    document.getElementById('btnApplyImg').disabled = !sel.value || !currentImgBase64;
+  };
+}
+
+// ── 유틸 ──
+function getUrl() {
+  return document.getElementById('urlInput').value.trim() || document.getElementById('urlInput2').value.trim();
+}
+
+async function api(path, body) {
+  const res = await fetch(ENDPOINTS[env] + path, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'API 오류 ' + res.status);
+  return data;
+}
+
+function send(msg) { parent.postMessage({ pluginMessage: msg }, '*'); }
+
+function showMsg(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text; el.className = 'msg ' + cls; el.style.display = 'block';
+}
+
+// ── 초기화 ──
+send({ type:'get-selection' });
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "AdCraft — AI 광고소재",
+  "id": "adcraft-ai-ad-generator",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": [
+      "http://localhost:3000",
+      "https://adcraft-hackathon.vercel.app"
+    ],
+    "reasoning": "AdCraft API 서버 (로컬 개발 및 프로덕션)"
+  }
+}
