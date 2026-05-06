@@ -411,7 +411,7 @@ function buildAutoBgPrompt(parsedStyle, pageContent) {
     ? parsedStyle.style_mood.join(', ')
     : (parsedStyle?.style_mood || 'modern, cinematic, dark');
   const context = pageContent ? pageContent.slice(0, 200) : '';
-  return `A creative advertising background for Instagram 1:1 ad. Style: ${mood}. Dark tone, abstract or cinematic visual: light rays, bokeh, gradients, or geometric patterns. No text, no logos. 1080x1080px. Context: ${context}`;
+  return `A creative advertising background for Korean market Instagram 1:1 ad. Style: ${mood}. Dark tone, abstract or cinematic visual: light rays, bokeh, gradients, or geometric patterns. If people are depicted, they must have East Asian (Korean) appearance. No text, no logos. 1080x1080px. Context: ${context}`;
 }
 
 // 독립성: 페이지 텍스트 불필요. 이미지 데이터만으로 동작.
@@ -2416,7 +2416,7 @@ app.post('/api/generate-image-prompt', async (req, res) => {
       const msg = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 200,
-        messages: [{ role: 'user', content: `사용자 입력 "${userHint}"을 Instagram 1:1 광고 배경 이미지 생성용 영어 프롬프트로 발전시켜라. 어두운 톤, 텍스트 가독성 확보, 추상적 배경. 마크다운 금지, 제목 금지, 2-3문장 순수 텍스트만:` }],
+        messages: [{ role: 'user', content: `사용자 입력 "${userHint}"을 Instagram 1:1 광고 배경 이미지 생성용 영어 프롬프트로 발전시켜라. 어두운 톤, 텍스트 가독성 확보, 추상적 배경. 인물이 포함될 경우 한국인/동아시아인 외모(Korean/East Asian appearance)로 명시할 것. 마크다운 금지, 제목 금지, 2-3문장 순수 텍스트만:` }],
       });
       // 마크다운 헤더/불필요한 줄 제거
       const raw = msg.content[0].text.trim().replace(/^#+\s+[^\n]*\n*/g, '').trim();
@@ -2458,6 +2458,7 @@ app.post('/api/generate-image-prompt', async (req, res) => {
 4. 1:1 정사각형, 1080×1080px Instagram 광고 배경
 5. 브랜드/서비스 특성에 맞는 시각적 모티프 (교육이면 집중/성장, 테크면 미래/네트워크 등)
 6. 이미지 안에 텍스트 없음
+7. 인물이 포함될 경우 반드시 한국인/동아시아인 외모로 (Korean/East Asian appearance, not Western)
 
 출력 형식 (아래 형식 그대로, 레이블 포함):
 [한국어]
