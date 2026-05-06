@@ -270,6 +270,26 @@ app.post('/api/generate-ad', async (req, res) => {
     const effectivePersonImageBase64 = person_image_base64 || null;
     const effectivePersonImageUrl = person_image_url || autoPersonImageUrl || null;
 
+    // ── STEP 5-A: GPT-4o 레이아웃 매칭 (layout_ref_id 있을 때) ──
+    // 레이아웃 레퍼런스 이미지를 GPT-4o가 직접 보고 HTML 생성.
+    // 기존 고정 템플릿보다 훨씬 높은 레이아웃 유사성 보장.
+    let gptLayoutHTMLs = null;
+    if (layout_ref_id && process.env.OPENAI_API_KEY) {
+      const refLayout = readLayouts().find(l => l.id === layout_ref_id);
+      if (refLayout?.imageData) {
+        console.log('[🤖 GPT 레이아웃 매칭 시작]', refLayout.name, '| 배리에이션:', adDataList.length, '종');
+        // 3종 배리에이션 병렬 변환 (각각 카피 다름)
+        gptLayoutHTMLs = await Promise.all(
+          adDataList.map((adData, i) =>
+            generateLayoutHTML(refLayout.imageData, adData, effectiveBgColor, font)
+              .catch(e => { console.warn(`[GPT 레이아웃 변환 실패 ${i+1}]`, e.message); return null; })
+          )
+        );
+        const successCount = gptLayoutHTMLs.filter(Boolean).length;
+        console.log(`[🤖 GPT 레이아웃 매칭 완료] ${successCount}/${adDataList.length}종 성공 | 실패분은 고정 템플릿 사용`);
+      }
+    }
+
     const variations = assemblyAgent({
       adDataList,
       bgColor: effectiveBgColor,
@@ -282,6 +302,7 @@ app.post('/api/generate-ad', async (req, res) => {
       eventDate: event_date,
       eventBadge: event_badge,
       colors,
+      gptLayoutHTMLs,  // GPT-4o 생성 HTML (있으면 고정 템플릿 대체)
     });
 
     console.log('─'.repeat(50));
@@ -548,8 +569,9 @@ async function copyAgent({ pageContent, pageInfo, styleAnalysis, layoutTypes = [
 // 역할: 카피 데이터 + 배경 이미지 → 1080×1080 HTML 소재 3종 조립
 // 독립성: 카피 에이전트 + 이미지 에이전트 결과만 있으면 즉시 실행.
 // 특성: 동기(sync) 함수 — Claude API 호출 없이 순수 템플릿 렌더링.
-function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'], personImageBase64 = null, personImageUrl = null, eventDate = '', eventBadge = '무료 LIVE', colors = {} }) {
-  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', layoutTypes.join(', '), '| 카피:', adDataList.length, '종 | 인물이미지:', personImageBase64 ? '업로드' : personImageUrl ? 'URL' : 'X');
+function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'], personImageBase64 = null, personImageUrl = null, eventDate = '', eventBadge = '무료 LIVE', colors = {}, gptLayoutHTMLs = null }) {
+  const usingGPTLayout = gptLayoutHTMLs && gptLayoutHTMLs.some(Boolean);
+  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', usingGPTLayout ? 'GPT-4o 레이아웃 매칭' : layoutTypes.join(', '), '| 카피:', adDataList.length, '종 | 인물이미지:', personImageBase64 ? '업로드' : personImageUrl ? 'URL' : 'X');
 
   const variations = [];
   const layoutLabels = {
@@ -562,6 +584,20 @@ function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pret
   // 인물 이미지: base64 우선, URL 폴백
   const personImg = personImageBase64 || personImageUrl || null;
 
+  // GPT-4o 레이아웃 HTML이 있으면: 고정 템플릿 대신 GPT 생성 HTML 사용
+  if (usingGPTLayout) {
+    adDataList.forEach((adData, i) => {
+      const gptHtml = gptLayoutHTMLs[i];
+      const labeledData = { ...adData, variation_label: `[레퍼런스] ${adData.variation_label || ''}`.trim(), layout_type: 'gpt-layout' };
+      // GPT HTML 성공 → 사용, 실패 → 고정 템플릿 폴백
+      const html = gptHtml || generateFigmaPhotoHTML(labeledData, bgColor, bgImageBase64, bgCss, font);
+      variations.push({ adData: labeledData, html });
+    });
+    console.log('[🔧 조합 에이전트] 완료 | GPT 레이아웃', variations.length, '종');
+    return variations;
+  }
+
+  // 기존 고정 템플릿 경로
   for (const layoutType of layoutTypes) {
     for (const adData of adDataList) {
       const prefix = layoutLabels[layoutType] || `[${layoutType}]`;
@@ -783,6 +819,90 @@ ${pageText.slice(0, 500)}
     const m = msg.content[0].text.trim().match(/#[0-9A-Fa-f]{6}/);
     return m ? m[0] : null;
   } catch { return null; }
+}
+
+// ─── GPT-4o Vision: 레이아웃 이미지 → HTML 직접 변환 ───
+// 레이아웃 레퍼런스 이미지를 GPT-4o가 직접 보고 동일한 구조의 HTML을 생성.
+// Claude 코드 변환 대신 GPT-4o의 vision 능력으로 픽셀 단위 레이아웃 재현.
+async function generateLayoutHTML(layoutImageData, adData, bgColor = '#1B5BD4', font = 'Pretendard') {
+  if (!process.env.OPENAI_API_KEY || !layoutImageData) return null;
+
+  const copyLines = [
+    `hook (상단 서브카피): "${adData.hook || ''}"`,
+    `headline_line1 (헤드라인 1줄): "${adData.headline_line1 || ''}"`,
+    `headline_line2 (헤드라인 2줄): "${adData.headline_line2 || ''}"`,
+    `brand (브랜드명): "${adData.brand || ''}"`,
+    `visual_stat1_value (수치 값): "${adData.visual_stat1_value || ''}"`,
+    `visual_stat1_label (수치 라벨): "${adData.visual_stat1_label || ''}"`,
+    `cta_text (CTA 문구): "${adData.cta_text || ''}"`,
+    `footnote (하단 주석): "${adData.footnote || ''}"`,
+  ].join('\n');
+
+  const prompt = `You are a precise HTML/CSS developer specializing in pixel-perfect advertisement layout recreation.
+
+Analyze this 1080×1080px advertisement image CAREFULLY and generate complete self-contained HTML that:
+
+1. EXACTLY replicates the LAYOUT STRUCTURE:
+   - Element positions (top/bottom/left/right placement)
+   - Typography hierarchy (font sizes, weights, line heights)
+   - Spacing and padding between elements
+   - Visual blocks (colored bars, badges, stat cards, CTA buttons)
+   - Background treatment (gradient direction, opacity layers)
+   - Decorative elements (shapes, dividers, accent bars) as CSS
+
+2. Inject these Korean ad copy values into the matching layout positions:
+${copyLines}
+
+3. Technical requirements:
+   - Exactly 1080×1080px canvas (width:1080px; height:1080px)
+   - Background color: ${bgColor}
+   - Font: ${font} — add @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css')
+   - Single self-contained HTML file with inline <style> block
+   - NO external images — recreate visual elements purely with CSS gradients, shapes, borders
+
+Return ONLY the complete HTML document starting with <!DOCTYPE html>. No explanation.`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 4096,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: layoutImageData, detail: 'high' } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+      signal: AbortSignal.timeout(90000),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.choices?.[0]?.message?.content) {
+      console.warn('[GPT 레이아웃 변환 실패]', data.error?.message || res.status);
+      return null;
+    }
+
+    const raw = data.choices[0].message.content.trim();
+    // HTML 추출 (마크다운 코드블록 제거)
+    const stripped = raw.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim();
+    const htmlMatch = stripped.match(/<!DOCTYPE html[\s\S]*<\/html>/i) ||
+                      stripped.match(/<html[\s\S]*<\/html>/i);
+    const html = htmlMatch ? htmlMatch[0] : (stripped.startsWith('<') ? stripped : null);
+
+    if (html) console.log('[🤖 GPT-4o 레이아웃 변환] 성공 |', html.length, 'bytes');
+    else console.warn('[GPT 레이아웃 변환] HTML 추출 실패 — 고정 템플릿 사용');
+    return html;
+  } catch (e) {
+    console.warn('[GPT 레이아웃 변환 오류]', e.message);
+    return null;
+  }
 }
 
 // ─── 레퍼런스 이미지 분석 ───
