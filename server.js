@@ -221,6 +221,8 @@ app.post('/api/generate-ad', async (req, res) => {
     });
 
     // ── STEP 4: 카피 에이전트 (스타일 분석 결과 + 소재정보 활용) ──
+    const effectiveLayouts = layout_types.length > 0 ? layout_types : ['photo-overlay'];
+
     const { adDataList } = await copyAgent({
       pageContent,
       pageInfo: resolvedPageInfo,
@@ -229,7 +231,6 @@ app.post('/api/generate-ad', async (req, res) => {
     });
 
     // ── STEP 5: 조합 에이전트 (카피 × 레이아웃 → HTML) ──
-    const effectiveLayouts = layout_types.length > 0 ? layout_types : ['photo-overlay'];
 
     // 인물 이미지 결정: 수동입력 > 자동감지
     const effectivePersonImageBase64 = person_image_base64 || null;
