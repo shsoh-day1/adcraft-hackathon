@@ -339,6 +339,18 @@
     .cta-swatch.active { border-color:#fff;box-shadow:0 0 0 1.5px rgba(255,255,255,0.4); }
     [data-theme="light"] .cta-swatch.active { border-color:#1d4ed8;box-shadow:0 0 0 1.5px rgba(29,78,216,0.3); }
 
+    /* ── 컬러 커스터마이징 패널 ── */
+    .color-panel-tabs { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
+    .color-panel-tab { padding:5px 10px; border-radius:6px; border:1.5px solid var(--bdr); background:var(--panel-bg); color:var(--tx-sub); font-size:12px; font-weight:600; cursor:pointer; transition:.15s; }
+    .color-panel-tab.active { border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--panel-bg)); }
+    .color-swatches { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin-bottom:10px; }
+    .color-swatch-item { width:100%; aspect-ratio:1; border-radius:6px; cursor:pointer; border:2px solid transparent; transition:.12s; }
+    .color-swatch-item:hover { transform:scale(1.12); border-color:var(--tx); }
+    .color-swatch-item.selected { border-color:var(--tx); box-shadow:0 0 0 2px var(--accent); }
+    .color-hex-row { display:flex; gap:6px; align-items:center; }
+    .color-hex-input { flex:1; padding:7px 10px; border:1.5px solid var(--bdr); border-radius:8px; font-size:13px; font-family:monospace; background:var(--inp-bg); color:var(--tx); }
+    .color-hex-preview { width:34px; height:34px; border-radius:6px; border:1.5px solid var(--bdr); flex-shrink:0; }
+
     /* Figma 모달 */
     .figma-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
     .figma-modal-overlay.open { display:flex; }
@@ -1416,6 +1428,31 @@
           <label style="font-size:12px;font-weight:600;color:var(--tx-sub);display:block;margin-bottom:4px">날짜 · 시간</label>
           <input type="text" id="seminarEventDate" placeholder="예: 2026. 05. 10 (일) 20:00" style="width:100%;padding:8px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;background:var(--inp-bg);color:var(--tx)">
         </div>
+      </div>
+    </div>
+
+    <!-- ⑥ 색상 조정 -->
+    <div style="margin-top:4px">
+      <div class="sc-toggle-header" onclick="toggleSection('scColorPanel')">
+        <span>⑥ 색상 조정 <small style="color:var(--tx-muted)">(실시간 적용)</small></span>
+        <span class="sc-toggle-arrow" id="scColorPanelArrow">▼</span>
+      </div>
+      <div id="scColorPanel" class="sc-section-body" style="display:none">
+        <div class="color-panel-tabs">
+          <button class="color-panel-tab active" data-color-el="accentColor" onclick="switchColorTab(this)">강조색</button>
+          <button class="color-panel-tab" data-color-el="ctaColor" onclick="switchColorTab(this)">CTA 배경</button>
+          <button class="color-panel-tab" data-color-el="ctaTextColor" onclick="switchColorTab(this)">CTA 텍스트</button>
+          <button class="color-panel-tab" data-color-el="headlineColor" onclick="switchColorTab(this)">헤드라인</button>
+          <button class="color-panel-tab" data-color-el="subColor" onclick="switchColorTab(this)">서브카피</button>
+        </div>
+        <div class="color-swatches" id="colorSwatches"></div>
+        <div class="color-hex-row">
+          <span style="font-size:13px;font-weight:600;color:var(--tx-sub)">#</span>
+          <input class="color-hex-input" id="colorHexInput" maxlength="6" placeholder="1877f2" oninput="onColorHexInput(this.value)">
+          <div class="color-hex-preview" id="colorHexPreview"></div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--tx-muted)">색상을 바꾸면 미리보기에 즉시 반영됩니다. 재생성 없이 색만 교체합니다.</div>
+        <button onclick="resetColors()" style="margin-top:8px;font-size:12px;padding:5px 12px;border:1px solid var(--bdr);border-radius:6px;background:var(--panel-bg);color:var(--tx-sub);cursor:pointer">↺ 기본값으로 초기화</button>
       </div>
     </div>
 
@@ -3128,6 +3165,7 @@
           person_image_url: (!personImageBase64 && window._detectedPersonImageUrl) ? window._detectedPersonImageUrl : null,
           event_badge: document.getElementById('seminarEventBadge')?.value || '무료 LIVE',
           event_date: document.getElementById('seminarEventDate')?.value || '',
+          colors: Object.fromEntries(Object.entries(adColors).filter(([,v]) => v !== null)),
           ...(function() {
             const u = JSON.parse(localStorage.getItem('adcraft_user') || '{}');
             return { user_id: u.id || null, user_email: u.email || null, user_name: u.name || null };
@@ -4008,6 +4046,112 @@
     localStorage.removeItem('adcraft_user');
     location.reload();
   }
+
+  // ─── 컬러 커스터마이징 ───
+  const COLOR_PALETTE = [
+    '#0a0a0a','#1a1a2e','#16213e','#0f3460','#1b1b2f','#2d2d2d',
+    '#1877f2','#e84393','#00b140','#ff6b35','#7b2d8b','#f5a623',
+    '#a8d8ea','#aa96da','#fcbad3','#ffffd2','#b5ead7','#ffdac1',
+    '#ffffff','#f5f5f5','#e0e0e0','#bdbdbd','#757575','#000000',
+  ];
+
+  let adColors = {
+    accentColor:   null,
+    ctaColor:      null,
+    ctaTextColor:  null,
+    headlineColor: null,
+    subColor:      null,
+  };
+  let activeColorEl = 'accentColor';
+
+  const CSS_VAR_MAP = {
+    accentColor:   '--accent',
+    ctaColor:      '--cta-bg',
+    ctaTextColor:  '--cta-text',
+    headlineColor: '--headline-clr',
+    subColor:      '--sub-clr',
+  };
+
+  function initColorPanel() {
+    const container = document.getElementById('colorSwatches');
+    if (!container) return;
+    container.innerHTML = COLOR_PALETTE.map(c =>
+      `<div class="color-swatch-item" style="background:${c}" data-color="${c}" onclick="selectSwatch('${c}')"></div>`
+    ).join('');
+    updateHexInput(adColors[activeColorEl] || '');
+  }
+
+  function switchColorTab(btn) {
+    document.querySelectorAll('.color-panel-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeColorEl = btn.dataset.colorEl;
+    updateHexInput(adColors[activeColorEl] || '');
+    document.querySelectorAll('.color-swatch-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.color === (adColors[activeColorEl] || ''));
+    });
+  }
+
+  function selectSwatch(hex) {
+    applyColor(activeColorEl, hex);
+    updateHexInput(hex.replace('#',''));
+    document.querySelectorAll('.color-swatch-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.color === hex);
+    });
+  }
+
+  function onColorHexInput(val) {
+    const clean = val.replace(/[^0-9a-fA-F]/g,'').slice(0,6);
+    document.getElementById('colorHexInput').value = clean;
+    if (clean.length === 6) applyColor(activeColorEl, '#' + clean);
+  }
+
+  function updateHexInput(hex) {
+    const clean = (hex || '').replace('#','');
+    const input = document.getElementById('colorHexInput');
+    const preview = document.getElementById('colorHexPreview');
+    if (input) input.value = clean;
+    if (preview) preview.style.background = clean.length === 6 ? '#' + clean : 'transparent';
+  }
+
+  function applyColor(element, hex) {
+    adColors[element] = hex;
+    const preview = document.getElementById('colorHexPreview');
+    if (preview) preview.style.background = hex;
+    localStorage.setItem('adcraft_colors', JSON.stringify(adColors));
+    const cssVar = CSS_VAR_MAP[element];
+    if (!cssVar) return;
+    document.querySelectorAll('iframe').forEach(iframe => {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc && doc.documentElement) doc.documentElement.style.setProperty(cssVar, hex);
+      } catch {}
+    });
+  }
+
+  function resetColors() {
+    adColors = { accentColor:null, ctaColor:null, ctaTextColor:null, headlineColor:null, subColor:null };
+    localStorage.removeItem('adcraft_colors');
+    updateHexInput('');
+    document.querySelectorAll('.color-swatch-item').forEach(el => el.classList.remove('selected'));
+    Object.values(CSS_VAR_MAP).forEach(cssVar => {
+      document.querySelectorAll('iframe').forEach(iframe => {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc && doc.documentElement) doc.documentElement.style.removeProperty(cssVar);
+        } catch {}
+      });
+    });
+  }
+
+  // 페이지 로드 시 저장된 색상 복원
+  (function restoreColors() {
+    try {
+      const saved = localStorage.getItem('adcraft_colors');
+      if (saved) adColors = { ...adColors, ...JSON.parse(saved) };
+    } catch {}
+  })();
+
+  document.addEventListener('DOMContentLoaded', initColorPanel);
 </script>
 
 <!-- ─── 로그인/회원가입 모달 ─── -->
