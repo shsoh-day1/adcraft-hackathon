@@ -2852,6 +2852,78 @@ app.post('/api/generate-bg-image', async (req, res) => {
   }
 });
 
+// ─── AI 레이어 자동 매핑 (Figma 플러그인: 레이어 목록 + 카피 → 매핑 반환) ───
+app.post('/api/match-layers', async (req, res) => {
+  const { layers, adCopy } = req.body;
+  if (!layers?.length || !adCopy) return res.status(400).json({ error: '필수 파라미터 없음' });
+  if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OPENAI_API_KEY 미설정' });
+
+  const FIELD_LABELS = {
+    hook: '서브카피(Hook)',
+    headline_line1: '헤드라인 1',
+    headline_line2: '헤드라인 2',
+    cta_text: 'CTA 버튼 텍스트',
+    visual_stat1_value: '수치 값',
+    visual_stat1_label: '수치 라벨',
+    brand: '브랜드명',
+  };
+
+  try {
+    const layerDesc = layers.map(l =>
+      `id="${l.id}" | 이름="${l.name}" | 현재텍스트="${l.chars}" | fontSize=${l.fontSize ?? '?'}`
+    ).join('\n');
+
+    const copyDesc = Object.entries(FIELD_LABELS)
+      .filter(([k]) => adCopy[k])
+      .map(([k, label]) => `${k} (${label}): "${adCopy[k]}"`)
+      .join('\n');
+
+    const prompt = `Figma 광고 프레임의 텍스트 레이어를 광고 카피 필드에 매핑해줘.
+
+## 텍스트 레이어 목록
+${layerDesc}
+
+## 삽입할 광고 카피
+${copyDesc}
+
+## 판단 기준
+- hook: 서브카피/아이캐처, 문장형, 작은~중간 폰트, 상단 위치
+- headline_line1 / headline_line2: 핵심 메시지, 크고 굵음, 1줄씩 나뉨
+- cta_text: 버튼 안 텍스트, 매우 짧고 행동 유도
+- visual_stat1_value: 숫자/퍼센트만 들어가는 자리 (예: "5,000+" "98%")
+- visual_stat1_label: 수치 옆 설명 (예: "누적 수강생" "만족도")
+- brand: 브랜드명/로고 텍스트
+- 매핑 제외: 날짜, 아이콘(★✓→►), 빈 레이어, 장식 텍스트
+
+레이어 이름 + 현재 텍스트 + fontSize를 종합해서 판단.
+동일 field에 여러 레이어 매핑 불가 (1:1).
+
+JSON만 출력 (코드블록 없이):
+{"matches":[{"layerId":"...","field":"hook","reason":"한 줄 근거"},...]}`;
+
+    const resp = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      max_tokens: 600,
+      temperature: 0,
+    });
+
+    const parsed = JSON.parse(resp.choices[0].message.content);
+    // 각 field 중복 매핑 방지
+    const seen = new Set();
+    const deduped = (parsed.matches || []).filter(m => {
+      if (seen.has(m.field)) return false;
+      seen.add(m.field);
+      return true;
+    });
+    console.log('[🗺️ 레이어 매핑]', deduped.map(m => `${m.field}→"${m.layerId.slice(-6)}"`).join(' | '));
+    res.json({ matches: deduped });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── 이미지 생성 (1순위: gpt-image-1 / 폴백: Pollinations FLUX) ───
 app.post('/api/generate-image', async (req, res) => {
   const { prompt } = req.body;
