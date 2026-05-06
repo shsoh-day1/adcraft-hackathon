@@ -176,6 +176,11 @@ app.post('/api/generate-ad', async (req, res) => {
     user_id = null,
     user_email = null,
     user_name = null,
+    person_image_base64 = null,
+    person_image_url = null,
+    event_date = '',
+    event_badge = '무료 LIVE',
+    colors = {},
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -189,8 +194,8 @@ app.post('/api/generate-ad', async (req, res) => {
     console.log('─'.repeat(50));
 
     // ── STEP 1: 페이지 크롤링 (모든 에이전트의 기반 데이터) ──
-    const { text: pageContent, themeColor: pageThemeColor, ogImageUrl } = await fetchPageContent(url);
-    console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X');
+    const { text: pageContent, themeColor: pageThemeColor, ogImageUrl, personImageUrl: autoPersonImageUrl } = await fetchPageContent(url);
+    console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X', '| 인물:', autoPersonImageUrl ? 'O' : 'X');
 
     // ── STEP 2: 이미지 에이전트 + 소재정보 추출 병렬 실행 ──
     // → 이미지 에이전트: 레퍼런스 분석 + 배경 이미지 fetch (동시)
@@ -224,6 +229,11 @@ app.post('/api/generate-ad', async (req, res) => {
 
     // ── STEP 5: 조합 에이전트 (카피 × 레이아웃 → HTML) ──
     const effectiveLayouts = layout_types.length > 0 ? layout_types : ['photo-overlay'];
+
+    // 인물 이미지 결정: 수동입력 > 자동감지
+    const effectivePersonImageBase64 = person_image_base64 || null;
+    const effectivePersonImageUrl = person_image_url || autoPersonImageUrl || null;
+
     const variations = assemblyAgent({
       adDataList,
       bgColor: effectiveBgColor,
@@ -231,6 +241,11 @@ app.post('/api/generate-ad', async (req, res) => {
       bgCss: imageResult.bgCss,
       font,
       layoutTypes: effectiveLayouts,
+      personImageBase64: effectivePersonImageBase64,
+      personImageUrl: effectivePersonImageUrl,
+      eventDate: event_date,
+      eventBadge: event_badge,
+      colors,
     });
 
     console.log('─'.repeat(50));
@@ -253,6 +268,7 @@ app.post('/api/generate-ad', async (req, res) => {
       extractedInfo,
       effectiveBgColor,
       colorSource,
+      detectedPersonImageUrl: autoPersonImageUrl || null,
     });
   } catch (err) {
     console.error('[오류]', err);
@@ -317,6 +333,40 @@ app.post('/api/fetch-image', async (req, res) => {
     res.json({ dataUrl: `data:${contentType};base64,${base64}` });
   } catch (err) {
     console.error('[이미지 프록시 오류]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── 인물 이미지 URL 프록시 (일반 CDN, 상세페이지 이미지) ───
+app.post('/api/fetch-person-image', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
+
+  let hostname;
+  try { hostname = new URL(url).hostname; } catch {
+    return res.status(400).json({ error: '잘못된 URL입니다' });
+  }
+
+  // 사설 IP / localhost 차단 (SSRF 방지)
+  if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(hostname)) {
+    return res.status(403).json({ error: '허용되지 않는 주소입니다' });
+  }
+
+  try {
+    const imgRes = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!imgRes.ok) throw new Error(`다운로드 실패: HTTP ${imgRes.status}`);
+
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) throw new Error('이미지 파일이 아닙니다');
+
+    const buffer = await imgRes.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    res.json({ dataUrl: `data:${contentType};base64,${base64}` });
+  } catch (err) {
+    console.error('[인물이미지 프록시 오류]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -510,6 +560,38 @@ function detectLanguage(text) {
   return top[1] > 5 ? top[0] : 'ko';
 }
 
+// ─── 인물 이미지 URL 추출 (강사/인물 우선) ───
+function extractPersonImageUrl(html) {
+  // 1순위: JSON-LD instructor/teacher/author image
+  const jsonLdMatches = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+  for (const block of jsonLdMatches) {
+    try {
+      const inner = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
+      const data = JSON.parse(inner);
+      const objs = Array.isArray(data) ? data : [data];
+      for (const obj of objs) {
+        const candidates = [obj.instructor, obj.teacher, obj.author, obj.creator]
+          .flat().filter(Boolean);
+        for (const c of candidates) {
+          const img = typeof c === 'object' ? (c.image?.url || c.image) : null;
+          if (img && typeof img === 'string' && img.startsWith('http')) return img;
+        }
+      }
+    } catch {}
+  }
+
+  // 2순위: <img> alt/class/id에 인물 키워드 포함
+  const PERSON_KEYWORDS = /강사|튜터|멘토|instructor|teacher|mentor|tutor|profile|avatar|lecturer|faculty/i;
+  const imgTags = html.match(/<img[^>]+>/gi) || [];
+  for (const tag of imgTags) {
+    if (!PERSON_KEYWORDS.test(tag)) continue;
+    const srcMatch = tag.match(/src=["']([^"']+)["']/i);
+    if (srcMatch && srcMatch[1].startsWith('http')) return srcMatch[1];
+  }
+
+  return null;
+}
+
 // ─── 페이지 크롤링 ───
 async function fetchPageContent(url) {
   const USER_AGENTS = [
@@ -561,7 +643,8 @@ async function fetchPageContent(url) {
   const root = parse(html);
   root.querySelectorAll('script, style, nav, footer, header').forEach(el => el.remove());
   const text = root.innerText.replace(/\s+/g, ' ').trim().slice(0, 3000);
-  return { text, themeColor, ogImageUrl };
+  const personImageUrl = extractPersonImageUrl(html) || null;
+  return { text, themeColor, ogImageUrl, personImageUrl };
 }
 
 // ─── OG 이미지 base64 변환 ───
