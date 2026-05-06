@@ -171,6 +171,7 @@ app.post('/api/generate-ad', async (req, res) => {
     layout_ref_id = '',
     custom_bg_image = null,
     custom_bg_css = null,
+    auto_bg_image = false,            // true일 때만 GPT 배경 자동생성 (선택사항)
     font = 'Pretendard',
     layout_types = ['photo-overlay'],  // 선택 레이아웃: 'photo-overlay' | 'twitter'
     user_id = null,
@@ -204,15 +205,15 @@ app.post('/api/generate-ad', async (req, res) => {
       : rawPageContent;
     console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X', '| 인물:', autoPersonImageUrl ? 'O' : 'X', '| Docs:', gdocsText ? gdocsText.length + 'chars' : 'X');
 
-    // ── STEP 2: 이미지 에이전트 + 소재정보 추출 병렬 실행 ──
-    // → 이미지 에이전트: 레퍼런스 분석 + 배경 이미지 fetch (동시)
+    // ── STEP 2: 이미지 에이전트(레퍼런스 분석만) + 소재정보 추출 병렬 실행 ──
+    // → 이미지 에이전트: 레퍼런스 스타일 분석만 (배경 생성은 카피 완료 후 STEP 4.5)
     // → 소재정보 추출: URL 자동 추출이 필요할 때만
     const detectedLang = detectLanguage(pageContent);
     const rawPageInfo = { language: detectedLang, target, usp1, usp2, usp3, ad_set_message, creative_message };
     const needsAutoExtract = !target && !usp1 && !usp2 && !usp3 && !ad_set_message && !creative_message;
 
     const [imageResult, resolvedPageInfo] = await Promise.all([
-      imageAgent({ referenceImages: reference_images, ogImageUrl, customBgImage: custom_bg_image, customBgCss: custom_bg_css, pageContent }),
+      imageAgent({ referenceImages: reference_images, customBgCss: custom_bg_css }),
       needsAutoExtract ? extractPageInfo(pageContent) : Promise.resolve(rawPageInfo),
     ]);
     if (!resolvedPageInfo.language) resolvedPageInfo.language = detectedLang;
@@ -237,6 +238,21 @@ app.post('/api/generate-ad', async (req, res) => {
       layoutTypes: effectiveLayouts,
     });
 
+    // ── STEP 4.5: 배경 이미지 결정 ──
+    // customBgImage: 유저가 직접 업로드/사전생성한 이미지 → 최우선
+    // auto_bg_image=true: 카피 완료 후 GPT로 한국인 이미지 자동생성
+    // 나머지: 컬러 배경만 사용 (이미지 없음)
+    let bgImageBase64 = null;
+    if (custom_bg_image) {
+      bgImageBase64 = custom_bg_image;
+      console.log('[배경 이미지] 커스텀 이미지 사용');
+    } else if (auto_bg_image) {
+      console.log('[배경 이미지] auto_bg_image=true → GPT 자동생성 시작');
+      bgImageBase64 = await generateAutoBg({ parsedStyle: imageResult.parsedStyle, pageContent, adDataList, ogImageUrl });
+    } else {
+      console.log('[배경 이미지] 없음 (컬러 배경 사용)');
+    }
+
     // ── STEP 5: 조합 에이전트 (카피 × 레이아웃 → HTML) ──
 
     // 인물 이미지 결정: 수동입력 > 자동감지
@@ -246,7 +262,7 @@ app.post('/api/generate-ad', async (req, res) => {
     const variations = assemblyAgent({
       adDataList,
       bgColor: effectiveBgColor,
-      bgImageBase64: imageResult.bgImageBase64,
+      bgImageBase64,
       bgCss: imageResult.bgCss,
       font,
       layoutTypes: effectiveLayouts,
@@ -406,22 +422,37 @@ async function generateImageWithGPT(prompt) {
   throw new Error(data.error?.message || 'GPT image generation failed');
 }
 
-function buildAutoBgPrompt(parsedStyle, pageContent) {
+function buildAutoBgPrompt(parsedStyle, pageContent, copyCtx = '') {
   const mood = Array.isArray(parsedStyle?.style_mood)
     ? parsedStyle.style_mood.join(', ')
-    : (parsedStyle?.style_mood || 'modern, cinematic, dark');
-  const context = pageContent ? pageContent.slice(0, 200) : '';
-  return `A creative advertising background for Korean market Instagram 1:1 ad. Style: ${mood}. Dark tone, abstract or cinematic visual: light rays, bokeh, gradients, or geometric patterns. If people are depicted, they must have East Asian (Korean) appearance. No text, no logos. 1080x1080px. IMPORTANT — Rule of Thirds copy space: keep the left 1/3 to center area visually clean (dark, low-contrast, blurred or minimal) because ad copy will overlay there. Place strong visual elements — subjects, highlights, focal points — in the right 2/3 and upper portion. Context: ${context}`;
+    : (parsedStyle?.style_mood || 'modern, cinematic, professional');
+  const context = copyCtx || (pageContent ? pageContent.slice(0, 150) : '');
+  return `Professional Korean advertising background photo for Instagram 1:1 (1080x1080px).
+
+SUBJECT: A Korean person (20s-40s, East Asian features, Korean appearance) in a relatable, aspirational setting that fits this context: "${context}". The person should look natural and confident — not stock-photo stiff.
+
+STYLE: ${mood}. Cinematic, high production value. Warm studio or lifestyle setting.
+
+COMPOSITION (CRITICAL — Rule of Thirds copy space):
+- LEFT 1/3 to CENTER: keep this area visually CLEAN — dark, low-contrast, slightly blurred — because ad copy text will overlay here.
+- RIGHT 2/3 and UPPER portion: place the person and key visual elements here.
+
+CONSTRAINTS:
+- The person MUST have Korean/East Asian facial features. No Caucasian or other ethnicity.
+- No text, no logos, no watermarks anywhere.
+- Dark or muted tones preferred for contrast with white ad copy.
+- Photorealistic, not illustrated.`;
 }
 
 // 독립성: 페이지 텍스트 불필요. 이미지 데이터만으로 동작.
 // 병렬성: 카피 에이전트와 동시 실행 가능 (크롤링 후 바로 시작).
-async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBgCss, pageContent }) {
+// ※ 배경 이미지 자동생성은 여기서 하지 않음 — 카피 완료 후 generateAutoBg()에서 수행
+async function imageAgent({ referenceImages, customBgCss }) {
   // API 요청에 레퍼런스 없으면 reference_images/ 폴더 자동 사용
   const effectiveRefs = referenceImages.length > 0 ? referenceImages : AUTO_REF_IMAGES;
-  console.log('[🖼 이미지 에이전트] 시작 | 레퍼런스:', effectiveRefs.length, '장', effectiveRefs.length > 0 && referenceImages.length === 0 ? '(폴더 자동로드)' : '', '| OG:', ogImageUrl ? 'O' : 'X');
+  console.log('[🖼 이미지 에이전트] 시작 | 레퍼런스:', effectiveRefs.length, '장', effectiveRefs.length > 0 && referenceImages.length === 0 ? '(폴더 자동로드)' : '');
 
-  // 스타일 분석 먼저 실행 (GPT 프롬프트 품질 향상에 사용)
+  // 스타일 분석만 수행 (배경 생성은 카피 완료 후 별도 실행)
   const styleAnalysis = effectiveRefs.length > 0
     ? await analyzeReferenceImages(effectiveRefs)
     : null;
@@ -434,44 +465,39 @@ async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBg
     } catch (e) { console.warn('[이미지 에이전트] 스타일 파싱 실패', e.message); }
   }
 
-  // 배경 결정: customBgImage > GPT 자동생성 > OG 이미지 폴백
+  console.log('[🖼 이미지 에이전트] 완료 | 스타일 bg:', parsedStyle?.bg_hex || '없음', '| CSS배경:', customBgCss ? 'O' : 'X');
+  return { styleAnalysis, parsedStyle, bgCss: customBgCss || null };
+}
+
+// ─── 🎨 배경 이미지 자동생성 (카피 완료 후 실행, 선택사항) ───
+// auto_bg_image=true일 때만 호출. 카피 컨텍스트로 한국인 이미지 생성.
+async function generateAutoBg({ parsedStyle, pageContent, adDataList, ogImageUrl }) {
+  // 카피 첫 번째 배리에이션에서 맥락 추출
+  const firstAd = adDataList?.[0];
+  const copyCtx = firstAd
+    ? `${firstAd.hook || ''} ${firstAd.headline_line1 || ''} ${firstAd.headline_line2 || ''}`.trim()
+    : '';
+
+  const bgPrompt = buildAutoBgPrompt(parsedStyle, pageContent, copyCtx);
   let bgImageBase64 = null;
-  if (customBgImage) {
-    bgImageBase64 = customBgImage;
-  } else {
-    const bgPrompt = buildAutoBgPrompt(parsedStyle, pageContent);
-    // 1순위: GPT (유료), 2순위: Pollinations (무료), 3순위: OG 이미지
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        console.log('[🎨 GPT 배경 자동생성] 시작:', bgPrompt.slice(0, 80) + '...');
-        bgImageBase64 = await generateImageWithGPT(bgPrompt);
-        console.log('[🎨 GPT 배경 자동생성] 성공');
-      } catch (err) {
-        console.warn('[GPT 실패] Pollinations로 대체:', err.message);
-      }
-    }
-    if (!bgImageBase64) {
-      try {
-        console.log('[🌸 Pollinations 배경 자동생성] 시작...');
-        const seed = Math.floor(Math.random() * 99999);
-        const encoded = encodeURIComponent(bgPrompt);
-        const polUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1080&height=1080&nologo=true&seed=${seed}&model=flux`;
-        const polRes = await fetch(polUrl, { signal: AbortSignal.timeout(60000) });
-        if (polRes.ok) {
-          const contentType = polRes.headers.get('content-type') || 'image/jpeg';
-          const arrayBuffer = await polRes.arrayBuffer();
-          bgImageBase64 = `data:${contentType};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-          console.log('[🌸 Pollinations 배경 자동생성] 성공');
-        }
-      } catch (err) {
-        console.warn('[Pollinations 실패] OG 이미지로 대체:', err.message);
-        bgImageBase64 = ogImageUrl ? await fetchOgImageBase64(ogImageUrl) : null;
-      }
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      console.log('[🎨 GPT 배경 자동생성] 시작:', bgPrompt.slice(0, 80) + '...');
+      bgImageBase64 = await generateImageWithGPT(bgPrompt);
+      console.log('[🎨 GPT 배경 자동생성] 성공');
+    } catch (err) {
+      console.warn('[GPT 실패] OG 이미지로 대체:', err.message);
     }
   }
 
-  console.log('[🖼 이미지 에이전트] 완료 | 스타일 bg:', parsedStyle?.bg_hex || '없음', '| 배경이미지:', bgImageBase64 ? 'O' : 'X', '| CSS배경:', customBgCss ? 'O' : 'X');
-  return { styleAnalysis, parsedStyle, bgImageBase64, bgCss: customBgCss || null };
+  // GPT 실패 시 OG 이미지 폴백 (Pollinations 제거 — 한국인 보장 불가)
+  if (!bgImageBase64 && ogImageUrl) {
+    bgImageBase64 = await fetchOgImageBase64(ogImageUrl).catch(() => null);
+  }
+
+  console.log('[🎨 배경 자동생성] 결과:', bgImageBase64 ? 'O' : '없음(컬러 배경 사용)');
+  return bgImageBase64;
 }
 
 // ─── ✍️ 카피 에이전트 ───

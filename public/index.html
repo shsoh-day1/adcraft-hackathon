@@ -928,6 +928,12 @@
         </div>
       </div>
 
+      <!-- AI 배경 자동생성 토글 -->
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:10px;cursor:pointer;margin-bottom:10px;user-select:none">
+        <input type="checkbox" id="autoBgToggle" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+        <span style="font-size:13px;font-weight:600;color:var(--tx)">🖼 AI 배경 자동 생성 <span style="font-weight:400;color:var(--tx-muted)">(GPT — 한국인 이미지 자동 생성)</span></span>
+      </label>
+
       <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
         ✨ 광고소재 생성하기
       </button>
@@ -2998,6 +3004,7 @@
           bg_color: isAutoColor ? '' : selectedColor,
           custom_bg_image: leftAiBgImg || selectedBgImage || null,
           custom_bg_css: leftAiBgCss || null,
+          auto_bg_image: document.getElementById('autoBgToggle')?.checked || false,
           font: document.getElementById('fontSelect').value || 'Pretendard',
           layout_types: getSelectedLayouts(),
           person_image_base64: personImageBase64 || null,
