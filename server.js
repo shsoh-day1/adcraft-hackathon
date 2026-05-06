@@ -2823,6 +2823,35 @@ app.get('/api/catalog-preview', (req, res) => {
   res.json({ previews });
 });
 
+// ─── 페이지 정보 추출 (Figma 플러그인용: URL → brand/target/USP 빠르게 반환) ───
+app.post('/api/extract-info', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL 필요' });
+  try {
+    const { text: pageContent } = await fetchPageContent(url);
+    const info = await extractPageInfo(pageContent);
+    res.json({ info });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── URL 기반 배경 이미지 자동생성 (Figma 플러그인용: URL → 한국인 이미지) ───
+app.post('/api/generate-bg-image', async (req, res) => {
+  const { url, hint = '' } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL 필요' });
+  if (!process.env.OPENAI_API_KEY) return res.status(400).json({ error: 'OPENAI_API_KEY 미설정 — 프로덕션 환경에서 사용해주세요' });
+  try {
+    const { text: pageContent } = await fetchPageContent(url);
+    const prompt = buildAutoBgPrompt(null, pageContent, hint);
+    console.log('[🎨 Figma 배경 생성] 시작:', prompt.slice(0, 80) + '...');
+    const imageData = await generateImageWithGPT(prompt);
+    res.json({ imageData });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── 이미지 생성 (1순위: gpt-image-1 / 폴백: Pollinations FLUX) ───
 app.post('/api/generate-image', async (req, res) => {
   const { prompt } = req.body;
