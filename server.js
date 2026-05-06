@@ -411,7 +411,7 @@ function buildAutoBgPrompt(parsedStyle, pageContent) {
     ? parsedStyle.style_mood.join(', ')
     : (parsedStyle?.style_mood || 'modern, cinematic, dark');
   const context = pageContent ? pageContent.slice(0, 200) : '';
-  return `A creative advertising background for Korean market Instagram 1:1 ad. Style: ${mood}. Dark tone, abstract or cinematic visual: light rays, bokeh, gradients, or geometric patterns. If people are depicted, they must have East Asian (Korean) appearance. No text, no logos. 1080x1080px. Context: ${context}`;
+  return `A creative advertising background for Korean market Instagram 1:1 ad. Style: ${mood}. Dark tone, abstract or cinematic visual: light rays, bokeh, gradients, or geometric patterns. If people are depicted, they must have East Asian (Korean) appearance. No text, no logos. 1080x1080px. IMPORTANT — Rule of Thirds copy space: keep the left 1/3 to center area visually clean (dark, low-contrast, blurred or minimal) because ad copy will overlay there. Place strong visual elements — subjects, highlights, focal points — in the right 2/3 and upper portion. Context: ${context}`;
 }
 
 // 독립성: 페이지 텍스트 불필요. 이미지 데이터만으로 동작.
@@ -481,7 +481,27 @@ async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBg
 async function copyAgent({ pageContent, pageInfo, styleAnalysis, layoutTypes = ['photo-overlay'] }) {
   console.log('[✍️ 카피 에이전트] 시작 | 타겟:', pageInfo.target ? pageInfo.target.slice(0, 30) : '자동추출됨', '| 레이아웃:', layoutTypes.join(','));
 
-  const adDataList = await extractAdDataVariations(pageContent, styleAnalysis, pageInfo, 1, layoutTypes);
+  let adDataList = await extractAdDataVariations(pageContent, styleAnalysis, pageInfo, 1, layoutTypes);
+
+  // GPT-4o 검증 루프: 3초 후킹 기준 7/10 미달 시 최대 2회 재생성
+  if (process.env.OPENAI_API_KEY) {
+    for (let retry = 0; retry < 2; retry++) {
+      const validations = await Promise.all(adDataList.map(ad => validateAdWithVision(ad)));
+      const lowScores = validations.filter(v => v.score !== null && !v.passed);
+      if (lowScores.length === 0) break;
+
+      const feedbacks = lowScores.map(v => v.feedback).filter(Boolean);
+      console.log(`[🔍 검증 루프] 3초 후킹 미달 (${lowScores.length}종) — 재생성 ${retry + 1}/2 | 피드백:`, feedbacks.join(' / '));
+
+      // 피드백을 pageInfo에 힌트로 추가해 재생성
+      const enhancedInfo = {
+        ...pageInfo,
+        creative_message: pageInfo.creative_message
+          + (feedbacks.length ? ` [개선 필요: ${feedbacks.join('; ')}]` : ''),
+      };
+      adDataList = await extractAdDataVariations(pageContent, styleAnalysis, enhancedInfo, 1, layoutTypes);
+    }
+  }
 
   console.log('[✍️ 카피 에이전트] 완료 |', adDataList.map(v => `${v.variation_label}(${v.validation_score}/15)`).join(' · '));
   return { adDataList };
@@ -809,13 +829,19 @@ ${pageContent}
 - usp3: 서비스 자체의 차별화 강점 3 (위 기준 동일 적용, 페이지 언어로 작성)
 - ad_set_message: 이 캠페인의 전체 메시지 방향 (1문장, 페이지 언어로 작성)
 - creative_message: 이 소재에서 강조할 핵심 포인트 (1문장, 페이지 언어로 작성)
+- pain_point: 타겟이 현재 겪는 핵심 불만·결핍 (1문장, "~가 없어서 ~이 힘들다" 형태)
+- agitation: pain_point를 방치했을 때 생기는 불안·손실 (1문장, "그냥 두면 ..." 형태)
+- solution_angle: 이 서비스가 제공하는 Before→After 변화 각도 (1문장, "이 과정으로 ..." 형태)
+- usp1_benefit: usp1을 고객 관점 베네핏으로 번역 (기능→가치, 예: "12개월 무제한" → "진도 늦어져도 끝까지 완주")
+- usp2_benefit: usp2 베네핏 번역
+- usp3_benefit: usp3 베네핏 번역
 
 JSON만 반환:
-{"language":"","target":"","usp1":"","usp2":"","usp3":"","ad_set_message":"","creative_message":""}`;
+{"language":"","target":"","usp1":"","usp2":"","usp3":"","ad_set_message":"","creative_message":"","pain_point":"","agitation":"","solution_angle":"","usp1_benefit":"","usp2_benefit":"","usp3_benefit":""}`;
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 600,
+    max_tokens: 900,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -828,7 +854,9 @@ JSON만 반환:
 // ─── 카피 배리에이션 3종 생성 ───
 async function extractAdDataVariations(pageContent, styleAnalysis, info, _attempt = 1, layoutTypes = ['photo-overlay']) {
   const styleHint = styleAnalysis ? `\n\n## 레퍼런스 디자인 스타일 (반드시 참고)\n${styleAnalysis}\n→ 위 스타일 분위기에 맞는 카피 톤을 적용하라.` : '';
-  const { language, target, usp1, usp2, usp3, ad_set_message, creative_message } = info;
+  const { language, target, usp1, usp2, usp3, ad_set_message, creative_message,
+          pain_point, agitation, solution_angle,
+          usp1_benefit, usp2_benefit, usp3_benefit } = info;
   const langMap = { ko: '한국어', vi: '베트남어', en: '영어', ja: '일본어', zh: '중국어', th: '태국어' };
   const langName = langMap[language] || language || '한국어';
   const langInstruction = language && language !== 'ko'
@@ -954,6 +982,29 @@ JSON 배열만 반환 (주석·설명 없이):
   {"variation_label":"광고 소재","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","visual_stat1_value":"","visual_stat1_label":"","footnote":null${needsInstructor ? ',"instructor_name":"","instructor_title":"","instructor_career":"","instructor_bullet1":"","instructor_bullet2":"","instructor_bullet3":""' : ''}${layoutTypes.includes('instructor') ? ',"usp_module1":"","usp_module2":"","usp_module3":"","usp_module4":""' : ''}${layoutTypes.includes('seminar') ? ',"instructor_subtitle":""' : ''}${needsReview ? ',"review_body1":"","review_body2":"","review_body3":""' : ''}${needsCurriculum ? ',"curriculum_step1":"","curriculum_step2":"","curriculum_step3":"","curriculum_step4":"","curriculum_step5":"","curriculum_badge":""' : ''}${needsSns ? ',"post_username":"","post_body":""' : ''}${needsComparison ? ',"comparison_a_label":"","comparison_b_label":"","comparison_items":[]' : ''},"validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"V4":true,"V5":true,"V6":true,"V7":true,"S1":true,"P1":true},"validation_score":15,"validation_fails":[]}
 ]${extraFieldsText}`;
 
+  // PAS 프레임워크 컨텍스트
+  const pasCtx = (pain_point || agitation || solution_angle) ? `
+## PAS 카피 프레임워크 (반드시 적용)
+P — Problem (문제 공감): ${pain_point || ''}
+A — Agitation (불안 자극): ${agitation || ''}
+S — Solution (해결책 제시): ${solution_angle || ''}
+
+→ hook은 P(문제 공감)로 시작해 독자가 "나 얘기네"를 느끼게 하라.
+→ headline은 A→S 전환(Before→After 변화)을 압축해 표현하라.
+→ CTA는 S의 결과를 행동으로 연결하라.
+` : '';
+
+  // USP → 베네핏 치환 컨텍스트
+  const benefitCtx = (usp1_benefit || usp2_benefit || usp3_benefit) ? `
+## USP → 고객 베네핏 치환 (기능 설명 금지, 반드시 가치 언어로 표현)
+- USP1 베네핏: ${usp1_benefit || usp1}
+- USP2 베네핏: ${usp2_benefit || usp2}
+- USP3 베네핏: ${usp3_benefit || usp3}
+
+→ 카피에 USP 기능 그대로 쓰지 말고, 위 베네핏 언어로 표현하라.
+→ 예: "12개월 무제한 수강" → "진도 늦어져도 끝까지 완주" / "현업 강사진" → "실무 바로 쓰는 기술"
+` : '';
+
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피 1개를 작성하라.
 ${langInstruction}
 ## 소재 기본 정보
@@ -963,7 +1014,7 @@ ${langInstruction}
 - USP 3: ${usp3}
 - 광고세트 메시지: ${ad_set_message}
 - 소재 메시지: ${creative_message}
-
+${pasCtx}${benefitCtx}
 ## 상세페이지 내용 (참고)
 ${pageContent}${styleHint}
 ${checklistCtx}${designSpecCtx}${figmaCtx}
@@ -1013,6 +1064,49 @@ ${layoutSpec}`;
   }
 
   return parsed;
+}
+
+// ─── GPT-4o 3초 후킹 검증 루프 ───
+// 카피를 GPT-4o가 객관적으로 평가, 7/10 미달 시 재생성 트리거
+async function validateAdWithVision(adData) {
+  if (!process.env.OPENAI_API_KEY) return { score: null, passed: true, feedback: null };
+
+  const prompt = `META 인스타그램 광고 카피를 "3초 후킹" 기준으로 평가하라.
+
+## 광고 카피
+- hook: "${adData.hook}"
+- headline_line1: "${adData.headline_line1}"
+- headline_line2: "${adData.headline_line2}"
+- cta_badge: "${adData.cta_badge}"
+- cta_text: "${adData.cta_text}"
+- visual_stat1_value: "${adData.visual_stat1_value}"
+- visual_stat1_label: "${adData.visual_stat1_label}"
+
+## 평가 기준 (10점 만점)
+1. 즉각적 공감 (0-3점): 타겟이 "나 얘기네"라고 3초 안에 느끼는가?
+2. 혜택 명확성 (0-3점): 핵심 혜택·가치가 즉시 파악되는가?
+3. 긴박감·행동유도 (0-2점): 지금 클릭해야 한다는 느낌인가?
+4. 가독성·간결성 (0-2점): 카피가 짧고 임팩트 있는가?
+
+7점 이상이면 통과. JSON만 반환 (설명 없이):
+{"score":N,"passed":true,"feedback":"개선 포인트 1문장 (한국어)"}`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: 'gpt-4o', max_tokens: 150, messages: [{ role: 'user', content: prompt }] }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`GPT ${res.status}`);
+    const data = await res.json();
+    const text = data.choices[0].message.content.trim();
+    const m = text.match(/\{[\s\S]+\}/);
+    if (m) return JSON.parse(m[0]);
+  } catch (e) {
+    console.warn('[검증 루프 실패]', e.message);
+  }
+  return { score: null, passed: true, feedback: null };
 }
 
 // ─── 폰트 CDN/패밀리 헬퍼 ───
