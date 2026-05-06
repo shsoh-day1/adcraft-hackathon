@@ -225,6 +225,7 @@ app.post('/api/generate-ad', async (req, res) => {
       pageContent,
       pageInfo: resolvedPageInfo,
       styleAnalysis: imageResult.styleAnalysis,
+      layoutTypes: effectiveLayouts,
     });
 
     // ── STEP 5: 조합 에이전트 (카피 × 레이아웃 → HTML) ──
@@ -469,10 +470,10 @@ async function imageAgent({ referenceImages, ogImageUrl, customBgImage, customBg
 // 역할: 페이지 내용 + USP + 체크리스트 기준으로 카피 3종 생성
 // 독립성: 이미지 데이터 없이도 동작. 스타일 분석은 선택적 입력.
 // 병렬성: 이미지 에이전트와 동시 실행 가능 (소재정보 자동추출 포함).
-async function copyAgent({ pageContent, pageInfo, styleAnalysis }) {
-  console.log('[✍️ 카피 에이전트] 시작 | 타겟:', pageInfo.target ? pageInfo.target.slice(0, 30) : '자동추출됨');
+async function copyAgent({ pageContent, pageInfo, styleAnalysis, layoutTypes = ['photo-overlay'] }) {
+  console.log('[✍️ 카피 에이전트] 시작 | 타겟:', pageInfo.target ? pageInfo.target.slice(0, 30) : '자동추출됨', '| 레이아웃:', layoutTypes.join(','));
 
-  const adDataList = await extractAdDataVariations(pageContent, styleAnalysis, pageInfo);
+  const adDataList = await extractAdDataVariations(pageContent, styleAnalysis, pageInfo, 1, layoutTypes);
 
   console.log('[✍️ 카피 에이전트] 완료 |', adDataList.map(v => `${v.variation_label}(${v.validation_score}/15)`).join(' · '));
   return { adDataList };
@@ -758,7 +759,7 @@ JSON만 반환:
 }
 
 // ─── 카피 배리에이션 3종 생성 ───
-async function extractAdDataVariations(pageContent, styleAnalysis, info, _attempt = 1) {
+async function extractAdDataVariations(pageContent, styleAnalysis, info, _attempt = 1, layoutTypes = ['photo-overlay']) {
   const styleHint = styleAnalysis ? `\n\n## 레퍼런스 디자인 스타일 (반드시 참고)\n${styleAnalysis}\n→ 위 스타일 분위기에 맞는 카피 톤을 적용하라.` : '';
   const { language, target, usp1, usp2, usp3, ad_set_message, creative_message } = info;
   const langMap = { ko: '한국어', vi: '베트남어', en: '영어', ja: '일본어', zh: '중국어', th: '태국어' };
@@ -814,6 +815,59 @@ ${figmaStylesContent}
 → 아래 JSON의 layout_type은 위 Figma 패턴명과 동일하게 지정할 것.
 ` : '';
 
+  // 레이아웃별 추가 필드 스펙
+  const needsInstructor = layoutTypes.some(t => ['instructor', 'seminar', 'review'].includes(t));
+  const needsCurriculum = layoutTypes.includes('curriculum');
+  const needsSns       = layoutTypes.includes('sns-post');
+  const needsComparison= layoutTypes.includes('comparison');
+  const needsReview    = layoutTypes.includes('review');
+
+  const extraFields = [];
+  if (needsInstructor) {
+    extraFields.push(`- instructor_name: 강사/발표자 이름 (페이지에서 추출, 없으면 "[강사명]" 플레이스홀더)
+- instructor_title: 현재 직함 (예: "현) OO대학교 교수")
+- instructor_career: 이전 경력 (예: "전) 삼성전자 수석연구원")
+- instructor_bullet1: 핵심 이력 1 (20자 이내)
+- instructor_bullet2: 핵심 이력 2 (20자 이내)
+- instructor_bullet3: 핵심 이력 3 (20자 이내)`);
+  }
+  if (layoutTypes.includes('instructor')) {
+    extraFields.push(`- usp_module1: USP 카드 1 설명 (15자 이내)
+- usp_module2: USP 카드 2 설명 (15자 이내)
+- usp_module3: USP 카드 3 설명 (15자 이내)
+- usp_module4: USP 카드 4 설명 (15자 이내, 마지막 카드)`);
+  }
+  if (layoutTypes.includes('seminar')) {
+    extraFields.push(`- instructor_subtitle: 강사 소개 한 줄 (예: "부린이 공부방의 레나쌤")`);
+  }
+  if (needsReview) {
+    extraFields.push(`- review_body1: 수강생 후기 1 (40자 이내, 핵심 키워드는 **굵게** 마크)
+- review_body2: 수강생 후기 2 (40자 이내, 핵심 키워드는 **굵게** 마크)
+- review_body3: 수강생 후기 3 (40자 이내, 핵심 키워드는 **굵게** 마크)`);
+  }
+  if (needsCurriculum) {
+    extraFields.push(`- curriculum_step1: 커리큘럼 1단계 명칭 (10자 이내)
+- curriculum_step2: 커리큘럼 2단계 명칭 (10자 이내)
+- curriculum_step3: 커리큘럼 3단계 명칭 (10자 이내)
+- curriculum_step4: 커리큘럼 4단계 명칭 (10자 이내)
+- curriculum_step5: 커리큘럼 5단계 명칭 (10자 이내)
+- curriculum_badge: 배지 텍스트 (예: "국내 유일 Full-로드맵", 15자 이내)`);
+  }
+  if (needsSns) {
+    extraFields.push(`- post_username: 가상 커뮤니티 닉네임 (실제 닉네임 스타일, 예: "데이터_공부중")
+- post_body: 커뮤니티 게시글 본문 (100자 이내, 개인 경험담 어투, 줄바꿈은 \\n 사용)`);
+  }
+  if (needsComparison) {
+    extraFields.push(`- comparison_a_label: 비교 A행 라벨 (예: "수강 전", "기존 방식", 6자 이내)
+- comparison_b_label: 비교 B행 라벨 (예: "수강 후", "우리 과정", 6자 이내)
+- comparison_items: 비교 항목 배열 (최대 5개) 예시:
+  [{"stage":"입문","a_state":"혼자 독학","b_state":"전문가 멘토링"},...]`);
+  }
+
+  const extraFieldsText = extraFields.length > 0
+    ? `\n\n## 레이아웃 추가 필드 (선택된 레이아웃: ${layoutTypes.join(', ')})\n${extraFields.join('\n')}`
+    : '';
+
   // 카피 1종 (레이아웃은 사용자가 별도 선택)
   const layoutSpec = `
 ## 카피 — 1종
@@ -830,8 +884,8 @@ ${figmaStylesContent}
 
 JSON 배열만 반환 (주석·설명 없이):
 [
-  {"variation_label":"광고 소재","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","visual_stat1_value":"","visual_stat1_label":"","footnote":null,"validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"V4":true,"V5":true,"V6":true,"V7":true,"S1":true,"P1":true},"validation_score":15,"validation_fails":[]}
-]`;
+  {"variation_label":"광고 소재","brand":"","hook":"","headline_line1":"","headline_line2":"","cta_badge":"","cta_text":"","visual_stat1_value":"","visual_stat1_label":"","footnote":null${needsInstructor ? ',"instructor_name":"","instructor_title":"","instructor_career":"","instructor_bullet1":"","instructor_bullet2":"","instructor_bullet3":""' : ''}${layoutTypes.includes('instructor') ? ',"usp_module1":"","usp_module2":"","usp_module3":"","usp_module4":""' : ''}${layoutTypes.includes('seminar') ? ',"instructor_subtitle":""' : ''}${needsReview ? ',"review_body1":"","review_body2":"","review_body3":""' : ''}${needsCurriculum ? ',"curriculum_step1":"","curriculum_step2":"","curriculum_step3":"","curriculum_step4":"","curriculum_step5":"","curriculum_badge":""' : ''}${needsSns ? ',"post_username":"","post_body":""' : ''}${needsComparison ? ',"comparison_a_label":"","comparison_b_label":"","comparison_items":[]' : ''},"validation":{"C1":true,"C2":true,"C3":true,"C4":true,"C5":true,"C6":true,"V1":true,"V2":true,"V3":true,"V4":true,"V5":true,"V6":true,"V7":true,"S1":true,"P1":true},"validation_score":15,"validation_fails":[]}
+]${extraFieldsText}`;
 
   const prompt = `아래 정보를 바탕으로 META 인스타그램 1:1 광고소재 카피 1개를 작성하라.
 ${langInstruction}
