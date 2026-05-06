@@ -442,6 +442,9 @@
       width: 1080px; height: 1080px; border: none;
       transform: scale(0.5); transform-origin: top left; pointer-events: none;
     }
+    /* sc-wrap 큰 preview 전용 */
+    #scPreviewWrap { width:100%; background:#0d0d0d; border-radius:12px; overflow:hidden; position:relative; margin-bottom:16px; }
+    #scPreviewWrap iframe { width:1080px; height:1080px; border:none; transform-origin:top left; display:block; pointer-events:none; }
 
     /* 코드 섹션 */
     .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -1419,11 +1422,9 @@
     <!-- 편집 힌트 -->
     <span id="scEditHint" style="display:none;font-size:11px;color:var(--tx-muted)">✏️ 텍스트 클릭해서 바로 수정</span>
 
-    <!-- 미리보기 -->
-    <div class="preview-container" style="margin-bottom:16px">
-      <div class="preview-scaler">
-        <iframe id="scPreviewFrame" srcdoc="" style="width:1080px;height:1080px;border:none;transform:scale(0.5);transform-origin:top left"></iframe>
-      </div>
+    <!-- 큰 미리보기 (full-width, 클릭 편집 가능) -->
+    <div id="scPreviewWrap">
+      <iframe id="scPreviewFrame" srcdoc=""></iframe>
     </div>
 
     <!-- 검증 패널 -->
@@ -1706,6 +1707,7 @@
     if (scIframe) {
       scIframe.addEventListener('load', activateScClickEdit, { once: true });
       scIframe.srcdoc = v.html;
+      requestAnimationFrame(scaleMainPreview);
     }
     const scJsonBox = document.getElementById('scJsonBox');
     if (scJsonBox) scJsonBox.textContent = JSON.stringify(v.adData, null, 2);
@@ -3093,36 +3095,18 @@
     if (scResultBody) scResultBody.style.display = 'block';
     const scResultActions = document.getElementById('scResultActions');
     if (scResultActions) scResultActions.style.display = 'flex';
-    // 카탈로그 그리드 렌더링 (탭 대체)
-    const scCatalogGrid = document.getElementById('scCatalogGrid');
-    if (scCatalogGrid) {
-      scCatalogGrid.innerHTML = variations.map((v, i) => {
-        const label = v.adData.variation_label || `버전 ${i + 1}`;
-        const m = label.match(/^(\[.+?\])\s*(.*)$/);
-        const layoutLabel = m ? m[1] : '';
-        const copyLabel = m ? m[2] : label;
-        const score = v.adData.validation_score;
-        const scoreColor = score == null ? 'transparent' : score >= 13 ? '#16a34a' : score >= 11 ? '#ca8a04' : '#dc2626';
-        return `<div class="catalog-card-item ${i === 0 ? 'active' : ''}" onclick="switchVariation(${i})" id="catCard${i}">
-          <div class="catalog-thumb" id="catThumb${i}">
-            <iframe id="catIframe${i}" style="width:1080px;height:1080px;border:none;pointer-events:none;transform-origin:top left"></iframe>
-          </div>
-          <div class="catalog-card-foot">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${layoutLabel ? `<span style="opacity:.6">${layoutLabel}</span> ` : ''}${copyLabel}</span>
-            <span class="catalog-score-dot" style="background:${scoreColor}" title="${score != null ? score + '/15' : ''}"></span>
-          </div>
-        </div>`;
+    // A/B/C 탭 렌더링 (썸네일 그리드 제거 — 큰 preview 직접 표시)
+    const scVarTabsEl = document.getElementById('scVarTabs');
+    if (scVarTabsEl) {
+      const labels = ['A — 혜택형', 'B — 공감형', 'C — 긴박형'];
+      scVarTabsEl.innerHTML = variations.map((v, i) => {
+        const label = v.adData.variation_label || labels[i] || `버전 ${i + 1}`;
+        return `<button class="var-tab ${i === 0 ? 'active' : ''}" onclick="switchVariation(${i})">${label}</button>`;
       }).join('');
-      // srcdoc는 innerHTML 이후 JS로 직접 주입 (특수문자 안전)
-      variations.forEach((v, i) => {
-        const iframe = document.getElementById(`catIframe${i}`);
-        if (iframe) iframe.srcdoc = v.html;
-      });
-      scCatalogGrid.style.display = 'grid';
-      // iframe 크기 맞춤: 실제 셀 너비 기반으로 scale 계산
-      requestAnimationFrame(scaleCatalogThumbs);
+      scVarTabsEl.style.display = 'flex';
     }
     switchVariation(0);
+    requestAnimationFrame(scaleMainPreview);
   }
 
   function scaleCatalogThumbs() {
@@ -3133,6 +3117,19 @@
       if (iframe) iframe.style.transform = `scale(${w / 1080})`;
     });
   }
+
+  // sc-wrap 큰 preview 크기 맞춤 (full-width 반응형)
+  function scaleMainPreview() {
+    const wrap = document.getElementById('scPreviewWrap');
+    const iframe = document.getElementById('scPreviewFrame');
+    if (!wrap || !iframe) return;
+    const w = wrap.clientWidth;
+    if (!w) return;
+    const scale = w / 1080;
+    iframe.style.transform = `scale(${scale})`;
+    wrap.style.height = Math.round(1080 * scale) + 'px';
+  }
+  window.addEventListener('resize', scaleMainPreview);
 
   // ── 다운로드 / 복사 ──
   function downloadHTML() {
