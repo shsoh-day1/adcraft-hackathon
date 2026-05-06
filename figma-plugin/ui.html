@@ -121,8 +121,8 @@ body { display:flex; flex-direction:column; }
 <div class="header">
   <span class="logo">AdCraft</span>
   <div class="env-wrap">
-    <button class="env-btn on" id="btnLocal" onclick="setEnv('local')">로컬</button>
-    <button class="env-btn" id="btnProd"  onclick="setEnv('prod')">프로덕션</button>
+    <button class="env-btn" id="btnLocal" onclick="setEnv('local')">로컬</button>
+    <button class="env-btn on" id="btnProd"  onclick="setEnv('prod')">프로덕션</button>
   </div>
 </div>
 
@@ -282,7 +282,7 @@ body { display:flex; flex-direction:column; }
 
 <script>
 // ── 상태 ──
-let env = 'local';
+let env = 'prod';
 let textLayers = [], imageLayers = [], hasSelection = false;
 let currentImgBase64 = null;
 let variations = [];          // API 응답 3종 배리에이션
