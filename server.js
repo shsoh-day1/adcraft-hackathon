@@ -202,6 +202,7 @@ app.post('/api/generate-ad', async (req, res) => {
   }
 
   try {
+    global._reqStart = Date.now();
     console.log('\n' + '─'.repeat(50));
     console.log('[🚀 생성 시작]', url);
     console.log('─'.repeat(50));
@@ -277,14 +278,26 @@ app.post('/api/generate-ad', async (req, res) => {
     if (layout_ref_id && process.env.OPENAI_API_KEY) {
       const refLayout = readLayouts().find(l => l.id === layout_ref_id);
       if (refLayout?.imageData) {
-        console.log('[🤖 GPT 레이아웃 매칭 시작]', refLayout.name, '| 배리에이션:', adDataList.length, '종');
-        // 3종 배리에이션 병렬 변환 (각각 카피 다름)
-        gptLayoutHTMLs = await Promise.all(
-          adDataList.map((adData, i) =>
-            generateLayoutHTML(refLayout.imageData, adData, effectiveBgColor, font)
-              .catch(e => { console.warn(`[GPT 레이아웃 변환 실패 ${i+1}]`, e.message); return null; })
-          )
-        );
+        console.log('[🤖 GPT 레이아웃 매칭 시작]', refLayout.name, '| 배리에이션:', adDataList.length, '종 (순차 실행)');
+        // 순차 실행 — Vercel 60초 제한 내에서 안전하게 처리
+        // (병렬 시 타임아웃 위험, 순차 시 첫 번째 성공만으로도 레이아웃 파악 가능)
+        gptLayoutHTMLs = [];
+        for (let i = 0; i < adDataList.length; i++) {
+          try {
+            const html = await generateLayoutHTML(refLayout.imageData, adDataList[i], effectiveBgColor, font);
+            gptLayoutHTMLs.push(html);
+          } catch (e) {
+            console.warn(`[GPT 레이아웃 변환 실패 ${i+1}]`, e.message);
+            gptLayoutHTMLs.push(null);
+          }
+          // Vercel 함수 실행 시간 모니터링
+          const elapsed = Date.now() - (global._reqStart || Date.now());
+          if (elapsed > 45000) {
+            console.warn('[GPT 레이아웃] 45초 초과 — 나머지는 고정 템플릿으로 처리');
+            while (gptLayoutHTMLs.length < adDataList.length) gptLayoutHTMLs.push(null);
+            break;
+          }
+        }
         const successCount = gptLayoutHTMLs.filter(Boolean).length;
         console.log(`[🤖 GPT 레이아웃 매칭 완료] ${successCount}/${adDataList.length}종 성공 | 실패분은 고정 템플릿 사용`);
       }
@@ -880,7 +893,7 @@ Return ONLY the complete HTML document starting with <!DOCTYPE html>. No explana
           ],
         }],
       }),
-      signal: AbortSignal.timeout(90000),
+      signal: AbortSignal.timeout(50000),
     });
 
     const data = await res.json();
@@ -3033,15 +3046,21 @@ ${copyDesc}
 JSON만 출력 (코드블록 없이):
 {"matches":[{"layerId":"...","field":"hook","reason":"한 줄 근거"},...]}`;
 
-    const resp = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      max_tokens: 600,
-      temperature: 0,
+    const matchRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        max_tokens: 600,
+        temperature: 0,
+      }),
+      signal: AbortSignal.timeout(15000),
     });
-
-    const parsed = JSON.parse(resp.choices[0].message.content);
+    const matchData = await matchRes.json();
+    if (!matchRes.ok) throw new Error(matchData.error?.message || 'OpenAI API 오류');
+    const parsed = JSON.parse(matchData.choices[0].message.content);
     // 각 field 중복 매핑 방지
     const seen = new Set();
     const deduped = (parsed.matches || []).filter(m => {
