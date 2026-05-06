@@ -348,7 +348,8 @@ app.post('/api/fetch-person-image', async (req, res) => {
   }
 
   // 사설 IP / localhost 차단 (SSRF 방지)
-  if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(hostname)) {
+  if (/^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/i.test(hostname) ||
+      hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fe80')) {
     return res.status(403).json({ error: '허용되지 않는 주소입니다' });
   }
 
@@ -359,8 +360,10 @@ app.post('/api/fetch-person-image', async (req, res) => {
     });
     if (!imgRes.ok) throw new Error(`다운로드 실패: HTTP ${imgRes.status}`);
 
-    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-    if (!contentType.startsWith('image/')) throw new Error('이미지 파일이 아닙니다');
+    const rawCt = imgRes.headers.get('content-type') || 'image/jpeg';
+    const contentType = rawCt.split(';')[0].trim();
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!ALLOWED_IMAGE_TYPES.includes(contentType)) throw new Error('허용되지 않는 이미지 형식입니다 (jpg/png/webp/gif만 허용)');
 
     const buffer = await imgRes.arrayBuffer();
     const base64 = Buffer.from(buffer).toString('base64');
@@ -585,7 +588,7 @@ function extractPersonImageUrl(html) {
   const imgTags = html.match(/<img[^>]+>/gi) || [];
   for (const tag of imgTags) {
     if (!PERSON_KEYWORDS.test(tag)) continue;
-    const srcMatch = tag.match(/src=["']([^"']+)["']/i);
+    const srcMatch = tag.match(/(?:data-src|data-lazy-src|src)=["']([^"']+)["']/i);
     if (srcMatch && srcMatch[1].startsWith('http')) return srcMatch[1];
   }
 
