@@ -484,27 +484,31 @@ async function copyAgent({ pageContent, pageInfo, styleAnalysis, layoutTypes = [
 // 역할: 카피 데이터 + 배경 이미지 → 1080×1080 HTML 소재 3종 조립
 // 독립성: 카피 에이전트 + 이미지 에이전트 결과만 있으면 즉시 실행.
 // 특성: 동기(sync) 함수 — Claude API 호출 없이 순수 템플릿 렌더링.
-function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'] }) {
-  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', layoutTypes.join(', '), '| 카피:', adDataList.length, '종 | 이미지:', bgImageBase64 ? 'O' : 'X');
+function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'], personImageBase64 = null, personImageUrl = null, eventDate = '', eventBadge = '무료 LIVE', colors = {} }) {
+  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', layoutTypes.join(', '), '| 카피:', adDataList.length, '종 | 인물이미지:', personImageBase64 ? '업로드' : personImageUrl ? 'URL' : 'X');
 
   const variations = [];
-  const layoutLabels = { 'photo-overlay': '[기본형]', 'twitter': '[트위터]' };
+  const layoutLabels = {
+    'photo-overlay': '[기본형]', 'twitter': '[커뮤니티]',
+    'instructor': '[강사강조]', 'seminar': '[세미나]',
+    'sns-post': '[SNS]', 'comparison': '[비교]',
+    'image-hero': '[이미지]', 'curriculum': '[커리큘럼]', 'review': '[후기]',
+  };
+
+  // 인물 이미지: base64 우선, URL 폴백
+  const personImg = personImageBase64 || personImageUrl || null;
 
   for (const layoutType of layoutTypes) {
     for (const adData of adDataList) {
       const prefix = layoutLabels[layoutType] || `[${layoutType}]`;
-      const labeledData = {
-        ...adData,
-        variation_label: `${prefix} ${adData.variation_label || ''}`.trim(),
-        layout_type: layoutType,
-      };
+      const labeledData = { ...adData, variation_label: `${prefix} ${adData.variation_label || ''}`.trim(), layout_type: layoutType };
       let html;
       if (layoutType === 'photo-overlay') {
         html = generateFigmaPhotoHTML(labeledData, bgColor, bgImageBase64, bgCss, font);
       } else if (layoutType === 'twitter') {
         html = generateFigmaTwitterHTML(labeledData, bgColor, font);
       } else {
-        html = generateAdHTML(labeledData, bgColor, bgImageBase64, bgCss, font);
+        html = generateAdHTML(labeledData, bgColor, bgImageBase64, bgCss, font, colors.ctaColor || null, personImg, colors, eventDate, eventBadge);
       }
       variations.push({ adData: labeledData, html });
     }
@@ -1016,12 +1020,20 @@ function boldMark(str = '') {
 }
 
 // ─── HTML 생성 (레이아웃 dispatcher) ───
-function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
-  // 포토오버레이 3종 (메인)
+function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null, personImg = null, colors = {}, eventDate = '', eventBadge = '무료 LIVE') {
+  const effectiveColors = ctaColor ? { ...colors, ctaColor } : colors;
+  // 신규 7종
+  if (d.layout_type === 'instructor')  return generateInstructorHTML(d, bgColor, personImg, font, effectiveColors);
+  if (d.layout_type === 'seminar')     return generateSeminarHTML(d, bgColor, personImg, font, effectiveColors, eventDate, eventBadge);
+  if (d.layout_type === 'sns-post')    return generateSnsPostHTML(d, bgColor, font, effectiveColors);
+  if (d.layout_type === 'comparison')  return generateComparisonHTML(d, bgColor, bgImageBase64, cssBackground, font, effectiveColors);
+  if (d.layout_type === 'image-hero')  return generateImageHeroHTML(d, bgColor, bgImageBase64, cssBackground, font, effectiveColors);
+  if (d.layout_type === 'curriculum')  return generateCurriculumHTML(d, bgColor, font, effectiveColors);
+  if (d.layout_type === 'review')      return generateReviewHTML(d, bgColor, personImg, font, effectiveColors);
+  // 기존
   if (d.layout_type === '포토오버레이-시네마틱형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
   if (d.layout_type === '포토오버레이-센터패널형') return generatePhotoCenterPanelHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
   if (d.layout_type === '포토오버레이-사이드형')   return generatePhotoSideHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
-  // 레거시 폴백
   if (d.layout_type === '포토오버레이형') return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
   if (d.layout_type === '헤드라인밴드형') return generateHeadlineBandHTML(d, bgColor, font);
   if (d.layout_type === '다크스플릿형')   return generateDarkSplitHTML(d, bgColor, font);
@@ -1029,6 +1041,335 @@ function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackgro
   if (d.layout_type === '헤드카피형')    return generateHeadlineCopyHTML(d, bgColor, font);
   if (d.layout_type === '커뮤니티형')    return generateCommunityHTML(d, bgColor, font);
   return generatePhotoOverlayHTML(d, bgColor, bgImageBase64, cssBackground, font, ctaColor);
+}
+
+// ─── 강사강조형 ───
+function generateInstructorHTML(d, bgColor = '#f5a623', personImg = null, font = 'Pretendard', colors = {}) {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const accent = colors.accentColor || bgColor;
+
+  const uspCards = [1,2,3,4].map(i => {
+    const mod = d[`usp_module${i}`] || `모듈 ${i}`;
+    const isLast = i === 4;
+    return `<div style="flex:1;background:#fff;border-radius:14px;border:1.5px solid #eee;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;min-width:0">
+      ${isLast && d.cta_badge ? `<div style="position:absolute;top:-10px;right:-4px;background:${accent};color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap">${d.cta_badge}</div>` : ''}
+      <div style="width:24px;height:24px;border-radius:50%;background:${accent};color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center">${i}</div>
+      <div style="width:100%;aspect-ratio:16/9;background:#f0f0f0;border-radius:8px"></div>
+      <div style="font-size:13px;font-weight:600;color:#222;text-align:center;line-height:1.4">${mod}</div>
+    </div>`;
+  }).join('');
+
+  const personSection = personImg
+    ? `<div style="width:88px;height:88px;border-radius:50%;overflow:hidden;border:3px solid ${accent};flex-shrink:0"><img src="${personImg}" style="width:100%;height:100%;object-fit:cover"></div>`
+    : `<div style="width:88px;height:88px;border-radius:50%;background:#e0e0e0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px">👤</div>`;
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative;background:#fafafa;background-image:radial-gradient(circle,#ddd 1px,transparent 1px);background-size:28px 28px">
+
+  <div style="padding:52px 52px 0">
+    <div style="font-size:26px;font-weight:600;color:#555;margin-bottom:12px">${nl2br(d.hook || '')}</div>
+    <div style="font-size:64px;font-weight:900;color:#111;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
+    <div style="font-size:64px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  </div>
+
+  <div style="padding:28px 52px 0;display:flex;gap:12px">
+    ${uspCards}
+  </div>
+
+  <div style="position:absolute;bottom:110px;left:52px;right:52px;display:flex;align-items:center;gap:24px">
+    ${personSection}
+    <div style="flex:1">
+      <div style="font-size:26px;font-weight:900;color:#111;margin-bottom:4px">${d.instructor_name || '[강사명]'}</div>
+      <div style="font-size:16px;color:#444;margin-bottom:2px">${d.instructor_title || '현) -'}</div>
+      <div style="font-size:15px;color:#666;margin-bottom:10px">${d.instructor_career || '전) -'}</div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        ${[1,2,3].map(i => d[`instructor_bullet${i}`] ? `<div style="font-size:14px;color:#444">• ${d[`instructor_bullet${i}`]}</div>` : '').join('')}
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '지금 바로 신청하기 →'}</div>
+  </div>
+
+</div></body></html>`;
+}
+
+// ─── 세미나형 (인물강조) ───
+function generateSeminarHTML(d, bgColor = '#7c3aed', personImg = null, font = 'Pretendard', colors = {}, eventDate = '', eventBadge = '무료 LIVE') {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const grad = `linear-gradient(160deg, ${bgColor} 0%, ${bgColor}cc 40%, #1a0533 100%)`;
+
+  const personBlock = personImg
+    ? `<div style="position:absolute;bottom:120px;left:50%;transform:translateX(-50%);text-align:center">
+        <div style="width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,0.15);overflow:hidden;margin:0 auto">
+          <img src="${personImg}" style="width:100%;height:100%;object-fit:cover;object-position:top">
+        </div>
+        <div style="margin-top:12px;font-size:22px;font-weight:800;color:#fff">${d.instructor_name || ''}</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.7)">${d.instructor_subtitle || ''}</div>
+      </div>`
+    : `<div style="position:absolute;bottom:120px;left:50%;transform:translateX(-50%);text-align:center">
+        <div style="width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.15);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:72px">👤</div>
+        <div style="margin-top:12px;font-size:22px;font-weight:800;color:#fff">${d.instructor_name || '[강사명]'}</div>
+      </div>`;
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative;background:${grad}">
+
+  <div style="padding:52px 52px 0;display:flex;align-items:center;gap:18px">
+    <div style="background:#e11d48;color:#fff;font-size:20px;font-weight:900;padding:8px 20px;border-radius:6px">${eventBadge}</div>
+    ${eventDate ? `<div style="color:rgba(255,255,255,0.85);font-size:22px;font-weight:600">${eventDate}</div>` : ''}
+  </div>
+
+  <div style="padding:32px 52px 0">
+    <div style="font-size:66px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
+    <div style="font-size:66px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+    <div style="margin-top:16px;font-size:24px;color:rgba(255,255,255,0.72)">${d.hook || ''}</div>
+  </div>
+
+  ${personBlock}
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '무료로 신청하기 →'}</div>
+  </div>
+
+</div></body></html>`;
+}
+
+// ─── SNS UI형 ───
+function generateSnsPostHTML(d, bgColor = '#1877f2', font = 'Pretendard', colors = {}) {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const dark = isColorDark(bgColor);
+  const panelBg = dark ? '#1c1c1e' : '#f5f5f7';
+  const textMain = dark ? '#ffffff' : '#1c1e21';
+  const textSub  = dark ? '#8e8e93' : '#65676b';
+  const cardBg   = dark ? '#2c2c2e' : '#ffffff';
+  const postBody = (d.post_body || d.hook || '').replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+  const username = d.post_username || '익명의수강생';
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative;background:${panelBg}">
+
+  <div style="background:${bgColor};height:70px;display:flex;align-items:center;padding:0 36px;gap:32px">
+    <span style="color:#fff;font-size:18px;font-weight:700">Q&A</span>
+    <span style="color:rgba(255,255,255,.65);font-size:18px">지식</span>
+    <span style="color:rgba(255,255,255,.65);font-size:18px">커뮤니티</span>
+    <span style="color:rgba(255,255,255,.65);font-size:18px">이벤트</span>
+    <span style="color:rgba(255,255,255,.65);font-size:18px">JOBS</span>
+    <div style="margin-left:auto;border:1.5px solid #fff;color:#fff;font-size:16px;font-weight:700;padding:8px 20px;border-radius:20px">질문하기</div>
+  </div>
+
+  <div style="background:${cardBg};margin:32px 52px;border-radius:18px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px">
+      <div style="width:60px;height:60px;border-radius:50%;background:${bgColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:900">${username[0]}</div>
+      <div>
+        <div style="font-size:20px;font-weight:700;color:${textMain}">${username}</div>
+        <div style="font-size:16px;color:${textSub}">❤ 2.5k &nbsp;·&nbsp; 1개월 전</div>
+      </div>
+    </div>
+    <div style="font-size:30px;font-weight:800;color:${textMain};margin-bottom:20px;line-height:1.3">${d.headline_line1 || ''}${d.headline_line2 ? ' ' + d.headline_line2 : ''}</div>
+    <div style="font-size:22px;color:${textSub};line-height:1.75">${postBody}</div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '자세히 알아보기 →'}</div>
+  </div>
+
+</div></body></html>`;
+}
+
+// ─── 비교형 ───
+function generateComparisonHTML(d, bgColor = '#111111', bgImageBase64 = null, bgCss = null, font = 'Pretendard', colors = {}) {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const accent = colors.accentColor || bgColor;
+  const bgStyle = bgImageBase64
+    ? `background:url('${bgImageBase64}') center/cover no-repeat`
+    : bgCss || `background:${bgColor}`;
+  const items = Array.isArray(d.comparison_items) ? d.comparison_items.slice(0, 5) : [];
+  const colCount = Math.max(items.length, 3);
+  const colW = Math.floor(900 / colCount);
+  const headerRow = items.map(it => `<div style="width:${colW}px;text-align:center;font-size:16px;font-weight:700;color:#666;padding:10px 4px">${it.stage || ''}</div>`).join('');
+  const aRow = items.map(it => `<div style="width:${colW}px;text-align:center;padding:10px 4px"><div style="display:inline-block;background:#f0f0f0;border-radius:20px;padding:6px 14px;font-size:14px;color:#666">${it.a_state || '–'}</div></div>`).join('');
+  const bRow = items.map(it => `<div style="width:${colW}px;text-align:center;padding:10px 4px"><div style="display:inline-block;background:${accent};border-radius:20px;padding:6px 14px;font-size:14px;color:#fff;font-weight:700">${it.b_state || '✓'}</div></div>`).join('');
+  const aLabel = d.comparison_a_label || '기존 방식';
+  const bLabel = d.comparison_b_label || '수강 후';
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative">
+
+  <div style="height:486px;${bgStyle};display:flex;flex-direction:column;justify-content:flex-end;padding:0 52px 40px;position:relative">
+    ${bgImageBase64 ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.6)"></div>' : ''}
+    <div style="position:relative;z-index:1">
+      <div style="font-size:28px;color:rgba(255,255,255,0.7);margin-bottom:10px">${d.hook || ''}</div>
+      <div style="font-size:62px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
+      <div style="font-size:62px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+    </div>
+  </div>
+
+  <svg viewBox="0 0 1080 48" style="display:block;margin-top:-1px" preserveAspectRatio="none" height="48" width="1080">
+    <path d="M0,0 Q270,48 540,24 Q810,0 1080,32 L1080,48 L0,48 Z" fill="#fff"/>
+  </svg>
+
+  <div style="background:#fff;padding:20px 52px 0">
+    <div style="display:flex;margin-left:120px">${headerRow || '<div style="color:#999;font-size:16px">비교 항목을 입력하세요</div>'}</div>
+    <div style="display:flex;align-items:center;margin-bottom:8px">
+      <div style="width:120px;font-size:18px;font-weight:700;color:#888">${aLabel}</div>${aRow}
+    </div>
+    <div style="display:flex;align-items:center">
+      <div style="width:120px;font-size:18px;font-weight:800;color:${accent}">${bLabel}</div>${bRow}
+    </div>
+    <div style="margin-top:32px">
+      <div style="font-size:34px;font-weight:800;color:#111;line-height:1.4">${d.headline_line1 || ''} <span style="color:var(--accent)">${d.visual_stat1_value || ''}</span></div>
+      <div style="font-size:34px;font-weight:800;color:#111">${d.headline_line2 || ''} <span style="color:var(--accent)">${d.visual_stat1_label || ''}</span></div>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '지금 바로 시작하기 →'}</div>
+  </div>
+
+</div></body></html>`;
+}
+
+// ─── 이미지강조형 (풀블리드) ───
+function generateImageHeroHTML(d, bgColor = '#111', bgImageBase64 = null, bgCss = null, font = 'Pretendard', colors = {}) {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const bg = bgImageBase64 ? `url('${bgImageBase64}') center/cover no-repeat` : bgCss || bgColor;
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative;background:${bg}">
+
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.25) 40%,rgba(0,0,0,0.72) 75%,rgba(0,0,0,0.9) 100%)"></div>
+
+  ${d.cta_badge ? `<div style="position:absolute;top:40px;right:40px;z-index:10;background:var(--cta-bg);color:var(--cta-text);font-size:18px;font-weight:800;padding:10px 22px;border-radius:28px">${d.cta_badge}</div>` : ''}
+
+  <div style="position:absolute;bottom:130px;left:52px;right:52px;z-index:10">
+    <div style="font-size:24px;color:rgba(255,255,255,0.8);margin-bottom:12px">${d.hook || ''}</div>
+    <div style="font-size:80px;font-weight:900;color:var(--headline-clr);line-height:1.05;letter-spacing:-3px;text-shadow:0 4px 24px rgba(0,0,0,0.5)">${d.headline_line1 || ''}</div>
+    <div style="font-size:80px;font-weight:900;color:var(--accent);line-height:1.05;letter-spacing:-3px;text-shadow:0 4px 24px rgba(0,0,0,0.5)">${d.headline_line2 || ''}</div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center;z-index:10">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '지금 시작하기 →'}</div>
+  </div>
+
+</div></body></html>`;
+}
+
+// ─── 커리큘럼강조형 ───
+function generateCurriculumHTML(d, bgColor = '#0a0e1a', font = 'Pretendard', colors = {}) {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const accent = colors.accentColor || '#4a9eff';
+  const steps = [1,2,3,4,5].map(i => d[`curriculum_step${i}`] || `단계 ${i}`);
+  const stepW = 160;
+  const stepStart = 52;
+  const stepDots = steps.map((s, i) => {
+    const x = stepStart + i * (stepW + 28);
+    return `<div style="position:absolute;left:${x}px;top:0;width:${stepW}px;text-align:center">
+      <div style="width:18px;height:18px;border-radius:50%;background:${accent};margin:0 auto 8px"></div>
+      <div style="font-size:15px;font-weight:600;color:#fff;line-height:1.3">${s}</div>
+    </div>`;
+  }).join('');
+  const lineW = (steps.length - 1) * (stepW + 28) + stepW;
+  const thumbs = Array(20).fill(0).map(() =>
+    `<div style="width:168px;height:96px;background:rgba(255,255,255,0.08);border-radius:8px;border:1px solid rgba(255,255,255,0.1)"></div>`
+  ).join('');
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative;background:${bgColor}">
+
+  <div style="position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,${accent}22 0%,transparent 70%);pointer-events:none"></div>
+
+  <div style="padding:52px 52px 0">
+    <div style="font-size:60px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
+    <div style="font-size:60px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  </div>
+
+  <div style="margin:36px 52px 0;position:relative;height:80px">
+    <div style="position:absolute;top:8px;left:${stepStart + stepW/2}px;width:${lineW - stepW}px;height:2px;background:${accent}55"></div>
+    ${stepDots}
+  </div>
+
+  <div style="margin:32px 52px 0;display:flex;flex-wrap:wrap;gap:10px">${thumbs}</div>
+
+  <div style="position:absolute;bottom:120px;left:52px;right:52px;display:flex;align-items:center;gap:24px">
+    ${d.curriculum_badge ? `<div style="background:${accent};color:#000;font-size:14px;font-weight:900;padding:12px 16px;border-radius:50%;width:100px;height:100px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;flex-shrink:0">${d.curriculum_badge}</div>` : ''}
+    <div style="font-size:22px;color:rgba(255,255,255,0.75);line-height:1.6">${d.hook || ''}</div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
+    <div style="font-size:24px;font-weight:800;color:var(--cta-text)">${d.cta_text || '전체 커리큘럼 보기 →'}</div>
+  </div>
+
+</div></body></html>`;
+}
+
+// ─── 후기사례형 ───
+function generateReviewHTML(d, bgColor = '#111111', personImg = null, font = 'Pretendard', colors = {}) {
+  const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
+  const cssVars = buildCssVars(bgColor, colors);
+  const accent = colors.accentColor || bgColor;
+  const reviewCards = [1,2,3].map(i => {
+    const body = d[`review_body${i}`];
+    if (!body) return '';
+    return `<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:22px 24px">
+      <div style="color:#fbbf24;font-size:18px;margin-bottom:10px">★★★★★</div>
+      <div style="font-size:18px;color:rgba(255,255,255,0.88);line-height:1.6">${boldMark(body)}</div>
+    </div>`;
+  }).join('');
+  const personBlock = personImg
+    ? `<div style="position:absolute;right:52px;top:90px;width:340px;height:460px;overflow:hidden;border-radius:20px"><img src="${personImg}" style="width:100%;height:100%;object-fit:cover;object-position:top"></div>`
+    : '';
+
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<link href="${fontLink}" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
+:root{${cssVars}}</style></head>
+<body><div style="width:1080px;height:1080px;position:relative;background:${bgColor}">
+
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 0%,${accent}33 0%,transparent 60%)"></div>
+
+  ${personBlock}
+
+  <div style="position:absolute;top:52px;left:52px;right:${personImg ? '420px' : '52px'}">
+    <div style="font-size:22px;color:rgba(255,255,255,0.65);margin-bottom:12px">${d.hook || ''}</div>
+    <div style="font-size:56px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px;margin-bottom:4px">${d.headline_line1 || ''}</div>
+    <div style="font-size:56px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  </div>
+
+  <div style="position:absolute;bottom:120px;left:52px;right:${personImg ? '420px' : '52px'};display:flex;flex-direction:column;gap:12px">
+    ${reviewCards || '<div style="color:rgba(255,255,255,0.4);font-size:16px">후기 데이터를 입력해주세요</div>'}
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '수강 후기 더 보기 →'}</div>
+  </div>
+
+</div></body></html>`;
 }
 
 // ─── 헤드라인밴드형 (Figma 패턴 A) ───
@@ -2181,10 +2522,10 @@ app.post('/api/auth/login', async (req, res) => {
 
 // ─── 배경 이미지 적용 후 HTML 재생성 ───
 app.post('/api/regenerate-with-bg', (req, res) => {
-  const { adData, bgColor, bgImageBase64, cssBackground, font, ctaColor } = req.body;
+  const { adData, bgColor, bgImageBase64, cssBackground, font, ctaColor, personImg, colors, eventDate, eventBadge } = req.body;
   if (!adData) return res.status(400).json({ error: 'adData 필요' });
   try {
-    const html = generateAdHTML(adData, bgColor || '#1B5BD4', bgImageBase64 || null, cssBackground || null, font || 'Pretendard', ctaColor || null);
+    const html = generateAdHTML(adData, bgColor || '#1B5BD4', bgImageBase64 || null, cssBackground || null, font || 'Pretendard', ctaColor || null, personImg || null, colors || {}, eventDate || '', eventBadge || '무료 LIVE');
     res.json({ html });
   } catch (err) {
     console.error('[HTML 재생성 실패]', err.message);
