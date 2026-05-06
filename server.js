@@ -729,11 +729,7 @@ ${pageText.slice(0, 500)}
 }
 
 // ─── 레퍼런스 이미지 분석 ───
-async function analyzeReferenceImages(images) {
-  try {
-    const content = [{
-      type: 'text',
-      text: `아래 레퍼런스 광고 이미지들을 분석해서 디자인 스타일 정보를 JSON으로 반환하라.
+const ANALYZE_PROMPT = `아래 레퍼런스 광고 이미지들을 분석해서 디자인 스타일 정보를 JSON으로 반환하라.
 
 분석 항목:
 - bg_hex: 배경 메인 컬러 (#RRGGBB 형식, 반드시 추출)
@@ -746,21 +742,49 @@ async function analyzeReferenceImages(images) {
 - design_notes: 카피 배치·시각 계층 특이사항 한 줄
 
 JSON만 반환 (주석·설명 없이):
-{"bg_hex":"","accent_hex":"","headline_hex":"","cta_hex":"","style_mood":[],"font_style":"","layout_type":"","design_notes":""}`,
-    }];
+{"bg_hex":"","accent_hex":"","headline_hex":"","cta_hex":"","style_mood":[],"font_style":"","layout_type":"","design_notes":""}`;
 
+async function analyzeReferenceImages(images) {
+  // GPT-4o Vision 우선, 없으면 Claude 폴백
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const msgContent = [{ type: 'text', text: ANALYZE_PROMPT }];
+      for (const imgData of images.slice(0, 4)) {
+        if (/^data:image\//.test(imgData)) {
+          msgContent.push({ type: 'image_url', image_url: { url: imgData, detail: 'high' } });
+        }
+      }
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` },
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 700, messages: [{ role: 'user', content: msgContent }] }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await res.json();
+      if (res.ok && data.choices?.[0]?.message?.content) {
+        console.log('[🔍 GPT-4o Vision] 이미지 분석 완료');
+        return data.choices[0].message.content;
+      }
+      console.warn('[GPT-4o Vision 실패, Claude 폴백]', data.error?.message);
+    } catch (e) {
+      console.warn('[GPT-4o Vision 오류, Claude 폴백]', e.message);
+    }
+  }
+  // Claude Vision 폴백
+  try {
+    const content = [{ type: 'text', text: ANALYZE_PROMPT }];
     for (const imgData of images.slice(0, 3)) {
       const match = imgData.match(/^data:([^;]+);base64,(.+)$/);
       if (match) {
         content.push({ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } });
       }
     }
-
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 600,
+      max_tokens: 700,
       messages: [{ role: 'user', content }],
     });
+    console.log('[🔍 Claude Vision] 이미지 분석 완료');
     return msg.content[0].text;
   } catch (e) {
     console.warn('[이미지 분석 실패]', e.message);
@@ -1087,51 +1111,59 @@ function generateInstructorHTML(d, bgColor = '#f5a623', personImg = null, font =
   const cssVars = buildCssVars(bgColor, colors);
   const accent = colors.accentColor || bgColor;
 
+  // 4개 모듈 카드 — 마지막 카드에 배지
   const uspCards = [1,2,3,4].map(i => {
     const mod = d[`usp_module${i}`] || `모듈 ${i}`;
     const isLast = i === 4;
-    return `<div style="flex:1;background:#fff;border-radius:14px;border:1.5px solid #eee;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;min-width:0">
-      ${isLast && d.cta_badge ? `<div style="position:absolute;top:-10px;right:-4px;background:${accent};color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap">${d.cta_badge}</div>` : ''}
-      <div style="width:24px;height:24px;border-radius:50%;background:${accent};color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center">${i}</div>
-      <div style="width:100%;aspect-ratio:16/9;background:#f0f0f0;border-radius:8px"></div>
-      <div style="font-size:13px;font-weight:600;color:#222;text-align:center;line-height:1.4">${mod}</div>
+    return `<div style="flex:1;min-width:0;background:#fff;border-radius:14px;border:${isLast ? `2px solid ${accent}` : '1.5px solid #e8e8e8'};padding:16px 12px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;position:relative">
+      ${isLast ? `<div style="position:absolute;top:-13px;right:8px;background:${accent};color:#fff;font-size:11px;font-weight:900;padding:3px 10px;border-radius:20px;white-space:nowrap;letter-spacing:-.2px">패캠 Only</div>` : ''}
+      <div style="width:28px;height:28px;border-radius:50%;background:${accent};color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i}</div>
+      <div style="width:100%;height:90px;background:repeating-conic-gradient(#e0e0e0 0% 25%,#f5f5f5 0% 50%) 0 0/20px 20px;border-radius:8px"></div>
+      <div style="font-size:14px;font-weight:700;color:#222;text-align:center;line-height:1.4">${mod}</div>
     </div>`;
   }).join('');
 
+  // 강사 프로필
   const personSection = personImg
-    ? `<div style="width:88px;height:88px;border-radius:50%;overflow:hidden;border:3px solid ${accent};flex-shrink:0"><img src="${personImg}" style="width:100%;height:100%;object-fit:cover"></div>`
-    : `<div style="width:88px;height:88px;border-radius:50%;background:#e0e0e0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px">👤</div>`;
+    ? `<div style="width:90px;height:90px;border-radius:50%;overflow:hidden;border:3px solid ${accent};flex-shrink:0"><img src="${personImg}" style="width:100%;height:100%;object-fit:cover;object-position:top"></div>`
+    : `<div style="width:90px;height:90px;border-radius:50%;background:#e8e8e8;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <svg width="54" height="54" viewBox="0 0 24 24" fill="#999"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+       </div>`;
 
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <link href="${fontLink}" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 :root{${cssVars}}</style></head>
-<body><div style="width:1080px;height:1080px;position:relative;background:#fafafa;background-image:radial-gradient(circle,#ddd 1px,transparent 1px);background-size:28px 28px">
+<body><div style="width:1080px;height:1080px;position:relative;background:#fafafa;background-image:radial-gradient(circle,#d8d8d8 1.2px,transparent 1.2px);background-size:26px 26px">
 
-  <div style="padding:52px 52px 0">
-    <div style="font-size:26px;font-weight:600;color:#555;margin-bottom:12px">${nl2br(d.hook || '')}</div>
-    <div style="font-size:64px;font-weight:900;color:#111;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
-    <div style="font-size:64px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  <!-- 헤드라인 영역 -->
+  <div style="padding:48px 52px 0">
+    <div style="font-size:34px;font-weight:700;color:#222;line-height:1.35;margin-bottom:6px">${nl2br(d.hook || '')}</div>
+    <div style="font-size:52px;font-weight:900;color:${accent};line-height:1.1;letter-spacing:-1.5px">${d.headline_line1 || ''}</div>
+    <div style="font-size:52px;font-weight:900;color:${accent};line-height:1.1;letter-spacing:-1.5px;margin-bottom:2px">${d.headline_line2 || ''}</div>
   </div>
 
-  <div style="padding:28px 52px 0;display:flex;gap:12px">
+  <!-- 4개 모듈 카드 -->
+  <div style="padding:22px 52px 0;display:flex;gap:14px">
     ${uspCards}
   </div>
 
-  <div style="position:absolute;bottom:110px;left:52px;right:52px;display:flex;align-items:center;gap:24px">
+  <!-- 강사 섹션 -->
+  <div style="position:absolute;bottom:108px;left:52px;right:52px;display:flex;align-items:center;gap:22px;background:rgba(255,255,255,.8);border-radius:16px;padding:18px 22px;border:1px solid #ebebeb">
     ${personSection}
-    <div style="flex:1">
-      <div style="font-size:26px;font-weight:900;color:#111;margin-bottom:4px">${d.instructor_name || '[강사명]'}</div>
-      <div style="font-size:16px;color:#444;margin-bottom:2px">${d.instructor_title || '현) -'}</div>
-      <div style="font-size:15px;color:#666;margin-bottom:10px">${d.instructor_career || '전) -'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:24px;font-weight:900;color:#111;margin-bottom:3px">${d.instructor_name || '[강사명]'}</div>
+      <div style="font-size:15px;color:#444;margin-bottom:1px">${d.instructor_title || '현) -'}</div>
+      <div style="font-size:14px;color:#666;margin-bottom:8px">${d.instructor_career || '전) -'}</div>
       <div style="display:flex;flex-direction:column;gap:3px">
-        ${[1,2,3].map(i => d[`instructor_bullet${i}`] ? `<div style="font-size:14px;color:#444">• ${d[`instructor_bullet${i}`]}</div>` : '').join('')}
+        ${[1,2,3].map(i => d[`instructor_bullet${i}`] ? `<div style="font-size:13px;color:#444;line-height:1.4">• ${d[`instructor_bullet${i}`]}</div>` : '').join('')}
       </div>
     </div>
   </div>
 
-  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
-    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '지금 바로 신청하기 →'}</div>
+  <!-- CTA 바 -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:${accent};display:flex;align-items:center;justify-content:center;gap:12px">
+    <div style="font-size:26px;font-weight:900;color:#fff">${d.cta_text || '지금 바로 신청하기 ›'}</div>
   </div>
 
 </div></body></html>`;
@@ -1186,43 +1218,54 @@ function generateSeminarHTML(d, bgColor = '#7c3aed', personImg = null, font = 'P
 function generateSnsPostHTML(d, bgColor = '#1877f2', font = 'Pretendard', colors = {}) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const cssVars = buildCssVars(bgColor, colors);
-  const dark = isColorDark(bgColor);
-  const panelBg = dark ? '#1c1c1e' : '#f5f5f7';
-  const textMain = dark ? '#ffffff' : '#1c1e21';
-  const textSub  = dark ? '#8e8e93' : '#65676b';
-  const cardBg   = dark ? '#2c2c2e' : '#ffffff';
-  const postBody = (d.post_body || d.hook || '').replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+  const navColor = bgColor;
+  const postTitle = [d.headline_line1, d.headline_line2].filter(Boolean).join(' ');
+  const rawBody = d.post_body || d.hook || '';
+  const paragraphs = rawBody.replace(/\\n/g, '\n').split('\n').filter(s => s.trim()).slice(0, 4);
   const username = d.post_username || '익명의수강생';
+  const initChar = username[0] || 'K';
+
+  const bodyHtml = paragraphs.map(p =>
+    `<p style="font-size:22px;color:#65676b;line-height:1.75;margin-bottom:18px">${p}</p>`
+  ).join('');
 
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <link href="${fontLink}" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 :root{${cssVars}}</style></head>
-<body><div style="width:1080px;height:1080px;position:relative;background:${panelBg}">
+<body><div style="width:1080px;height:1080px;position:relative;background:#f0f2f5">
 
-  <div style="background:${bgColor};height:70px;display:flex;align-items:center;padding:0 36px;gap:32px">
-    <span style="color:#fff;font-size:18px;font-weight:700">Q&A</span>
-    <span style="color:rgba(255,255,255,.65);font-size:18px">지식</span>
-    <span style="color:rgba(255,255,255,.65);font-size:18px">커뮤니티</span>
-    <span style="color:rgba(255,255,255,.65);font-size:18px">이벤트</span>
-    <span style="color:rgba(255,255,255,.65);font-size:18px">JOBS</span>
-    <div style="margin-left:auto;border:1.5px solid #fff;color:#fff;font-size:16px;font-weight:700;padding:8px 20px;border-radius:20px">질문하기</div>
+  <!-- 네비게이션 바 -->
+  <div style="background:${navColor};height:72px;display:flex;align-items:center;padding:0 44px;gap:36px;flex-shrink:0">
+    <span style="color:#fff;font-size:20px;font-weight:800">Q&A</span>
+    <span style="color:rgba(255,255,255,.65);font-size:20px">지식</span>
+    <span style="color:rgba(255,255,255,.65);font-size:20px">커뮤니티</span>
+    <span style="color:rgba(255,255,255,.65);font-size:20px">이벤트</span>
+    <span style="color:rgba(255,255,255,.65);font-size:20px">JOBS</span>
+    <div style="margin-left:auto;border:2px solid rgba(255,255,255,.85);color:#fff;font-size:17px;font-weight:700;padding:9px 26px;border-radius:24px;flex-shrink:0">질문하기</div>
   </div>
 
-  <div style="background:${cardBg};margin:32px 52px;border-radius:18px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px">
-      <div style="width:60px;height:60px;border-radius:50%;background:${bgColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:900">${username[0]}</div>
-      <div>
-        <div style="font-size:20px;font-weight:700;color:${textMain}">${username}</div>
-        <div style="font-size:16px;color:${textSub}">❤ 2.5k &nbsp;·&nbsp; 1개월 전</div>
+  <!-- 포스트 카드 — nav 아래부터 바닥까지 꽉 채움 -->
+  <div style="position:absolute;top:72px;left:44px;right:44px;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:40px 48px;display:flex;flex-direction:column;overflow:hidden">
+    <!-- 작성자 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="width:64px;height:64px;border-radius:50%;background:${navColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:900;flex-shrink:0">${initChar}</div>
+        <div>
+          <div style="font-size:22px;font-weight:700;color:#1c1e21;margin-bottom:3px">${username}</div>
+          <div style="font-size:17px;color:#65676b">❤ 2.5k &nbsp;·&nbsp; 1개월 전</div>
+        </div>
       </div>
+      <div style="display:flex;gap:22px;font-size:26px;color:#8a8d91"><span>⤴</span><span>🔖</span></div>
     </div>
-    <div style="font-size:30px;font-weight:800;color:${textMain};margin-bottom:20px;line-height:1.3">${d.headline_line1 || ''}${d.headline_line2 ? ' ' + d.headline_line2 : ''}</div>
-    <div style="font-size:22px;color:${textSub};line-height:1.75">${postBody}</div>
-  </div>
-
-  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
-    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '자세히 알아보기 →'}</div>
+    <!-- 포스트 제목 -->
+    <div style="font-size:32px;font-weight:900;color:#1c1e21;line-height:1.35;margin-bottom:22px;flex-shrink:0">${postTitle}</div>
+    <!-- 본문 -->
+    <div style="flex:1;overflow:hidden">${bodyHtml}</div>
+    <!-- CTA 버튼 -->
+    <div style="flex-shrink:0;margin-top:20px;background:${navColor};border-radius:18px;height:88px;display:flex;align-items:center;justify-content:center">
+      <span style="font-size:26px;font-weight:800;color:#fff">${d.cta_text || '이에 대한 전문가의 답은? ›'}</span>
+    </div>
   </div>
 
 </div></body></html>`;
@@ -1233,51 +1276,95 @@ function generateComparisonHTML(d, bgColor = '#111111', bgImageBase64 = null, bg
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const cssVars = buildCssVars(bgColor, colors);
   const accent = colors.accentColor || bgColor;
-  const bgStyle = bgImageBase64
-    ? `background:url('${bgImageBase64}') center/cover no-repeat`
-    : bgCss || `background:${bgColor}`;
-  const items = Array.isArray(d.comparison_items) ? d.comparison_items.slice(0, 5) : [];
-  const colCount = Math.max(items.length, 3);
-  const colW = Math.floor(900 / colCount);
-  const headerRow = items.map(it => `<div style="width:${colW}px;text-align:center;font-size:16px;font-weight:700;color:#666;padding:10px 4px">${it.stage || ''}</div>`).join('');
-  const aRow = items.map(it => `<div style="width:${colW}px;text-align:center;padding:10px 4px"><div style="display:inline-block;background:#f0f0f0;border-radius:20px;padding:6px 14px;font-size:14px;color:#666">${it.a_state || '–'}</div></div>`).join('');
-  const bRow = items.map(it => `<div style="width:${colW}px;text-align:center;padding:10px 4px"><div style="display:inline-block;background:${accent};border-radius:20px;padding:6px 14px;font-size:14px;color:#fff;font-weight:700">${it.b_state || '✓'}</div></div>`).join('');
+  const topBg = bgImageBase64
+    ? `url('${bgImageBase64}') center/cover no-repeat`
+    : bgCss || bgColor;
+  const items = Array.isArray(d.comparison_items) && d.comparison_items.length > 0
+    ? d.comparison_items.slice(0, 6)
+    : [{ stage:'단계1', a_state:'–', b_state:'✓' }, { stage:'단계2', a_state:'–', b_state:'✓' }, { stage:'단계3', a_state:'–', b_state:'✓' }, { stage:'단계4', a_state:'–', b_state:'✓' }, { stage:'단계5', a_state:'–', b_state:'✓' }];
+
   const aLabel = d.comparison_a_label || '기존 방식';
   const bLabel = d.comparison_b_label || '수강 후';
+  const colCount = items.length;
+  const labelColW = 100;
+  const tableW = 1080 - 52 - 52;
+  const colW = Math.floor((tableW - labelColW) / colCount);
+
+  // 헤더 행
+  const headerCells = items.map(it =>
+    `<div style="width:${colW}px;text-align:center;font-size:16px;font-weight:700;color:#888;padding:8px 4px;flex-shrink:0">${it.stage || ''}</div>`
+  ).join('');
+
+  // A행 — 회색 마크/빈칸
+  const aCells = items.map(it => {
+    const val = it.a_state || '';
+    const isEmpty = val === '–' || val === '' || val === null;
+    return `<div style="width:${colW}px;text-align:center;padding:10px 4px;flex-shrink:0">
+      ${isEmpty
+        ? `<div style="display:inline-block;width:32px;height:20px;background:#e0e0e0;border-radius:4px"></div>`
+        : `<div style="display:inline-block;background:#f0f0f0;border-radius:16px;padding:5px 12px;font-size:13px;color:#666;font-weight:600;max-width:${colW-8}px;overflow:hidden;white-space:nowrap">${val}</div>`
+      }
+    </div>`;
+  }).join('');
+
+  // B행 — 강조 마크 + 핵심 포인트에 "심사" 배지
+  const bCells = items.map((it, i) => {
+    const val = it.b_state || '✓';
+    const isKey = val !== '–' && val !== '';
+    return `<div style="width:${colW}px;text-align:center;padding:10px 4px;flex-shrink:0;position:relative">
+      ${isKey
+        ? `<div style="display:inline-block;background:${accent};border-radius:16px;padding:5px 12px;font-size:13px;font-weight:800;color:#fff;max-width:${colW-8}px;overflow:hidden;white-space:nowrap">${val}</div>`
+        : `<div style="display:inline-block;width:32px;height:20px;background:#e0e0e0;border-radius:4px"></div>`
+      }
+    </div>`;
+  }).join('');
 
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <link href="${fontLink}" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 :root{${cssVars}}</style></head>
-<body><div style="width:1080px;height:1080px;position:relative">
+<body><div style="width:1080px;height:1080px;position:relative;background:#fff">
 
-  <div style="height:486px;${bgStyle};display:flex;flex-direction:column;justify-content:flex-end;padding:0 52px 40px;position:relative">
-    ${bgImageBase64 ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.6)"></div>' : ''}
-    <div style="position:relative;z-index:1">
-      <div style="font-size:28px;color:rgba(255,255,255,0.7);margin-bottom:10px">${d.hook || ''}</div>
-      <div style="font-size:62px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
-      <div style="font-size:62px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  <!-- 상단 다크 섹션 (450px) -->
+  <div style="position:relative;height:450px;background:${topBg};overflow:hidden">
+    ${bgImageBase64 ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.55)"></div>' : ''}
+    <!-- 장식 이미지 — 배경 없을 때 추상 그래픽 -->
+    ${!bgImageBase64 ? `<div style="position:absolute;right:-60px;top:-60px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.08) 0%,transparent 70%)"></div>
+    <div style="position:absolute;right:60px;top:40px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)"></div>` : ''}
+    <div style="position:absolute;bottom:60px;left:52px;right:52px;z-index:2">
+      <div style="font-size:26px;color:rgba(255,255,255,.7);margin-bottom:14px;font-weight:500">${d.hook || ''}</div>
+      <div style="font-size:66px;font-weight:900;color:#fff;line-height:1.05;letter-spacing:-2.5px">${d.headline_line1 || ''}</div>
+      <div style="font-size:66px;font-weight:900;color:${accent};line-height:1.05;letter-spacing:-2.5px">${d.headline_line2 || ''}</div>
     </div>
   </div>
 
-  <svg viewBox="0 0 1080 48" style="display:block;margin-top:-1px" preserveAspectRatio="none" height="48" width="1080">
-    <path d="M0,0 Q270,48 540,24 Q810,0 1080,32 L1080,48 L0,48 Z" fill="#fff"/>
+  <!-- 찢어진 종이 구분선 -->
+  <svg viewBox="0 0 1080 52" width="1080" height="52" style="display:block;margin-top:-2px" preserveAspectRatio="none">
+    <path d="M0,0 C180,52 280,12 420,36 C560,58 680,8 820,30 C920,46 1000,16 1080,28 L1080,52 L0,52 Z" fill="#fff"/>
   </svg>
 
-  <div style="background:#fff;padding:20px 52px 0">
-    <div style="display:flex;margin-left:120px">${headerRow || '<div style="color:#999;font-size:16px">비교 항목을 입력하세요</div>'}</div>
-    <div style="display:flex;align-items:center;margin-bottom:8px">
-      <div style="width:120px;font-size:18px;font-weight:700;color:#888">${aLabel}</div>${aRow}
+  <!-- 비교표 -->
+  <div style="background:#fff;padding:4px 52px 0">
+    <!-- 헤더 -->
+    <div style="display:flex;margin-left:${labelColW}px;margin-bottom:4px">${headerCells}</div>
+    <!-- A행 -->
+    <div style="display:flex;align-items:center;background:#fafafa;border-radius:12px;padding:6px 0;margin-bottom:8px">
+      <div style="width:${labelColW}px;flex-shrink:0;padding:0 0 0 12px;font-size:17px;font-weight:700;color:#aaa">${aLabel}</div>
+      ${aCells}
     </div>
-    <div style="display:flex;align-items:center">
-      <div style="width:120px;font-size:18px;font-weight:800;color:${accent}">${bLabel}</div>${bRow}
+    <!-- B행 -->
+    <div style="display:flex;align-items:center;background:${accent}14;border-radius:12px;border:1.5px solid ${accent}30;padding:6px 0">
+      <div style="width:${labelColW}px;flex-shrink:0;padding:0 0 0 12px;font-size:17px;font-weight:900;color:${accent}">${bLabel}</div>
+      ${bCells}
     </div>
-    <div style="margin-top:32px">
-      <div style="font-size:34px;font-weight:800;color:#111;line-height:1.4">${d.headline_line1 || ''} <span style="color:var(--accent)">${d.visual_stat1_value || ''}</span></div>
-      <div style="font-size:34px;font-weight:800;color:#111">${d.headline_line2 || ''} <span style="color:var(--accent)">${d.visual_stat1_label || ''}</span></div>
+    <!-- 결론 텍스트 -->
+    <div style="margin-top:28px">
+      <div style="font-size:34px;font-weight:900;color:#111;line-height:1.4">${d.headline_line1 || ''} <span style="color:${accent}">${d.visual_stat1_value || ''}</span></div>
+      <div style="font-size:32px;font-weight:800;color:#333">${d.headline_line2 || ''} <span style="color:${accent}">${d.visual_stat1_label || ''}</span></div>
     </div>
   </div>
 
+  <!-- CTA 바 -->
   <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
     <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '지금 바로 시작하기 →'}</div>
   </div>
@@ -1290,6 +1377,7 @@ function generateImageHeroHTML(d, bgColor = '#111', bgImageBase64 = null, bgCss 
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const cssVars = buildCssVars(bgColor, colors);
   const bg = bgImageBase64 ? `url('${bgImageBase64}') center/cover no-repeat` : bgCss || bgColor;
+  const ctaBg = colors.ctaColor || (isColorDark(bgColor) ? '#00c470' : bgColor);
 
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <link href="${fontLink}" rel="stylesheet">
@@ -1297,18 +1385,26 @@ function generateImageHeroHTML(d, bgColor = '#111', bgImageBase64 = null, bgCss 
 :root{${cssVars}}</style></head>
 <body><div style="width:1080px;height:1080px;position:relative;background:${bg}">
 
-  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.25) 40%,rgba(0,0,0,0.72) 75%,rgba(0,0,0,0.9) 100%)"></div>
+  <!-- 그라디언트 오버레이 — 상단 투명, 하단 어둡게 -->
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.1) 30%,rgba(0,0,0,0.55) 62%,rgba(0,0,0,0.85) 82%,rgba(0,0,0,.95) 100%);z-index:1"></div>
 
-  ${d.cta_badge ? `<div style="position:absolute;top:40px;right:40px;z-index:10;background:var(--cta-bg);color:var(--cta-text);font-size:18px;font-weight:800;padding:10px 22px;border-radius:28px">${d.cta_badge}</div>` : ''}
-
-  <div style="position:absolute;bottom:130px;left:52px;right:52px;z-index:10">
-    <div style="font-size:24px;color:rgba(255,255,255,0.8);margin-bottom:12px">${d.hook || ''}</div>
-    <div style="font-size:80px;font-weight:900;color:var(--headline-clr);line-height:1.05;letter-spacing:-3px;text-shadow:0 4px 24px rgba(0,0,0,0.5)">${d.headline_line1 || ''}</div>
-    <div style="font-size:80px;font-weight:900;color:var(--accent);line-height:1.05;letter-spacing:-3px;text-shadow:0 4px 24px rgba(0,0,0,0.5)">${d.headline_line2 || ''}</div>
+  <!-- 상단 훅 텍스트 -->
+  <div style="position:absolute;top:40px;left:52px;right:52px;z-index:10;text-align:center">
+    <div style="font-size:22px;color:rgba(255,255,255,0.85);font-weight:500;letter-spacing:.3px">${d.hook || ''}</div>
   </div>
 
-  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center;z-index:10">
-    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '지금 시작하기 →'}</div>
+  <!-- 우측 배지 -->
+  ${d.cta_badge ? `<div style="position:absolute;top:50%;right:40px;transform:translateY(-50%);z-index:10;background:var(--cta-bg);color:var(--cta-text);font-size:17px;font-weight:900;padding:12px 20px;border-radius:28px;text-align:center;max-width:130px;line-height:1.3">${d.cta_badge}</div>` : ''}
+
+  <!-- 중앙-하단 헤드라인 -->
+  <div style="position:absolute;bottom:128px;left:52px;right:${d.cta_badge ? '180px' : '52px'};z-index:10">
+    <div style="font-size:82px;font-weight:900;color:#fff;line-height:1.05;letter-spacing:-3px;text-shadow:0 6px 28px rgba(0,0,0,0.6)">${d.headline_line1 || ''}</div>
+    <div style="font-size:82px;font-weight:900;color:var(--accent);line-height:1.05;letter-spacing:-3px;text-shadow:0 6px 28px rgba(0,0,0,0.4)">${d.headline_line2 || ''}</div>
+  </div>
+
+  <!-- 하단 CTA 바 (배경색과 대비되는 색) -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:110px;background:${ctaBg};display:flex;align-items:center;justify-content:center;z-index:10">
+    <div style="font-size:26px;font-weight:900;color:#fff">${d.cta_text || '지금 시작하기 ›'}</div>
   </div>
 
 </div></body></html>`;
@@ -1320,91 +1416,131 @@ function generateCurriculumHTML(d, bgColor = '#0a0e1a', font = 'Pretendard', col
   const cssVars = buildCssVars(bgColor, colors);
   const accent = colors.accentColor || '#4a9eff';
   const steps = [1,2,3,4,5].map(i => d[`curriculum_step${i}`] || `단계 ${i}`);
-  const stepW = 160;
-  const stepStart = 52;
-  const stepDots = steps.map((s, i) => {
-    const x = stepStart + i * (stepW + 28);
-    return `<div style="position:absolute;left:${x}px;top:0;width:${stepW}px;text-align:center">
-      <div style="width:18px;height:18px;border-radius:50%;background:${accent};margin:0 auto 8px"></div>
-      <div style="font-size:15px;font-weight:600;color:#fff;line-height:1.3">${s}</div>
-    </div>`;
-  }).join('');
-  const lineW = (steps.length - 1) * (stepW + 28) + stepW;
-  const thumbs = Array(20).fill(0).map(() =>
-    `<div style="width:168px;height:96px;background:rgba(255,255,255,0.08);border-radius:8px;border:1px solid rgba(255,255,255,0.1)"></div>`
+
+  // 커리큘럼 카드 내 타임라인 — 5개 컬럼
+  const cardInnerW = 920; // 카드 내부 너비
+  const stepColW = Math.floor(cardInnerW / 5);
+  const timelineSteps = steps.map((s, i) => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative">
+      <div style="width:20px;height:20px;border-radius:50%;background:${accent};border:3px solid rgba(255,255,255,.6);z-index:1;flex-shrink:0"></div>
+      <div style="font-size:14px;font-weight:700;color:#222;text-align:center;line-height:1.35;max-width:140px">${s}</div>
+    </div>`).join('');
+
+  // 커리큘럼 카드 내 섬네일 그리드 (5열 × 4행 = 20개)
+  const thumbRows = [0,1,2,3].map(row =>
+    `<div style="display:flex;gap:10px">` +
+    [0,1,2,3,4].map(() =>
+      `<div style="flex:1;height:72px;background:rgba(180,200,230,.18);border-radius:6px;border:1px solid rgba(180,200,230,.25)"></div>`
+    ).join('') +
+    `</div>`
   ).join('');
 
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <link href="${fontLink}" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 :root{${cssVars}}</style></head>
-<body><div style="width:1080px;height:1080px;position:relative;background:${bgColor}">
+<body><div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:${bgColor}">
 
-  <div style="position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,${accent}22 0%,transparent 70%);pointer-events:none"></div>
+  <!-- 배경 -->
+  <div style="position:absolute;inset:0;background:${bgColor}"></div>
+  <!-- 헥스 패턴 오버레이 -->
+  <div style="position:absolute;inset:0;opacity:.07;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2252%22><polygon points=%2230,1 56,15 56,45 30,59 4,45 4,15%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221%22/></svg>');background-size:60px 52px"></div>
 
-  <div style="padding:52px 52px 0">
-    <div style="font-size:60px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
-    <div style="font-size:60px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  <!-- 헤드라인 -->
+  <div style="position:relative;z-index:2;padding:52px 80px 0;text-align:center">
+    <div style="font-size:62px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
+    <div style="font-size:62px;font-weight:900;color:${accent};line-height:1.1;letter-spacing:-2px;margin-bottom:32px">${d.headline_line2 || ''}</div>
   </div>
 
-  <div style="margin:36px 52px 0;position:relative;height:80px">
-    <div style="position:absolute;top:8px;left:${stepStart + stepW/2}px;width:${lineW - stepW}px;height:2px;background:${accent}55"></div>
-    ${stepDots}
+  <!-- 커리큘럼 카드 -->
+  <div style="position:relative;z-index:2;margin:0 52px;background:rgba(200,220,255,.12);border:1.5px solid rgba(160,200,255,.25);border-radius:20px;padding:28px 32px 24px">
+    <!-- 타임라인 -->
+    <div style="display:flex;align-items:flex-start;position:relative;margin-bottom:20px">
+      <!-- 연결선 -->
+      <div style="position:absolute;top:9px;left:10%;right:10%;height:2px;background:linear-gradient(90deg,${accent}88,${accent}44);z-index:0"></div>
+      ${timelineSteps}
+    </div>
+    <!-- 섬네일 그리드 -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${thumbRows}
+    </div>
   </div>
 
-  <div style="margin:32px 52px 0;display:flex;flex-wrap:wrap;gap:10px">${thumbs}</div>
-
-  <div style="position:absolute;bottom:120px;left:52px;right:52px;display:flex;align-items:center;gap:24px">
-    ${d.curriculum_badge ? `<div style="background:${accent};color:#000;font-size:14px;font-weight:900;padding:12px 16px;border-radius:50%;width:100px;height:100px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;flex-shrink:0">${d.curriculum_badge}</div>` : ''}
-    <div style="font-size:22px;color:rgba(255,255,255,0.75);line-height:1.6">${d.hook || ''}</div>
+  <!-- 하단 배지 + 설명 -->
+  <div style="position:absolute;bottom:108px;left:52px;right:52px;z-index:2;display:flex;align-items:center;gap:20px">
+    ${d.curriculum_badge
+      ? `<div style="background:${accent};color:#fff;font-size:13px;font-weight:900;border-radius:50%;width:96px;height:96px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;flex-shrink:0;padding:8px">${d.curriculum_badge}</div>`
+      : ''}
+    <div style="font-size:22px;color:rgba(255,255,255,.8);line-height:1.6">
+      ${d.hook || ''}
+      ${d.visual_stat1_value ? `<span style="color:${accent};font-weight:800"> ${d.visual_stat1_value}</span>` : ''}
+    </div>
   </div>
 
-  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
-    <div style="font-size:24px;font-weight:800;color:var(--cta-text)">${d.cta_text || '전체 커리큘럼 보기 →'}</div>
+  <!-- CTA 바 -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);z-index:2;display:flex;align-items:center;justify-content:center">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '전체 커리큘럼 보기 →'}</div>
   </div>
 
 </div></body></html>`;
 }
 
 // ─── 후기사례형 ───
-function generateReviewHTML(d, bgColor = '#111111', personImg = null, font = 'Pretendard', colors = {}) {
+function generateReviewHTML(d, bgColor = '#1B5BD4', personImg = null, font = 'Pretendard', colors = {}) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const cssVars = buildCssVars(bgColor, colors);
   const accent = colors.accentColor || bgColor;
-  const reviewCards = [1,2,3].map(i => {
-    const body = d[`review_body${i}`];
-    if (!body) return '';
-    return `<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:22px 24px">
-      <div style="color:#fbbf24;font-size:18px;margin-bottom:10px">★★★★★</div>
-      <div style="font-size:18px;color:rgba(255,255,255,0.88);line-height:1.6">${boldMark(body)}</div>
-    </div>`;
-  }).join('');
-  const personBlock = personImg
-    ? `<div style="position:absolute;right:52px;top:90px;width:340px;height:460px;overflow:hidden;border-radius:20px"><img src="${personImg}" style="width:100%;height:100%;object-fit:cover;object-position:top"></div>`
+
+  // 회사 로고 플레이스홀더 카드 (3행 × 4열)
+  const logoTexts = ['삼성전자','NAVER','LG전자','SK하이닉스','현대자동차','카카오','쿠팡','KT','Google','NVIDIA','Meta','Tesla'];
+  const logoCards = logoTexts.map(name =>
+    `<div style="background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:12px 8px;min-width:0">
+      <span style="font-size:17px;font-weight:800;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>
+    </div>`
+  ).join('');
+
+  // 강사/인물 사진
+  const personSection = personImg
+    ? `<img src="${personImg}" style="position:absolute;right:0;bottom:108px;width:320px;height:380px;object-fit:cover;object-position:top;mask-image:linear-gradient(to left,rgba(0,0,0,1) 60%,rgba(0,0,0,0))">`
     : '';
+
+  const searchText = d.visual_stat1_label || d.brand || '강의명을 검색해보세요';
 
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <link href="${fontLink}" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 :root{${cssVars}}</style></head>
-<body><div style="width:1080px;height:1080px;position:relative;background:${bgColor}">
+<body><div style="width:1080px;height:1080px;position:relative;background:#fff">
 
-  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 0%,${accent}33 0%,transparent 60%)"></div>
-
-  ${personBlock}
-
-  <div style="position:absolute;top:52px;left:52px;right:${personImg ? '420px' : '52px'}">
-    <div style="font-size:22px;color:rgba(255,255,255,0.65);margin-bottom:12px">${d.hook || ''}</div>
-    <div style="font-size:56px;font-weight:900;color:#fff;line-height:1.1;letter-spacing:-2px;margin-bottom:4px">${d.headline_line1 || ''}</div>
-    <div style="font-size:56px;font-weight:900;color:var(--accent);line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  <!-- 상단 블루 섹션 -->
+  <div style="height:490px;background:linear-gradient(170deg,${accent} 0%,${accent}dd 60%,${accent}aa 100%);padding:32px 36px 0;position:relative;overflow:hidden">
+    <!-- 빛 효과 -->
+    <div style="position:absolute;top:-80px;right:-80px;width:400px;height:400px;border-radius:50%;background:rgba(255,255,255,.1);pointer-events:none"></div>
+    <!-- 로고 그리드 (3×4) -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;height:360px">
+      ${logoCards}
+    </div>
   </div>
 
-  <div style="position:absolute;bottom:120px;left:52px;right:${personImg ? '420px' : '52px'};display:flex;flex-direction:column;gap:12px">
-    ${reviewCards || '<div style="color:rgba(255,255,255,0.4);font-size:16px">후기 데이터를 입력해주세요</div>'}
+  <!-- 검색 바 (블루 섹션과 화이트 사이 오버랩) -->
+  <div style="margin:0 48px;position:relative;top:-28px;background:#fff;border-radius:40px;padding:16px 28px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 28px rgba(0,0,0,.15);z-index:2">
+    <span style="font-size:22px;color:#aaa">🔍</span>
+    <span style="font-size:19px;color:#333;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${searchText}</span>
   </div>
 
-  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center">
-    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '수강 후기 더 보기 →'}</div>
+  <!-- 하단 텍스트 영역 -->
+  <div style="padding:0 52px;position:relative;z-index:1">
+    <div style="font-size:20px;font-weight:800;color:${accent};margin-bottom:10px;letter-spacing:-.3px">${d.hook || ''}</div>
+    <div style="font-size:56px;font-weight:900;color:#111;line-height:1.1;letter-spacing:-2px">${d.headline_line1 || ''}</div>
+    <div style="font-size:56px;font-weight:900;color:#111;line-height:1.1;letter-spacing:-2px">${d.headline_line2 || ''}</div>
+  </div>
+
+  <!-- 강사/인물 사진 -->
+  ${personSection}
+
+  <!-- CTA 바 -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:var(--cta-bg);display:flex;align-items:center;justify-content:center;z-index:3">
+    <div style="font-size:26px;font-weight:800;color:var(--cta-text)">${d.cta_text || '수강 사례 더 보기 →'}</div>
   </div>
 
 </div></body></html>`;
@@ -2488,44 +2624,59 @@ app.get('/api/catalog-preview', (req, res) => {
     headline_line1: '3분 만에',
     headline_line2: '광고 완성',
     visual_stat1_value: '9종',
-    visual_stat1_label: '레이아웃',
+    visual_stat1_label: 'AI 광고소재 자동화 플랫폼',
     visual_stat2_value: '3분',
     visual_stat2_label: '평균 생성',
     cta_badge: '✨ 무료 시작',
     cta_text: '지금 바로 시작하기 →',
     footnote: null,
+    // 강사강조형
     instructor_name: '김지현',
-    instructor_title: 'AI 마케팅 전문가',
-    instructor_stat: '200+ 광고소재 제작',
+    instructor_title: '현) AI 마케팅 랩 대표',
+    instructor_career: '전) 패스트캠퍼스 콘텐츠 디렉터',
+    instructor_bullet1: '광고소재 200+ 직접 제작',
+    instructor_bullet2: 'AI 캠페인 ROAS 4.2× 달성',
+    instructor_bullet3: '누적 수강생 3,200명+',
     usp_module1: 'AI 카피 생성', usp_module2: '레이아웃 9종',
     usp_module3: '이미지 자동화', usp_module4: '즉시 다운로드',
-    event_topic: 'AI 광고 자동화 세미나',
-    review_text: '"하루 종일 걸리던 광고 작업이 3분으로 줄었어요. 팀 전체가 쓰고 있어요."',
-    reviewer_name: '박마케터',
-    reviewer_company: 'Day1Company',
-    reviewer_role: '퍼포먼스 마케팅 팀장',
-    review2_text: '"레이아웃 다양성이 놀라워요. A/B 테스트가 훨씬 쉬워졌습니다."',
-    reviewer2_name: '이마케터',
-    reviewer2_company: 'StealthStartup',
-    reviewer2_role: '그로스 마케터',
-    before_text: '수작업 2시간',
-    after_text: 'AI 3분 완성',
-    before_points: ['직접 디자인', '카피 작성', 'A/B 고민'],
-    after_points: ['AI 자동 생성', '9종 선택', '즉시 다운로드'],
-    curriculum_items: ['AI 카피라이팅', '레이아웃 선택', '이미지 생성', 'A/B 테스트'],
-    curriculum_desc: 'AI로 광고 제작의 모든 단계를 자동화하세요',
+    // 세미나형
+    instructor_subtitle: 'AI 마케팅의 모든 것',
+    // SNS형
+    post_username: '마케터_지현',
+    post_body: 'AI로 만든 광고가 수작업보다 더 높은 ROAS가 나왔어요.\n3분이면 9종 레이아웃이 다 나오니까 A/B 테스트도 훨씬 편해졌습니다.',
+    // 비교형
+    comparison_a_label: '수작업',
+    comparison_b_label: 'AdCraft',
+    comparison_items: [
+      { stage:'카피작성', a_state:'2시간', b_state:'AI 30초' },
+      { stage:'디자인', a_state:'외주 필요', b_state:'자동 생성' },
+      { stage:'이미지', a_state:'별도 구매', b_state:'AI 생성' },
+      { stage:'배리에이션', a_state:'1개', b_state:'9종 선택' },
+      { stage:'비용', a_state:'30만원+', b_state:'월정액' },
+    ],
+    // 커리큘럼형
+    curriculum_step1: 'URL 입력',
+    curriculum_step2: '카피 생성',
+    curriculum_step3: '레이아웃',
+    curriculum_step4: '이미지 AI',
+    curriculum_step5: '다운로드',
+    curriculum_badge: '5단계\nAll-in-One',
+    // 후기사례형
+    review_body1: '**하루 2시간** 걸리던 광고가 3분으로!',
+    review_body2: '**ROAS 4.2×** 달성, 놀라운 결과',
+    review_body3: '팀 전체가 쓰는 **필수 툴**이 됐어요',
   };
 
   const LAYOUTS = [
-    { type: 'photo-overlay', name: '기본형', desc: '포토 오버레이', bgColor: '#1B3B6F' },
-    { type: 'twitter',       name: '커뮤니티형', desc: '소셜 피드 스타일', bgColor: '#15202b' },
-    { type: 'instructor',    name: '강사강조형', desc: '인물·USP 카드', bgColor: '#f5a623' },
-    { type: 'seminar',       name: '세미나형', desc: '라이브·이벤트 유도', bgColor: '#7c3aed' },
-    { type: 'sns-post',      name: 'SNS형', desc: '인스타 감성 포스트', bgColor: '#1877f2' },
-    { type: 'comparison',    name: '비교형', desc: 'Before / After', bgColor: '#111111' },
-    { type: 'image-hero',    name: '이미지형', desc: '비주얼 임팩트', bgColor: '#0f172a' },
-    { type: 'curriculum',    name: '커리큘럼형', desc: '로드맵·혜택 목록', bgColor: '#0a0e1a' },
-    { type: 'review',        name: '후기형', desc: '리뷰·소셜 증명', bgColor: '#111111' },
+    { type: 'photo-overlay', name: '기본형',       desc: '포토 오버레이 기본',         bgColor: '#1B3B6F' },
+    { type: 'twitter',       name: '커뮤니티형',   desc: '소셜 피드 스타일',           bgColor: '#15202b' },
+    { type: 'instructor',    name: '강사강조형',   desc: '강사 프로필 + USP 카드',     bgColor: '#f59e0b' },
+    { type: 'seminar',       name: '세미나형',     desc: '라이브·이벤트 유도',         bgColor: '#7c3aed' },
+    { type: 'sns-post',      name: 'SNS UI형',    desc: '커뮤니티 Q&A 포스트',        bgColor: '#1877f2' },
+    { type: 'comparison',    name: '비교형',       desc: 'Before / After 비교표',     bgColor: '#1a1a2e' },
+    { type: 'image-hero',    name: '이미지강조형', desc: '풀블리드 드라마틱 비주얼',    bgColor: '#0f172a' },
+    { type: 'curriculum',    name: '커리큘럼형',   desc: '로드맵 타임라인 + 섬네일',   bgColor: '#0a0e1a' },
+    { type: 'review',        name: '후기사례형',   desc: '기업 로고 그리드 소셜 증명', bgColor: '#1B5BD4' },
   ];
 
   const previews = LAYOUTS.map(({ type, name, desc, bgColor }) => {
