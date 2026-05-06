@@ -303,6 +303,33 @@ app.post('/api/generate-ad', async (req, res) => {
       }
     }
 
+    // ── STEP 5-B: GPT-4o 카탈로그 레이아웃 퀄리티 향상 ──
+    // layout_ref_id 없이 카탈로그 선택 시, GPT-4o 텍스트 기반 고품질 HTML 생성.
+    // 고정 템플릿보다 훨씬 세련된 디자인 퀄리티 보장.
+    let catalogGptHTMLs = null;
+    if (!layout_ref_id && process.env.OPENAI_API_KEY && effectiveLayouts.length > 0) {
+      const primaryLayout = effectiveLayouts[0];
+      console.log('[🤖 GPT 카탈로그 시작]', primaryLayout, '| 배리에이션:', adDataList.length, '종 (순차 실행)');
+      catalogGptHTMLs = [];
+      for (let i = 0; i < adDataList.length; i++) {
+        const elapsed = Date.now() - (global._reqStart || Date.now());
+        if (elapsed > 45000) {
+          console.warn('[GPT 카탈로그] 45초 초과 — 나머지는 고정 템플릿으로 처리');
+          while (catalogGptHTMLs.length < adDataList.length) catalogGptHTMLs.push(null);
+          break;
+        }
+        try {
+          const html = await generateCatalogLayoutHTML(primaryLayout, adDataList[i], effectiveBgColor, font);
+          catalogGptHTMLs.push(html);
+        } catch (e) {
+          console.warn(`[GPT 카탈로그 실패 ${i+1}]`, e.message);
+          catalogGptHTMLs.push(null);
+        }
+      }
+      const catSuccessCount = catalogGptHTMLs.filter(Boolean).length;
+      console.log(`[🤖 GPT 카탈로그 완료] ${catSuccessCount}/${adDataList.length}종 성공 | 실패분은 고정 템플릿 사용`);
+    }
+
     const variations = assemblyAgent({
       adDataList,
       bgColor: effectiveBgColor,
@@ -315,7 +342,9 @@ app.post('/api/generate-ad', async (req, res) => {
       eventDate: event_date,
       eventBadge: event_badge,
       colors,
-      gptLayoutHTMLs,  // GPT-4o 생성 HTML (있으면 고정 템플릿 대체)
+      gptLayoutHTMLs,       // GPT-4o 레이아웃 레퍼런스 HTML (layout_ref_id 있을 때)
+      catalogGptHTMLs,      // GPT-4o 카탈로그 HTML (카탈로그 선택 시 퀄리티 향상)
+      primaryCatalogLayout: catalogGptHTMLs ? effectiveLayouts[0] : null,
     });
 
     console.log('─'.repeat(50));
@@ -582,9 +611,11 @@ async function copyAgent({ pageContent, pageInfo, styleAnalysis, layoutTypes = [
 // 역할: 카피 데이터 + 배경 이미지 → 1080×1080 HTML 소재 3종 조립
 // 독립성: 카피 에이전트 + 이미지 에이전트 결과만 있으면 즉시 실행.
 // 특성: 동기(sync) 함수 — Claude API 호출 없이 순수 템플릿 렌더링.
-function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'], personImageBase64 = null, personImageUrl = null, eventDate = '', eventBadge = '무료 LIVE', colors = {}, gptLayoutHTMLs = null }) {
+function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pretendard', layoutTypes = ['photo-overlay'], personImageBase64 = null, personImageUrl = null, eventDate = '', eventBadge = '무료 LIVE', colors = {}, gptLayoutHTMLs = null, catalogGptHTMLs = null, primaryCatalogLayout = null }) {
   const usingGPTLayout = gptLayoutHTMLs && gptLayoutHTMLs.some(Boolean);
-  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', usingGPTLayout ? 'GPT-4o 레이아웃 매칭' : layoutTypes.join(', '), '| 카피:', adDataList.length, '종 | 인물이미지:', personImageBase64 ? '업로드' : personImageUrl ? 'URL' : 'X');
+  const usingCatalogGPT = catalogGptHTMLs && catalogGptHTMLs.some(Boolean);
+  const modeLabel = usingGPTLayout ? 'GPT-4o 레이아웃 레퍼런스' : usingCatalogGPT ? `GPT-4o 카탈로그(${primaryCatalogLayout})` : layoutTypes.join(', ');
+  console.log('[🔧 조합 에이전트] 시작 | 레이아웃:', modeLabel, '| 카피:', adDataList.length, '종 | 인물이미지:', personImageBase64 ? '업로드' : personImageUrl ? 'URL' : 'X');
 
   const variations = [];
   const layoutLabels = {
@@ -597,7 +628,7 @@ function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pret
   // 인물 이미지: base64 우선, URL 폴백
   const personImg = personImageBase64 || personImageUrl || null;
 
-  // GPT-4o 레이아웃 HTML이 있으면: 고정 템플릿 대신 GPT 생성 HTML 사용
+  // GPT-4o 레이아웃 레퍼런스 HTML이 있으면: 고정 템플릿 대신 GPT 생성 HTML 사용
   if (usingGPTLayout) {
     adDataList.forEach((adData, i) => {
       const gptHtml = gptLayoutHTMLs[i];
@@ -610,13 +641,19 @@ function assemblyAgent({ adDataList, bgColor, bgImageBase64, bgCss, font = 'Pret
     return variations;
   }
 
-  // 기존 고정 템플릿 경로
+  // GPT-4o 카탈로그 HTML이 있으면: primaryCatalogLayout에만 GPT HTML 사용, 나머지 타입은 고정 템플릿
   for (const layoutType of layoutTypes) {
-    for (const adData of adDataList) {
+    for (let varIdx = 0; varIdx < adDataList.length; varIdx++) {
+      const adData = adDataList[varIdx];
       const prefix = layoutLabels[layoutType] || `[${layoutType}]`;
-      const labeledData = { ...adData, variation_label: `${prefix} ${adData.variation_label || ''}`.trim(), layout_type: layoutType };
+      const gptPrefix = usingCatalogGPT && layoutType === primaryCatalogLayout ? `[GPT] ${prefix}` : prefix;
+      const labeledData = { ...adData, variation_label: `${gptPrefix} ${adData.variation_label || ''}`.trim(), layout_type: layoutType };
       let html;
-      if (layoutType === 'photo-overlay') {
+
+      // GPT-4o 카탈로그 HTML 우선 (primaryCatalogLayout 타입만)
+      if (usingCatalogGPT && layoutType === primaryCatalogLayout && catalogGptHTMLs[varIdx]) {
+        html = catalogGptHTMLs[varIdx];
+      } else if (layoutType === 'photo-overlay') {
         html = generateFigmaPhotoHTML(labeledData, bgColor, bgImageBase64, bgCss, font);
       } else if (layoutType === 'twitter') {
         html = generateFigmaTwitterHTML(labeledData, bgColor, font);
@@ -914,6 +951,171 @@ Return ONLY the complete HTML document starting with <!DOCTYPE html>. No explana
     return html;
   } catch (e) {
     console.warn('[GPT 레이아웃 변환 오류]', e.message);
+    return null;
+  }
+}
+
+// ─── 카탈로그 레이아웃 GPT-4o 고퀄리티 HTML 생성 ───
+// layout_ref_id 없이 카탈로그 타입 선택 시, 고정 템플릿 대신 GPT-4o가 레이아웃 생성.
+// 텍스트 기반 레이아웃 스펙 → GPT-4o → 고품질 1080×1080 HTML
+async function generateCatalogLayoutHTML(layoutType, adData, bgColor = '#1B5BD4', font = 'Pretendard') {
+  if (!process.env.OPENAI_API_KEY) return null;
+
+  const LAYOUT_SPECS = {
+    'instructor': `강사강조형 (Instructor-focused) layout:
+- Full 1080×1080px canvas, background ${bgColor}
+- Top ~20%: brand name + hook sub-copy (small text)
+- Center ~30%: instructor name (large bold) + professional title + 2-line career history
+- Lower-center: 4 USP feature cards in 2×2 grid (icon + short feature text each)
+- Bottom bar: full-width CTA button in accent color`,
+
+    'seminar': `세미나/라이브 이벤트형 (Seminar/Live Event) layout:
+- Full 1080×1080px, dramatic gradient background from ${bgColor} to darker shade
+- Top: event badge pill (e.g. "무료 LIVE") + hook sub-copy
+- Center large: 2-line headline in very large bold font (impactful)
+- Lower section: instructor name + subtitle + date info row
+- Bottom: CTA button`,
+
+    'sns-post': `SNS 커뮤니티 포스트형 (Social Post) layout:
+- Full 1080×1080px, social media feed card aesthetic
+- Top: profile row — circular avatar + username + follow button
+- Body: post content text (multi-line, casual tone, looks like a real social post)
+- Sub-section: engagement stats (likes, comments, shares numbers)
+- Bottom banner: CTA`,
+
+    'comparison': `비교형 Before/After (Comparison Table) layout:
+- Full 1080×1080px, dark background
+- Top: headline stating the comparison topic
+- Main area: 2-column comparison table
+  • Left column header: "수작업" (manual method, negatives shown in red/muted)
+  • Right column header: brand name (advantages shown in accent color, checkmarks)
+  • 5 comparison rows with labels and values
+- Bottom: CTA button`,
+
+    'image-hero': `이미지 강조형 (Image Hero) layout:
+- Full 1080×1080px, very dark background with gradient atmosphere
+- Minimal text — just the 2-line headline (massive font, centered)
+- Hook sub-copy in small elegant text
+- Abstract geometric shapes / light streaks in CSS for depth
+- Bottom: concise CTA
+- Cinematic, dramatic feel`,
+
+    'curriculum': `커리큘럼/로드맵형 (Curriculum Roadmap) layout:
+- Full 1080×1080px, very dark navy background
+- Top: brand + hook
+- Main area: vertical 5-step timeline
+  • Each step: circle badge with step number → step title → connecting arrow to next
+  • Clear visual progression from step 1 to 5
+- Right side or center: large badge "5단계 All-in-One" or similar
+- Bottom: CTA`,
+
+    'review': `후기/사례형 (Social Proof Reviews) layout:
+- Full 1080×1080px
+- Top: hook + headline
+- Main area: 3 review cards stacked vertically
+  • Each card: star rating (★★★★★) + review text with **bold** keywords highlighted
+  • Cards separated by subtle dividers or whitespace
+- Bottom: CTA button bar`,
+
+    'twitter': `트위터/X 소셜 피드형 (Twitter-style) layout:
+- Full 1080×1080px, dark Twitter-like UI (dark background, white text)
+- Profile section: circular avatar + display name + @handle + verified checkmark badge
+- Tweet body text (looks like an authentic tweet — use the hook/headline content)
+- Bottom: reply/retweet/like/views icon bar with numbers
+- CTA banner at very bottom`,
+
+    'photo-overlay': `포토 오버레이 기본형 (Photo Overlay) layout:
+- Full 1080×1080px, gradient/color background
+- Top small: hook sub-copy
+- Center large: 2-line headline in bold
+- Stat cards section: 2 side-by-side stat cards (value + label each)
+- Bottom full-width: CTA button bar`,
+  };
+
+  const spec = LAYOUT_SPECS[layoutType] || LAYOUT_SPECS['photo-overlay'];
+
+  const copyLines = [
+    `brand: "${adData.brand || 'AdCraft'}"`,
+    `hook (top sub-copy): "${adData.hook || ''}"`,
+    `headline line 1: "${adData.headline_line1 || ''}"`,
+    `headline line 2: "${adData.headline_line2 || ''}"`,
+    `stat value: "${adData.visual_stat1_value || ''}"`,
+    `stat label: "${adData.visual_stat1_label || ''}"`,
+    `CTA text: "${adData.cta_text || ''}"`,
+    adData.instructor_name    ? `instructor name: "${adData.instructor_name}"` : '',
+    adData.instructor_title   ? `instructor title: "${adData.instructor_title}"` : '',
+    adData.instructor_career  ? `instructor career: "${adData.instructor_career}"` : '',
+    adData.instructor_bullet1 ? `USP 1: "${adData.instructor_bullet1}"` : '',
+    adData.instructor_bullet2 ? `USP 2: "${adData.instructor_bullet2}"` : '',
+    adData.instructor_bullet3 ? `USP 3: "${adData.instructor_bullet3}"` : '',
+    adData.post_body          ? `post body: "${adData.post_body}"` : '',
+    adData.review_body1       ? `review 1: "${adData.review_body1}"` : '',
+    adData.review_body2       ? `review 2: "${adData.review_body2}"` : '',
+    adData.review_body3       ? `review 3: "${adData.review_body3}"` : '',
+    adData.comparison_a_label ? `comparison left label: "${adData.comparison_a_label}"` : '',
+    adData.comparison_b_label ? `comparison right label: "${adData.comparison_b_label}"` : '',
+  ].filter(Boolean).join('\n');
+
+  const prompt = `You are an expert HTML/CSS developer creating premium Korean digital advertisements.
+
+Generate a visually stunning, professional-quality 1080×1080px HTML advertisement using this layout spec:
+
+## Layout Specification
+${spec}
+
+## Korean Ad Copy (inject into appropriate positions)
+${copyLines}
+
+## Design Quality Standards
+- Use bold, confident typography hierarchy (large headline contrast vs small sub-copy)
+- Subtle CSS gradients and shadows for depth and premium feel
+- Clean whitespace — don't crowd elements
+- Strong visual hierarchy: most important text is biggest/brightest
+- CTA button must be eye-catching (high contrast, rounded, prominent)
+- All Korean text must be legible and properly weighted
+
+## Technical Requirements
+- Exactly 1080×1080px (width:1080px; height:1080px; overflow:hidden; position:relative)
+- Background color base: ${bgColor}
+- Font: @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css'); font-family: '${font}', sans-serif
+- Single self-contained HTML — all CSS in <style> block, no external assets
+- NO external images — CSS only (gradients, shapes, borders, box-shadows)
+- All user-facing text must be in Korean
+
+Return ONLY the complete HTML document starting with <!DOCTYPE html>. No explanation or commentary.`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.choices?.[0]?.message?.content) {
+      console.warn('[GPT 카탈로그 HTML 실패]', data.error?.message || res.status);
+      return null;
+    }
+
+    const raw = data.choices[0].message.content.trim();
+    const stripped = raw.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim();
+    const htmlMatch = stripped.match(/<!DOCTYPE html[\s\S]*<\/html>/i) ||
+                      stripped.match(/<html[\s\S]*<\/html>/i);
+    const html = htmlMatch ? htmlMatch[0] : (stripped.startsWith('<') ? stripped : null);
+
+    if (html) console.log('[🤖 GPT-4o 카탈로그]', layoutType, '성공 |', html.length, 'bytes');
+    else console.warn('[GPT 카탈로그] HTML 추출 실패 — 고정 템플릿 사용');
+    return html;
+  } catch (e) {
+    console.warn('[GPT 카탈로그 오류]', e.message);
     return null;
   }
 }
@@ -1360,6 +1562,9 @@ function boldMark(str = '') {
 // ─── HTML 생성 (레이아웃 dispatcher) ───
 function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null, personImg = null, colors = {}, eventDate = '', eventBadge = '무료 LIVE') {
   const effectiveColors = ctaColor ? { ...colors, ctaColor } : colors;
+  // 카탈로그 기본 2종 (assemblyAgent와 동일 함수 사용)
+  if (d.layout_type === 'photo-overlay') return generateFigmaPhotoHTML(d, bgColor, bgImageBase64, cssBackground, font);
+  if (d.layout_type === 'twitter')       return generateFigmaTwitterHTML(d, bgColor, font);
   // 신규 7종
   if (d.layout_type === 'instructor')  return generateInstructorHTML(d, bgColor, personImg, font, effectiveColors);
   if (d.layout_type === 'seminar')     return generateSeminarHTML(d, bgColor, personImg, font, effectiveColors, eventDate, eventBadge);
