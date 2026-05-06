@@ -442,9 +442,9 @@
       width: 1080px; height: 1080px; border: none;
       transform: scale(0.5); transform-origin: top left; pointer-events: none;
     }
-    /* sc-wrap 큰 preview 전용 — catalog-thumb와 동일한 절대위치 방식 */
-    #scPreviewWrap { width:100%; background:#0d0d0d; border-radius:12px; overflow:hidden; position:relative; margin-bottom:16px; }
-    #scPreviewWrap iframe { position:absolute; top:0; left:0; width:1080px; height:1080px; border:none; transform-origin:top left; display:block; pointer-events:none; }
+    /* sc-wrap 큰 preview 전용 — aspect-ratio로 JS 타이밍 의존 제거 */
+    #scPreviewWrap { width:100%; aspect-ratio:1; background:#0d0d0d; border-radius:12px; overflow:hidden; position:relative; margin-bottom:16px; }
+    #scPreviewWrap iframe { position:absolute; top:0; left:0; width:1080px; height:1080px; border:none; transform-origin:top left; pointer-events:none; }
 
     /* 코드 섹션 */
     .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -1707,7 +1707,8 @@
     if (scIframe) {
       scIframe.addEventListener('load', activateScClickEdit, { once: true });
       scIframe.srcdoc = v.html;
-      requestAnimationFrame(scaleMainPreview);
+      scaleMainPreview();
+      setTimeout(scaleMainPreview, 100);
     }
     const scJsonBox = document.getElementById('scJsonBox');
     if (scJsonBox) scJsonBox.textContent = JSON.stringify(v.adData, null, 2);
@@ -3118,16 +3119,14 @@
     });
   }
 
-  // sc-wrap 큰 preview 크기 맞춤 (full-width 반응형)
+  // sc-wrap 큰 preview 크기 맞춤 (aspect-ratio:1 으로 height 자동, offsetWidth 폴백)
   function scaleMainPreview() {
     const wrap = document.getElementById('scPreviewWrap');
     const iframe = document.getElementById('scPreviewFrame');
     if (!wrap || !iframe) return;
-    const w = wrap.clientWidth;
-    if (!w) return;
+    const w = wrap.offsetWidth || wrap.clientWidth || 680;
     const scale = w / 1080;
     iframe.style.transform = `scale(${scale})`;
-    wrap.style.height = Math.round(1080 * scale) + 'px';
   }
   window.addEventListener('resize', scaleMainPreview);
 
