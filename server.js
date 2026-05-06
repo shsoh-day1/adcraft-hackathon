@@ -194,6 +194,7 @@ app.post('/api/generate-ad', async (req, res) => {
     event_badge = '무료 LIVE',
     colors = {},
     gdocs_url = '',
+    use_gpt_catalog = false,  // true일 때만 GPT 카탈로그 HTML 생성 (Vercel 60초 제한으로 기본 OFF)
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -303,11 +304,12 @@ app.post('/api/generate-ad', async (req, res) => {
       }
     }
 
-    // ── STEP 5-B: GPT-4o 카탈로그 레이아웃 퀄리티 향상 ──
-    // layout_ref_id 없이 카탈로그 선택 시, GPT-4o 텍스트 기반 고품질 HTML 생성.
-    // 고정 템플릿보다 훨씬 세련된 디자인 퀄리티 보장.
+    // ── STEP 5-B: GPT-4o 카탈로그 레이아웃 퀄리티 향상 (선택적) ──
+    // use_gpt_catalog=true 일 때만 활성화.
+    // 기본 OFF: Claude 카피 생성 ~30s + GPT 카탈로그 20s×3 = 90s → Vercel 60s 초과.
+    // 웹 UI에서 "GPT 퀄리티 향상" 토글로 명시 요청 시에만 실행.
     let catalogGptHTMLs = null;
-    if (!layout_ref_id && process.env.OPENAI_API_KEY && effectiveLayouts.length > 0) {
+    if (!layout_ref_id && use_gpt_catalog && process.env.OPENAI_API_KEY && effectiveLayouts.length > 0) {
       const primaryLayout = effectiveLayouts[0];
       console.log('[🤖 GPT 카탈로그 시작]', primaryLayout, '| 배리에이션:', adDataList.length, '종 (순차 실행)');
       catalogGptHTMLs = [];
@@ -1096,7 +1098,7 @@ Return ONLY the complete HTML document starting with <!DOCTYPE html>. No explana
         max_tokens: 4096,
         messages: [{ role: 'user', content: prompt }],
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(10000),
     });
 
     const data = await res.json();
