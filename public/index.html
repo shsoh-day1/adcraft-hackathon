@@ -442,9 +442,9 @@
       width: 1080px; height: 1080px; border: none;
       transform: scale(0.5); transform-origin: top left; pointer-events: none;
     }
-    /* sc-wrap 큰 preview 전용 */
+    /* sc-wrap 큰 preview 전용 — catalog-thumb와 동일한 절대위치 방식 */
     #scPreviewWrap { width:100%; background:#0d0d0d; border-radius:12px; overflow:hidden; position:relative; margin-bottom:16px; }
-    #scPreviewWrap iframe { width:1080px; height:1080px; border:none; transform-origin:top left; display:block; pointer-events:none; }
+    #scPreviewWrap iframe { position:absolute; top:0; left:0; width:1080px; height:1080px; border:none; transform-origin:top left; display:block; pointer-events:none; }
 
     /* 코드 섹션 */
     .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
