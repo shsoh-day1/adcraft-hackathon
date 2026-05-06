@@ -181,6 +181,7 @@ app.post('/api/generate-ad', async (req, res) => {
     event_date = '',
     event_badge = '무료 LIVE',
     colors = {},
+    gdocs_url = '',
   } = req.body;
 
   if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
@@ -193,9 +194,15 @@ app.post('/api/generate-ad', async (req, res) => {
     console.log('[🚀 생성 시작]', url);
     console.log('─'.repeat(50));
 
-    // ── STEP 1: 페이지 크롤링 (모든 에이전트의 기반 데이터) ──
-    const { text: pageContent, themeColor: pageThemeColor, ogImageUrl, personImageUrl: autoPersonImageUrl } = await fetchPageContent(url);
-    console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X', '| 인물:', autoPersonImageUrl ? 'O' : 'X');
+    // ── STEP 1: 페이지 크롤링 + Google Docs 병렬 fetch ──
+    const [{ text: rawPageContent, themeColor: pageThemeColor, ogImageUrl, personImageUrl: autoPersonImageUrl }, gdocsText] = await Promise.all([
+      fetchPageContent(url),
+      gdocs_url ? fetchGoogleDocsContent(gdocs_url).catch(err => { console.warn('[Google Docs 경고]', err.message); return ''; }) : Promise.resolve(''),
+    ]);
+    const pageContent = gdocsText
+      ? `[CR 문서]\n${gdocsText}\n\n[상세페이지]\n${rawPageContent}`
+      : rawPageContent;
+    console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X', '| 인물:', autoPersonImageUrl ? 'O' : 'X', '| Docs:', gdocsText ? gdocsText.length + 'chars' : 'X');
 
     // ── STEP 2: 이미지 에이전트 + 소재정보 추출 병렬 실행 ──
     // → 이미지 에이전트: 레퍼런스 분석 + 배경 이미지 fetch (동시)
@@ -599,6 +606,37 @@ function extractPersonImageUrl(html) {
   }
 
   return null;
+}
+
+// ─── Google Docs/Drive 텍스트 추출 ───
+async function fetchGoogleDocsContent(gdocsUrl) {
+  // Google Docs: /document/d/{ID}/...
+  const docMatch = gdocsUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docMatch) {
+    const exportUrl = `https://docs.google.com/document/d/${docMatch[1]}/export?format=txt`;
+    const res = await fetch(exportUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`Google Docs 불러오기 실패 (HTTP ${res.status}) — 문서가 "링크가 있는 모든 사용자" 공유 상태인지 확인하세요`);
+    const text = await res.text();
+    return text.replace(/\s+/g, ' ').trim().slice(0, 4000);
+  }
+
+  // Google Drive 파일: /file/d/{ID}/... (Google Docs 형식인 경우)
+  const driveFileMatch = gdocsUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveFileMatch) {
+    const exportUrl = `https://docs.google.com/document/d/${driveFileMatch[1]}/export?format=txt`;
+    const res = await fetch(exportUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`Google Drive 파일 불러오기 실패 — Google Docs 형식 파일과 "링크가 있는 모든 사용자" 공유만 지원합니다`);
+    const text = await res.text();
+    return text.replace(/\s+/g, ' ').trim().slice(0, 4000);
+  }
+
+  throw new Error('지원하지 않는 URL 형식입니다. Google Docs 링크를 사용해주세요.');
 }
 
 // ─── 페이지 크롤링 ───
