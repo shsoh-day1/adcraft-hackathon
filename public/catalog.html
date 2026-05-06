@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AdCraft — 레이아웃 카탈로그</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080c10;
+      --bg2: #0f1318;
+      --bg3: #161c24;
+      --bdr: rgba(255,255,255,.08);
+      --tx: #f0f4f8;
+      --tx-sub: #94a3b8;
+      --tx-muted: #4e6177;
+      --accent: #3b82f6;
+      --accent2: #6366f1;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--tx);
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── 헤더 ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(8,12,16,.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--bdr);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo-badge {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logo-sub { font-size: 12px; color: var(--tx-muted); font-weight: 500; }
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--bdr);
+      background: transparent;
+      color: var(--tx-sub);
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .15s;
+    }
+    .btn-back:hover { background: var(--bg3); color: var(--tx); border-color: rgba(255,255,255,.15); }
+
+    /* ── 히어로 ── */
+    .hero {
+      padding: 64px 24px 48px;
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(59,130,246,.1);
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      margin-bottom: 20px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .hero h1 span {
+      background: linear-gradient(135deg, #3b82f6, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--tx-sub);
+      line-height: 1.7;
+    }
+
+    /* ── 그리드 ── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    /* ── 카드 ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--bdr);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+      cursor: pointer;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(59,130,246,.35);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4), 0 0 0 1px rgba(59,130,246,.15);
+    }
+
+    /* 프리뷰 썸네일 */
+    .card-preview {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      background: #111;
+    }
+    .card-preview iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1080px;
+      height: 1080px;
+      border: none;
+      pointer-events: none;
+      transform-origin: top left;
+    }
+    .card-preview .loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--bg3);
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--bdr);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 12px; color: var(--tx-muted); }
+
+    /* 카드 하단 */
+    .card-body {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(59,130,246,.12);
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+    .card-name {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--tx);
+      letter-spacing: -0.3px;
+    }
+    .card-desc { font-size: 13px; color: var(--tx-sub); line-height: 1.5; }
+    .btn-select {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, rgba(59,130,246,.15), rgba(99,102,241,.15));
+      border: 1px solid rgba(59,130,246,.25);
+      color: #93c5fd;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .15s;
+      text-decoration: none;
+    }
+    .btn-select:hover {
+      background: linear-gradient(135deg, rgba(59,130,246,.3), rgba(99,102,241,.3));
+      color: #bfdbfe;
+    }
+
+    /* ── 푸터 ── */
+    footer {
+      border-top: 1px solid var(--bdr);
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--tx-muted);
+    }
+
+    /* ── 로딩 전체 ── */
+    #loadingState {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 80px 24px;
+    }
+    #loadingState .spinner { width: 40px; height: 40px; border-width: 3px; }
+    #loadingState p { color: var(--tx-sub); font-size: 14px; }
+
+    /* ── 에러 ── */
+    #errorState {
+      display: none;
+      text-align: center;
+      padding: 80px 24px;
+      color: #f87171;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <span class="logo-badge">AdCraft</span>
+    <span class="logo-sub">레이아웃 카탈로그</span>
+  </div>
+  <a href="/" class="btn-back">← 광고 만들러 가기</a>
+</header>
+
+<div class="hero">
+  <div class="hero-eyebrow">✦ 9가지 레이아웃</div>
+  <h1>마케터를 위한<br><span>광고 레이아웃 템플릿</span></h1>
+  <p>원하는 레이아웃 3종을 선택하면<br>AI가 카피부터 디자인까지 한 번에 완성합니다.</p>
+</div>
+
+<main>
+  <div id="loadingState">
+    <div class="spinner"></div>
+    <p>레이아웃 미리보기 생성 중...</p>
+  </div>
+  <div id="errorState">
+    <p>미리보기를 불러오지 못했습니다. <a href="/" style="color:var(--accent)">메인으로 돌아가기</a></p>
+  </div>
+  <div class="grid" id="catalogGrid" style="display:none"></div>
+</main>
+
+<footer>
+  AdCraft — AI 광고소재 자동화 · <a href="/" style="color:var(--accent)">메인으로 돌아가기</a>
+</footer>
+
+<script>
+(async () => {
+  const loadingEl = document.getElementById('loadingState');
+  const errorEl   = document.getElementById('errorState');
+  const gridEl    = document.getElementById('catalogGrid');
+
+  try {
+    const res  = await fetch('/api/catalog-preview');
+    if (!res.ok) throw new Error('서버 응답 오류');
+    const { previews } = await res.json();
+
+    loadingEl.style.display = 'none';
+    gridEl.style.display    = 'grid';
+
+    previews.forEach(({ type, name, desc, html }, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="card-preview" id="prev${idx}">
+          <div class="loading-overlay" id="ov${idx}">
+            <div class="spinner"></div>
+            <span class="loading-text">렌더링 중...</span>
+          </div>
+          <iframe id="iframe${idx}" style="width:1080px;height:1080px;border:none;pointer-events:none;transform-origin:top left"></iframe>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="card-badge">${type}</span>
+          </div>
+          <div class="card-name">${name}</div>
+          <div class="card-desc">${desc}</div>
+          <a href="/?layout=${encodeURIComponent(type)}" class="btn-select">
+            이 레이아웃으로 시작하기 →
+          </a>
+        </div>
+      `;
+      gridEl.appendChild(card);
+
+      // iframe srcdoc 주입
+      const iframe = document.getElementById(`iframe${idx}`);
+      iframe.srcdoc = html;
+      iframe.addEventListener('load', () => {
+        const overlay = document.getElementById(`ov${idx}`);
+        if (overlay) overlay.style.display = 'none';
+        scaleIframe(idx);
+      });
+    });
+
+    // 전체 렌더 후 스케일 재계산
+    window.addEventListener('resize', scaleAll);
+    requestAnimationFrame(scaleAll);
+
+  } catch (e) {
+    loadingEl.style.display = 'none';
+    errorEl.style.display   = 'block';
+    console.error(e);
+  }
+
+  function scaleIframe(idx) {
+    const wrap = document.getElementById(`prev${idx}`);
+    const iframe = document.getElementById(`iframe${idx}`);
+    if (!wrap || !iframe) return;
+    const scale = wrap.clientWidth / 1080;
+    iframe.style.transform = `scale(${scale})`;
+  }
+
+  function scaleAll() {
+    document.querySelectorAll('.card-preview').forEach((wrap, i) => {
+      const iframe = document.getElementById(`iframe${i}`);
+      if (!iframe) return;
+      const scale = wrap.clientWidth / 1080;
+      iframe.style.transform = `scale(${scale})`;
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

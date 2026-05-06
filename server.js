@@ -2480,6 +2480,67 @@ app.post('/api/generate-image-prompt', async (req, res) => {
   }
 });
 
+// ─── 카탈로그 미리보기 (샘플 광고소재 9종 HTML 반환) ───
+app.get('/api/catalog-preview', (req, res) => {
+  const SAMPLE = {
+    brand: 'AdCraft',
+    hook: 'AI가 만드는 퍼포먼스 광고',
+    headline_line1: '3분 만에',
+    headline_line2: '광고 완성',
+    visual_stat1_value: '9종',
+    visual_stat1_label: '레이아웃',
+    visual_stat2_value: '3분',
+    visual_stat2_label: '평균 생성',
+    cta_badge: '✨ 무료 시작',
+    cta_text: '지금 바로 시작하기 →',
+    footnote: null,
+    instructor_name: '김지현',
+    instructor_title: 'AI 마케팅 전문가',
+    instructor_stat: '200+ 광고소재 제작',
+    usp_module1: 'AI 카피 생성', usp_module2: '레이아웃 9종',
+    usp_module3: '이미지 자동화', usp_module4: '즉시 다운로드',
+    event_topic: 'AI 광고 자동화 세미나',
+    review_text: '"하루 종일 걸리던 광고 작업이 3분으로 줄었어요. 팀 전체가 쓰고 있어요."',
+    reviewer_name: '박마케터',
+    reviewer_company: 'Day1Company',
+    reviewer_role: '퍼포먼스 마케팅 팀장',
+    review2_text: '"레이아웃 다양성이 놀라워요. A/B 테스트가 훨씬 쉬워졌습니다."',
+    reviewer2_name: '이마케터',
+    reviewer2_company: 'StealthStartup',
+    reviewer2_role: '그로스 마케터',
+    before_text: '수작업 2시간',
+    after_text: 'AI 3분 완성',
+    before_points: ['직접 디자인', '카피 작성', 'A/B 고민'],
+    after_points: ['AI 자동 생성', '9종 선택', '즉시 다운로드'],
+    curriculum_items: ['AI 카피라이팅', '레이아웃 선택', '이미지 생성', 'A/B 테스트'],
+    curriculum_desc: 'AI로 광고 제작의 모든 단계를 자동화하세요',
+  };
+
+  const LAYOUTS = [
+    { type: 'photo-overlay', name: '기본형', desc: '포토 오버레이', bgColor: '#1B3B6F' },
+    { type: 'twitter',       name: '커뮤니티형', desc: '소셜 피드 스타일', bgColor: '#15202b' },
+    { type: 'instructor',    name: '강사강조형', desc: '인물·USP 카드', bgColor: '#f5a623' },
+    { type: 'seminar',       name: '세미나형', desc: '라이브·이벤트 유도', bgColor: '#7c3aed' },
+    { type: 'sns-post',      name: 'SNS형', desc: '인스타 감성 포스트', bgColor: '#1877f2' },
+    { type: 'comparison',    name: '비교형', desc: 'Before / After', bgColor: '#111111' },
+    { type: 'image-hero',    name: '이미지형', desc: '비주얼 임팩트', bgColor: '#0f172a' },
+    { type: 'curriculum',    name: '커리큘럼형', desc: '로드맵·혜택 목록', bgColor: '#0a0e1a' },
+    { type: 'review',        name: '후기형', desc: '리뷰·소셜 증명', bgColor: '#111111' },
+  ];
+
+  const previews = LAYOUTS.map(({ type, name, desc, bgColor }) => {
+    const adData = { ...SAMPLE, layout_type: type, variation_label: name };
+    try {
+      const html = generateAdHTML(adData, bgColor, null, null, 'Pretendard', null, null, {}, '2026.06.01', '무료 LIVE');
+      return { type, name, desc, bgColor, html };
+    } catch (e) {
+      return { type, name, desc, bgColor, html: `<p style="color:red">Error: ${e.message}</p>` };
+    }
+  });
+
+  res.json({ previews });
+});
+
 // ─── 이미지 생성 (1순위: gpt-image-1 / 폴백: Pollinations FLUX) ───
 app.post('/api/generate-image', async (req, res) => {
   const { prompt } = req.body;

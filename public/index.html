@@ -574,16 +574,14 @@
     .sc-section-body { padding: 14px 4px 4px; }
     /* 기존 2컬럼 컨테이너 숨기기 */
     .container { display: none !important; }
-    /* ── 레이아웃 선택 카드 ── */
-    .layout-select-card { border: 2px solid var(--bdr); border-radius: 10px; padding: 10px; cursor: pointer; transition: border-color .15s, background .15s; background: var(--inp-bg); display: flex; flex-direction: column; gap: 8px; position: relative; user-select: none; }
-    .layout-select-card:hover { border-color: var(--accent); }
-    .layout-select-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--inp-bg)); }
-    .layout-card-thumb { width: 100%; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #1a1a2e; }
-    .layout-card-info { padding: 0 2px; }
-    .layout-card-name { font-size: 13px; font-weight: 700; color: var(--tx); }
-    .layout-card-desc { font-size: 11px; color: var(--tx-sub); margin-top: 2px; }
-    .layout-card-check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; opacity: 0; transition: opacity .15s; }
-    .layout-select-card.selected .layout-card-check { opacity: 1; }
+    /* ── 레이아웃 선택 pill ── */
+    .layout-select-card { border: 1.5px solid var(--bdr); border-radius: 20px; padding: 7px 14px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; background: var(--inp-bg); display: inline-flex; align-items: center; gap: 5px; user-select: none; font-size: 12px; font-weight: 500; color: var(--tx-sub); white-space: nowrap; }
+    .layout-select-card:hover { border-color: var(--tx-muted); color: var(--tx); }
+    .layout-select-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--inp-bg)); color: var(--accent); font-weight: 700; }
+    .layout-select-card.selected::before { content: '✓ '; }
+    .catalog-link-row { margin-top: 10px; display: flex; align-items: center; justify-content: flex-end; }
+    .catalog-link { font-size: 11px; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; opacity: .8; }
+    .catalog-link:hover { opacity: 1; text-decoration: underline; }
   </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -1164,244 +1162,21 @@
     </div>
     <div id="scVariations" class="sc-section-body">
       <p style="font-size:12px;color:var(--tx-sub);margin-bottom:10px">광고 1세트 = 레이아웃 3종. 최대 3개까지 선택할 수 있습니다.</p>
-      <div id="layoutCardGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-
-        <!-- 기본형 카드 -->
-        <div class="layout-select-card selected" data-layout="photo-overlay" onclick="toggleLayout('photo-overlay',this)">
-          <div class="layout-card-thumb">
-            <!-- 포토오버레이 미니 SVG 프리뷰 -->
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="108" fill="#2a2a3a"/>
-              <rect y="0" width="108" height="108" fill="url(#gPhoto)"/>
-              <defs>
-                <linearGradient id="gPhoto" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#444" stop-opacity="0.3"/>
-                  <stop offset="55%" stop-color="#111" stop-opacity="0.7"/>
-                  <stop offset="100%" stop-color="#000" stop-opacity="0.98"/>
-                </linearGradient>
-              </defs>
-              <!-- 훅 텍스트 -->
-              <rect x="8" y="46" width="55" height="4" rx="2" fill="rgba(255,255,255,0.55)"/>
-              <!-- 헤드라인 -->
-              <rect x="8" y="54" width="70" height="8" rx="2" fill="#fff"/>
-              <rect x="8" y="65" width="52" height="8" rx="2" fill="#01f7ff"/>
-              <!-- CTA 바 -->
-              <rect x="0" y="96" width="108" height="12" fill="#20f4f4"/>
-              <rect x="14" y="99" width="65" height="6" rx="2" fill="rgba(0,0,0,0.5)"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">기본형</div>
-            <div class="layout-card-desc">포토오버레이</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 커뮤니티형 카드 -->
-        <div class="layout-select-card" data-layout="twitter" onclick="toggleLayout('twitter',this)">
-          <div class="layout-card-thumb">
-            <!-- 트위터 미니 SVG 프리뷰 -->
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="108" fill="#171f2a"/>
-              <!-- 아바타 원 -->
-              <circle cx="14" cy="16" r="10" fill="#1B5BD4"/>
-              <text x="14" y="20" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">B</text>
-              <!-- 유저명 + 핸들 -->
-              <rect x="28" y="10" width="35" height="4" rx="2" fill="rgba(255,255,255,0.8)"/>
-              <rect x="28" y="17" width="25" height="3" rx="1.5" fill="#858d98"/>
-              <!-- 트윗 본문 3줄 -->
-              <rect x="5" y="30" width="90" height="6" rx="2" fill="rgba(255,255,255,0.85)"/>
-              <rect x="5" y="39" width="75" height="6" rx="2" fill="rgba(255,255,255,0.85)"/>
-              <rect x="5" y="48" width="85" height="6" rx="2" fill="#fff"/>
-              <!-- 조회수 줄 -->
-              <rect x="5" y="62" width="65" height="3" rx="1.5" fill="#858d98"/>
-              <!-- 구분선 -->
-              <rect x="5" y="70" width="90" height="1" fill="rgba(255,255,255,0.15)"/>
-              <!-- 리플 아바타 -->
-              <circle cx="14" cy="82" r="7" fill="#1B5BD4"/>
-              <!-- 리플 텍스트 -->
-              <rect x="26" y="77" width="55" height="4" rx="2" fill="rgba(255,255,255,0.7)"/>
-              <rect x="26" y="84" width="70" height="4" rx="2" fill="rgba(255,255,255,0.6)"/>
-              <rect x="26" y="91" width="60" height="4" rx="2" fill="rgba(255,255,255,0.6)"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">커뮤니티형</div>
-            <div class="layout-card-desc">트위터 스타일</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 강사강조형 카드 -->
-        <div class="layout-select-card" data-layout="instructor" onclick="toggleLayout('instructor',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="108" fill="#fafafa"/>
-              <defs><pattern id="gGrid" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M8 0L0 0 0 8" fill="none" stroke="#ddd" stroke-width="0.5"/></pattern></defs>
-              <rect x="0" y="0" width="108" height="108" fill="url(#gGrid)" opacity="0.3"/>
-              <rect x="8" y="10" width="70" height="7" rx="2" fill="#111"/>
-              <rect x="8" y="20" width="55" height="7" rx="2" fill="#f5a623"/>
-              <rect x="4" y="36" width="22" height="26" rx="3" fill="#fff" stroke="#ddd" stroke-width="0.5"/>
-              <rect x="29" y="36" width="22" height="26" rx="3" fill="#fff" stroke="#ddd" stroke-width="0.5"/>
-              <rect x="54" y="36" width="22" height="26" rx="3" fill="#fff" stroke="#ddd" stroke-width="0.5"/>
-              <rect x="79" y="36" width="22" height="26" rx="3" fill="#fff" stroke="#ddd" stroke-width="0.5"/>
-              <circle cx="18" cy="80" r="10" fill="#e0e0e0"/>
-              <rect x="34" y="74" width="40" height="4" rx="2" fill="#111"/>
-              <rect x="34" y="81" width="28" height="3" rx="1.5" fill="#888"/>
-              <rect x="0" y="96" width="108" height="12" rx="0" fill="#f5a623"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">강사강조형</div>
-            <div class="layout-card-desc">인물강조 · USP 카드</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 세미나형 카드 -->
-        <div class="layout-select-card" data-layout="seminar" onclick="toggleLayout('seminar',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <defs><linearGradient id="gSem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#1a0533"/></linearGradient></defs>
-              <rect width="108" height="108" fill="url(#gSem)"/>
-              <rect x="8" y="10" width="28" height="10" rx="3" fill="#e11d48"/>
-              <rect x="40" y="12" width="40" height="6" rx="2" fill="rgba(255,255,255,0.6)"/>
-              <rect x="8" y="28" width="75" height="8" rx="2" fill="#fff"/>
-              <rect x="8" y="39" width="60" height="8" rx="2" fill="#fff"/>
-              <circle cx="54" cy="75" r="20" fill="rgba(255,255,255,0.15)"/>
-              <circle cx="54" cy="68" r="10" fill="#e0e0e0"/>
-              <rect x="30" y="92" width="48" height="5" rx="2" fill="rgba(255,255,255,0.8)"/>
-              <rect x="0" y="100" width="108" height="8" fill="#7c3aed"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">세미나형</div>
-            <div class="layout-card-desc">인물강조 · 라이브/이벤트</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- SNS UI형 카드 -->
-        <div class="layout-select-card" data-layout="sns-post" onclick="toggleLayout('sns-post',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="108" fill="#f5f5f7"/>
-              <rect x="0" y="0" width="108" height="16" fill="#1877f2"/>
-              <rect x="6" y="5" width="15" height="5" rx="1" fill="#fff"/>
-              <rect x="25" y="5" width="12" height="5" rx="1" fill="rgba(255,255,255,0.5)"/>
-              <rect x="6" y="22" width="96" height="70" rx="8" fill="#fff"/>
-              <circle cx="18" cy="32" r="7" fill="#1877f2"/>
-              <rect x="28" y="28" width="30" height="4" rx="2" fill="#333"/>
-              <rect x="28" y="34" width="20" height="3" rx="1.5" fill="#aaa"/>
-              <rect x="10" y="44" width="85" height="5" rx="2" fill="#222"/>
-              <rect x="10" y="52" width="70" height="4" rx="2" fill="#666"/>
-              <rect x="10" y="59" width="80" height="4" rx="2" fill="#666"/>
-              <rect x="0" y="96" width="108" height="12" fill="#1877f2"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">SNS UI형</div>
-            <div class="layout-card-desc">커뮤니티 게시글 모방</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 비교형 카드 -->
-        <div class="layout-select-card" data-layout="comparison" onclick="toggleLayout('comparison',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="52" fill="#111"/>
-              <rect y="52" width="108" height="56" fill="#fff"/>
-              <path d="M0,48 Q27,58 54,52 Q81,46 108,56 L108,52 L0,52 Z" fill="#fff"/>
-              <rect x="8" y="16" width="60" height="6" rx="2" fill="#fff"/>
-              <rect x="8" y="25" width="45" height="6" rx="2" fill="#f5a623"/>
-              <rect x="8" y="72" width="12" height="8" rx="2" fill="#e0e0e0"/>
-              <rect x="24" y="72" width="15" height="8" rx="2" fill="#e0e0e0"/>
-              <rect x="43" y="72" width="15" height="8" rx="2" fill="#e0e0e0"/>
-              <rect x="8" y="84" width="12" height="8" rx="2" fill="#f5a623"/>
-              <rect x="24" y="84" width="15" height="8" rx="2" fill="#f5a623"/>
-              <rect x="43" y="84" width="15" height="8" rx="2" fill="#f5a623"/>
-              <rect x="0" y="100" width="108" height="8" fill="#111"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">비교형</div>
-            <div class="layout-card-desc">Before/After 비교표</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 이미지강조형 카드 -->
-        <div class="layout-select-card" data-layout="image-hero" onclick="toggleLayout('image-hero',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <defs><linearGradient id="gImgHero" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1a2e" stop-opacity="0.3"/><stop offset="100%" stop-color="#000" stop-opacity="0.95"/></linearGradient></defs>
-              <rect width="108" height="108" fill="#2a3a4a"/>
-              <rect width="108" height="108" fill="url(#gImgHero)"/>
-              <rect x="74" y="10" width="26" height="10" rx="5" fill="#f5a623"/>
-              <rect x="8" y="62" width="80" height="9" rx="2" fill="#fff"/>
-              <rect x="8" y="74" width="65" height="9" rx="2" fill="#4a9eff"/>
-              <rect x="0" y="96" width="108" height="12" fill="#4a9eff"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">이미지강조형</div>
-            <div class="layout-card-desc">풀블리드 · 임팩트 헤드</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 커리큘럼형 카드 -->
-        <div class="layout-select-card" data-layout="curriculum" onclick="toggleLayout('curriculum',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="108" fill="#0a0e1a"/>
-              <rect x="8" y="12" width="70" height="7" rx="2" fill="#fff"/>
-              <rect x="8" y="22" width="55" height="7" rx="2" fill="#4a9eff"/>
-              <line x1="18" y1="42" x2="90" y2="42" stroke="#4a9eff44" stroke-width="1.5"/>
-              <circle cx="18" cy="42" r="4" fill="#4a9eff"/>
-              <circle cx="36" cy="42" r="4" fill="#4a9eff"/>
-              <circle cx="54" cy="42" r="4" fill="#4a9eff"/>
-              <circle cx="72" cy="42" r="4" fill="#4a9eff"/>
-              <circle cx="90" cy="42" r="4" fill="#4a9eff"/>
-              <rect x="4" y="54" width="18" height="11" rx="2" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
-              <rect x="25" y="54" width="18" height="11" rx="2" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
-              <rect x="46" y="54" width="18" height="11" rx="2" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
-              <circle cx="16" cy="88" r="10" fill="#4a9eff"/>
-              <rect x="0" y="100" width="108" height="8" fill="#4a9eff"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">커리큘럼형</div>
-            <div class="layout-card-desc">로드맵 · 강의 구성 강조</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
-        <!-- 후기사례형 카드 -->
-        <div class="layout-select-card" data-layout="review" onclick="toggleLayout('review',this)">
-          <div class="layout-card-thumb">
-            <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-              <rect width="108" height="108" fill="#111"/>
-              <rect x="8" y="12" width="62" height="6" rx="2" fill="#fff"/>
-              <rect x="8" y="21" width="50" height="6" rx="2" fill="#f5a623"/>
-              <rect x="68" y="8" width="36" height="52" rx="6" fill="#333"/>
-              <rect x="4" y="46" width="60" height="15" rx="4" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
-              <rect x="4" y="64" width="60" height="15" rx="4" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
-              <rect x="8" y="49" width="20" height="3" rx="1" fill="#fbbf24"/>
-              <rect x="8" y="67" width="20" height="3" rx="1" fill="#fbbf24"/>
-              <rect x="0" y="100" width="108" height="8" fill="#f5a623"/>
-            </svg>
-          </div>
-          <div class="layout-card-info">
-            <div class="layout-card-name">후기사례형</div>
-            <div class="layout-card-desc">별점 후기 · 소셜 증명</div>
-          </div>
-          <div class="layout-card-check">✓</div>
-        </div>
-
+      <div id="layoutCardGrid" style="display:flex;flex-wrap:wrap;gap:8px">
+        <div class="layout-select-card selected" data-layout="photo-overlay" onclick="toggleLayout('photo-overlay',this)">📸 기본형</div>
+        <div class="layout-select-card" data-layout="twitter" onclick="toggleLayout('twitter',this)">💬 커뮤니티형</div>
+        <div class="layout-select-card" data-layout="instructor" onclick="toggleLayout('instructor',this)">👤 강사강조형</div>
+        <div class="layout-select-card" data-layout="seminar" onclick="toggleLayout('seminar',this)">🎤 세미나형</div>
+        <div class="layout-select-card" data-layout="sns-post" onclick="toggleLayout('sns-post',this)">📱 SNS형</div>
+        <div class="layout-select-card" data-layout="comparison" onclick="toggleLayout('comparison',this)">⚖️ 비교형</div>
+        <div class="layout-select-card" data-layout="image-hero" onclick="toggleLayout('image-hero',this)">🖼️ 이미지형</div>
+        <div class="layout-select-card" data-layout="curriculum" onclick="toggleLayout('curriculum',this)">📋 커리큘럼형</div>
+        <div class="layout-select-card" data-layout="review" onclick="toggleLayout('review',this)">⭐ 후기형</div>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--tx-muted)" id="scVarSelCount"></div>
+      <div class="catalog-link-row">
+        <a href="/catalog.html" target="_blank" class="catalog-link">🎨 레이아웃 카탈로그 미리보기 →</a>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--tx-muted)" id="scVarSelCount"></div>
     </div>
 
     <!-- 인물 이미지 (인물강조 레이아웃 선택 시만 표시) -->
