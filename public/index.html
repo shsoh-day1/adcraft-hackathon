@@ -1686,6 +1686,8 @@
     document.querySelectorAll('.catalog-card-item').forEach((c, i) => c.classList.toggle('active', i === idx));
     const v = variations[idx];
     const iframe = document.getElementById('previewFrame');
+    // srcdoc 설정 전에 load 리스너 등록 (race condition 방지)
+    iframe.addEventListener('load', activateClickEdit, { once: true });
     iframe.srcdoc = v.html;
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
     document.getElementById('codeBox').textContent = v.html;
@@ -1696,16 +1698,14 @@
     // 탭 전환 시 브랜드 숨김 상태로 초기화
     brandHidden = false;
     toggleBrandBlock();
-    // iframe 로드 후 클릭 편집 활성화
-    iframe.addEventListener('load', activateClickEdit, { once: true });
     // 편집 힌트 표시
     const hint = document.getElementById('editHint');
     if (hint) hint.style.display = 'inline';
     // sc-wrap 결과 동기화
     const scIframe = document.getElementById('scPreviewFrame');
     if (scIframe) {
-      scIframe.srcdoc = v.html;
       scIframe.addEventListener('load', activateScClickEdit, { once: true });
+      scIframe.srcdoc = v.html;
     }
     const scJsonBox = document.getElementById('scJsonBox');
     if (scJsonBox) scJsonBox.textContent = JSON.stringify(v.adData, null, 2);

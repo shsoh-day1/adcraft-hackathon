@@ -3282,52 +3282,30 @@ JSON만 출력 (코드블록 없이):
   }
 });
 
-// ─── 이미지 생성 (1순위: gpt-image-1 / 폴백: Pollinations FLUX) ───
+// ─── 이미지 생성 (gpt-image-1 전용 — Pollinations 제거: 한국인 외모 보장 불가) ───
 app.post('/api/generate-image', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt 필요' });
 
+  // 한국인 외모 요건 강화: 프롬프트 끝에 명시적 추가
+  const koreanSuffix = ' IMPORTANT: If any human figure appears, they MUST be Korean or East Asian in appearance (Korean facial features, East Asian ethnicity). No Caucasian or Western-looking people.';
+  const finalPrompt = prompt + koreanSuffix;
+
   console.log('[🎨 이미지 생성] 시작 | 프롬프트:', prompt.slice(0, 80) + '...');
 
-  // 1순위: gpt-image-1 (OpenAI)
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      console.log('[🖼 gpt-image-1] 요청 중...');
-      const imageData = await generateImageWithGPT(prompt);
-      console.log('[🖼 gpt-image-1] 성공');
-      return res.json({ imageData, model: 'gpt-image-1', type: 'image' });
-    } catch (err) {
-      console.warn('[gpt-image-1 오류]', err.message);
-    }
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY 미설정 — 이미지 생성 불가' });
   }
 
-  // 2순위 폴백: Pollinations.ai (무료, API 키 불필요)
   try {
-    const seed = Math.floor(Math.random() * 99999);
-    const encoded = encodeURIComponent(prompt);
-    const polUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1080&height=1080&nologo=true&seed=${seed}&model=flux`;
-
-    console.log('[🌸 Pollinations 폴백] 요청 중...');
-    const polRes = await fetch(polUrl, { signal: AbortSignal.timeout(60000) });
-
-    if (polRes.ok) {
-      const contentType = polRes.headers.get('content-type') || 'image/jpeg';
-      const arrayBuffer = await polRes.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      console.log('[🌸 Pollinations] 성공 | 크기:', Math.round(arrayBuffer.byteLength / 1024) + 'KB');
-      return res.json({
-        imageData: `data:${contentType};base64,${base64}`,
-        model: 'Pollinations (FLUX)',
-        type: 'image',
-      });
-    } else {
-      console.warn('[Pollinations 실패]', polRes.status, polRes.statusText);
-    }
+    console.log('[🖼 gpt-image-1] 요청 중...');
+    const imageData = await generateImageWithGPT(finalPrompt);
+    console.log('[🖼 gpt-image-1] 성공');
+    return res.json({ imageData, model: 'gpt-image-1', type: 'image' });
   } catch (err) {
-    console.warn('[Pollinations 오류]', err.message);
+    console.warn('[gpt-image-1 오류]', err.message);
+    return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
   }
-
-  return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
 });
 
 // ─── 👤 회원가입 ───
