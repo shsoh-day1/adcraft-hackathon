@@ -65,7 +65,7 @@ textarea { resize:vertical; }
 .spin { width:14px; height:14px; border:2px solid rgba(255,255,255,.2); border-top-color:#fff; border-radius:50%; animation:sp .7s linear infinite; flex-shrink:0; }
 @keyframes sp { to { transform:rotate(360deg); } }
 
-/* ── 카피 배리에이션 ── */
+/* ── 배리에이션 탭 (A/B/C) ── */
 .var-tabs { display:flex; gap:4px; margin-bottom:8px; }
 .var-tab { flex:1; padding:5px; border-radius:6px; border:1px solid var(--bdr); background:transparent; color:var(--tx-muted); font-size:10px; font-weight:700; cursor:pointer; text-align:center; }
 .var-tab.on { background:var(--bg3); border-color:rgba(59,130,246,.4); color:var(--accent); }
@@ -90,6 +90,23 @@ textarea { resize:vertical; }
 
 /* ── USP 섹션 ── */
 .usp-grid { display:flex; flex-direction:column; gap:6px; }
+
+/* ── 레퍼런스 이미지 ── */
+.ref-upload-btn { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; padding:8px; border-radius:7px; border:1px dashed var(--bdr2); background:transparent; color:var(--tx-muted); font-size:11px; font-weight:600; cursor:pointer; transition:all .12s; }
+.ref-upload-btn:hover { border-color:var(--accent); color:var(--accent); }
+.ref-thumbs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:7px; }
+.ref-thumb { position:relative; width:56px; height:56px; border-radius:6px; overflow:hidden; border:1px solid var(--bdr); }
+.ref-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.ref-thumb-del { position:absolute; top:1px; right:1px; width:16px; height:16px; border-radius:50%; background:rgba(239,68,68,.9); color:#fff; border:none; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; padding:0; }
+
+/* ── 컬러 피커 ── */
+.color-pick-row { display:flex; align-items:center; gap:6px; }
+.color-swatch { width:32px; height:32px; border-radius:6px; border:1px solid var(--bdr2); cursor:pointer; flex-shrink:0; position:relative; }
+.color-swatch input[type="color"] { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; border:none; padding:0; }
+.color-hex-input { flex:1; background:var(--bg3); border:1px solid var(--bdr); border-radius:7px; color:var(--tx); font-size:12px; font-family:'Consolas',monospace; padding:7px 10px; outline:none; letter-spacing:1px; transition:border-color .12s; }
+.color-hex-input:focus { border-color:var(--accent); }
+.eyedropper-btn { width:32px; height:32px; border-radius:6px; border:1px solid var(--bdr); background:var(--bg3); color:var(--tx-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .12s; }
+.eyedropper-btn:hover { border-color:var(--accent); color:var(--accent); }
 
 /* ── 레이아웃 ── */
 html, body { height:100%; }
@@ -136,11 +153,22 @@ body { display:flex; flex-direction:column; }
       <div id="genMsg" class="msg"></div>
     </div>
 
-    <!-- USP 추출 결과 (숨김 → 추출 후 표시) -->
-    <div class="section" id="uspSection" style="display:none">
+    <!-- 레퍼런스 이미지 -->
+    <div class="section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-        <div class="lbl" style="margin-bottom:0">추출된 정보 <span style="color:var(--tx-muted);font-weight:400;text-transform:none">(수정 가능)</span></div>
+        <div class="lbl" style="margin-bottom:0">레퍼런스 이미지 <span style="color:var(--tx-muted);font-weight:400;text-transform:none">(선택 · 최대 3장)</span></div>
       </div>
+      <div class="ref-thumbs" id="refThumbs"></div>
+      <label class="ref-upload-btn" id="refUploadBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        이미지 추가 (디자인 스타일 학습용)
+        <input type="file" id="refFileInput" accept="image/*" multiple style="display:none" onchange="addRefImages(event)">
+      </label>
+    </div>
+
+    <!-- USP 입력 -->
+    <div class="section" id="uspSection">
+      <div class="lbl">소재 정보 <span style="color:var(--tx-muted);font-weight:400;text-transform:none">(수정 가능)</span></div>
       <div class="usp-grid">
         <div class="field">
           <div class="field-lbl">타겟</div>
@@ -151,11 +179,28 @@ body { display:flex; flex-direction:column; }
           <div class="field"><div class="field-lbl">USP 2</div><input id="uUsp2" placeholder="핵심 강점 2"></div>
         </div>
         <div class="field"><div class="field-lbl">USP 3</div><input id="uUsp3" placeholder="핵심 강점 3"></div>
-        <div class="field"><div class="field-lbl">카피 방향</div><input id="uMsg" placeholder="이 소재에서 강조할 핵심 메시지"></div>
+        <div class="field"><div class="field-lbl">광고 세트 메시지</div><input id="uAdSet" placeholder="예: 지금 데이터 역량을 키워야 하는 이유"></div>
+        <div class="field"><div class="field-lbl">카피 방향 (Creative Message)</div><input id="uMsg" placeholder="이 소재에서 강조할 핵심 메시지"></div>
       </div>
     </div>
 
-    <!-- 생성된 카피 (숨김 → 생성 후 표시) -->
+    <!-- 배경 컬러 -->
+    <div class="section">
+      <div class="lbl">배경 컬러</div>
+      <div class="color-pick-row">
+        <div class="color-swatch" id="colorSwatch" title="클릭해서 OS 컬러 피커 열기">
+          <input type="color" id="colorPicker" value="#1B5BD4" oninput="onPluginColorChange(this.value)">
+        </div>
+        <input class="color-hex-input" id="colorHexInput" type="text" value="#1B5BD4" maxlength="7" placeholder="#1B5BD4"
+          oninput="onPluginHexInput(this.value)"
+          onblur="onPluginHexBlur(this.value)">
+        <button class="eyedropper-btn" id="btnEyedropper" onclick="openPluginEyeDropper()" title="스포이드로 화면에서 색상 선택">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 생성된 카피 (A/B/C 배리에이션) -->
     <div class="section" id="copySection" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="lbl" style="margin-bottom:0">생성된 카피</div>
@@ -164,18 +209,23 @@ body { display:flex; flex-direction:column; }
           <button class="btn btn-ghost btn-sm" onclick="generateCopy()" title="재생성">🔄</button>
         </div>
       </div>
+
+      <!-- A/B/C 배리에이션 탭 -->
+      <div class="var-tabs" id="varTabs"></div>
+
+      <!-- 카피 편집 필드 -->
       <div class="usp-grid">
-        <div class="field"><div class="field-lbl">Hook (서브카피)</div><input id="f_hook" maxlength="30"></div>
+        <div class="field"><div class="field-lbl">Hook (서브카피)</div><input id="f_hook" maxlength="30" oninput="onCopyFieldEdit('hook',this.value)"></div>
         <div class="row2">
-          <div class="field"><div class="field-lbl">Headline 1</div><input id="f_h1" maxlength="14"></div>
-          <div class="field"><div class="field-lbl">Headline 2</div><input id="f_h2" maxlength="14"></div>
+          <div class="field"><div class="field-lbl">Headline 1</div><input id="f_h1" maxlength="14" oninput="onCopyFieldEdit('headline_line1',this.value)"></div>
+          <div class="field"><div class="field-lbl">Headline 2</div><input id="f_h2" maxlength="14" oninput="onCopyFieldEdit('headline_line2',this.value)"></div>
         </div>
-        <div class="field"><div class="field-lbl">CTA 텍스트</div><input id="f_cta" maxlength="28"></div>
+        <div class="field"><div class="field-lbl">CTA 텍스트</div><input id="f_cta" maxlength="28" oninput="onCopyFieldEdit('cta_text',this.value)"></div>
         <div class="row2">
-          <div class="field"><div class="field-lbl">수치 값</div><input id="f_stat_v" maxlength="12"></div>
-          <div class="field"><div class="field-lbl">수치 라벨</div><input id="f_stat_l" maxlength="16"></div>
+          <div class="field"><div class="field-lbl">수치 값</div><input id="f_stat_v" maxlength="12" oninput="onCopyFieldEdit('visual_stat1_value',this.value)"></div>
+          <div class="field"><div class="field-lbl">수치 라벨</div><input id="f_stat_l" maxlength="16" oninput="onCopyFieldEdit('visual_stat1_label',this.value)"></div>
         </div>
-        <div class="field"><div class="field-lbl">브랜드명</div><input id="f_brand" maxlength="20"></div>
+        <div class="field"><div class="field-lbl">브랜드명</div><input id="f_brand" maxlength="20" oninput="onCopyFieldEdit('brand',this.value)"></div>
       </div>
     </div>
 
@@ -235,12 +285,21 @@ body { display:flex; flex-direction:column; }
 let env = 'local';
 let textLayers = [], imageLayers = [], hasSelection = false;
 let currentImgBase64 = null;
-let currentAdData = null;   // 마지막으로 생성된 카피 adData
-let currentMapping = {};    // { layerId: "삽입할 텍스트" }
+let variations = [];          // API 응답 3종 배리에이션
+let activeVar = 0;            // 선택된 배리에이션 인덱스 (0=A, 1=B, 2=C)
+let currentAdData = null;     // 현재 선택된 배리에이션 adData
+let currentMapping = {};      // { layerId: "삽입할 텍스트" }
+let refImages = [];            // base64 레퍼런스 이미지 배열
+let selectedColor = '#1B5BD4'; // 배경 컬러
 
 const FIELD_LABELS = {
   hook: 'Hook', headline_line1: '헤드 1', headline_line2: '헤드 2',
   cta_text: 'CTA', visual_stat1_value: '수치 값', visual_stat1_label: '수치 라벨', brand: '브랜드',
+};
+
+const COPY_MAP = {
+  f_hook:'hook', f_h1:'headline_line1', f_h2:'headline_line2',
+  f_cta:'cta_text', f_stat_v:'visual_stat1_value', f_stat_l:'visual_stat1_label', f_brand:'brand',
 };
 
 const ENDPOINTS = {
@@ -305,6 +364,80 @@ function setFramePill(text, cls) {
   el.className = 'frame-pill ' + cls;
 }
 
+// ── 레퍼런스 이미지 ──
+function addRefImages(e) {
+  const files = Array.from(e.target.files).slice(0, 3 - refImages.length);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      refImages.push({ name: file.name, data: ev.target.result });
+      renderRefThumbs();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+  // 3장이면 버튼 숨김
+  document.getElementById('refUploadBtn').style.display = refImages.length >= 3 ? 'none' : 'flex';
+}
+
+function removeRefImage(i) {
+  refImages.splice(i, 1);
+  renderRefThumbs();
+  document.getElementById('refUploadBtn').style.display = refImages.length >= 3 ? 'none' : 'flex';
+}
+
+function renderRefThumbs() {
+  const wrap = document.getElementById('refThumbs');
+  wrap.innerHTML = '';
+  refImages.forEach((img, i) => {
+    const div = document.createElement('div');
+    div.className = 'ref-thumb';
+    div.innerHTML = `<img src="${img.data}" alt="${img.name}">
+      <button class="ref-thumb-del" onclick="removeRefImage(${i})">×</button>`;
+    wrap.appendChild(div);
+  });
+}
+
+// ── 컬러 피커 ──
+function syncPluginColor(val) {
+  selectedColor = val;
+  document.getElementById('colorSwatch').style.background = val;
+  document.getElementById('colorPicker').value = val;
+  document.getElementById('colorHexInput').value = val.toUpperCase();
+}
+function onPluginColorChange(val) { syncPluginColor(val); }
+function onPluginHexInput(val) {
+  if (/^#[0-9A-Fa-f]{6}$/.test(val)) syncPluginColor(val);
+}
+function onPluginHexBlur(val) {
+  let v = val.trim();
+  if (/^[0-9A-Fa-f]{6}$/.test(v)) v = '#' + v;
+  if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+    syncPluginColor(v);
+  } else {
+    document.getElementById('colorHexInput').value = selectedColor.toUpperCase();
+  }
+}
+async function openPluginEyeDropper() {
+  if (window.EyeDropper) {
+    try {
+      const result = await new EyeDropper().open();
+      syncPluginColor(result.sRGBHex);
+    } catch(e) { /* 취소 */ }
+  } else {
+    document.getElementById('colorPicker').click();
+  }
+}
+// 스포이드 미지원 브라우저면 버튼 스타일 변경
+if (!window.EyeDropper) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnEyedropper');
+    if (btn) btn.title = '컬러 피커 열기';
+  });
+}
+// swatch 초기 배경색
+document.getElementById('colorSwatch').style.background = selectedColor;
+
 // ── 정보 추출 ──
 async function extractInfo() {
   const url = getUrl();
@@ -320,7 +453,6 @@ async function extractInfo() {
     document.getElementById('uUsp2').value   = info.usp2 || '';
     document.getElementById('uUsp3').value   = info.usp3 || '';
     document.getElementById('uMsg').value    = info.creative_message || '';
-    document.getElementById('uspSection').style.display = 'block';
     showMsg('genMsg', '✅ 정보 추출 완료! 수정 후 카피 생성하세요.', 'ok');
   } catch(e) {
     showMsg('genMsg', '❌ ' + e.message, 'err');
@@ -339,39 +471,29 @@ async function generateCopy() {
   try {
     const res = await api('/api/generate-ad', {
       url,
-      target: document.getElementById('uTarget').value || '',
-      usp1:   document.getElementById('uUsp1').value || '',
-      usp2:   document.getElementById('uUsp2').value || '',
-      usp3:   document.getElementById('uUsp3').value || '',
+      target:           document.getElementById('uTarget').value || '',
+      usp1:             document.getElementById('uUsp1').value || '',
+      usp2:             document.getElementById('uUsp2').value || '',
+      usp3:             document.getElementById('uUsp3').value || '',
+      ad_set_message:   document.getElementById('uAdSet').value || '',
       creative_message: document.getElementById('uMsg').value || '',
-      layout_types: ['photo-overlay'],
-      auto_bg_image: false,
+      bg_color:         selectedColor,
+      reference_images: refImages.map(r => r.data),
+      layout_types:     ['photo-overlay'],
+      auto_bg_image:    false,
     });
-    const ad = res.variations?.[0]?.adData;
-    if (!ad) throw new Error('카피 데이터 없음');
 
-    // 편집 필드 채우기
-    const COPY_MAP = { f_hook:'hook', f_h1:'headline_line1', f_h2:'headline_line2', f_cta:'cta_text', f_stat_v:'visual_stat1_value', f_stat_l:'visual_stat1_label', f_brand:'brand' };
-    for (const [id, key] of Object.entries(COPY_MAP)) {
-      const el = document.getElementById(id);
-      if (el) el.value = ad[key] || '';
-    }
+    variations = res.variations || [];
+    if (!variations.length) throw new Error('카피 데이터 없음');
 
-    // 검증 점수
-    const s = ad.validation_score;
-    const badge = document.getElementById('scoreBadge');
-    if (typeof s === 'number') {
-      badge.textContent = '검증 ' + s + '/15';
-      badge.className = 'score ' + (s >= 12 ? 'score-hi' : s >= 8 ? 'score-mid' : 'score-lo');
-    }
+    renderVarTabs();
+    selectVariation(0);
 
-    currentAdData = ad;
     document.getElementById('copySection').style.display = 'block';
-    showMsg('genMsg', '✅ 카피 생성 완료!', 'ok');
+    showMsg('genMsg', '✅ ' + variations.length + '종 카피 생성 완료!', 'ok');
 
-    // 프레임이 이미 선택돼 있으면 즉시 AI 매핑
     if (hasSelection && textLayers.length) {
-      await autoMatchLayers(ad);
+      await autoMatchLayers(currentAdData);
     } else {
       document.getElementById('matchSection').style.display = 'block';
       showMsg('matchMsg', '⚠ Figma에서 광고 프레임을 선택하면 자동 매핑이 시작됩니다.', 'inf');
@@ -381,6 +503,57 @@ async function generateCopy() {
   } finally {
     btn.disabled = false; btn.innerHTML = '✨ 카피 생성';
   }
+}
+
+// ── 배리에이션 탭 렌더링 ──
+function renderVarTabs() {
+  const container = document.getElementById('varTabs');
+  container.innerHTML = '';
+  const labels = ['A — 혜택형', 'B — 공감형', 'C — 긴박형'];
+  variations.forEach((v, i) => {
+    const btn = document.createElement('button');
+    const label = v.adData?.variation_label || labels[i] || ('V' + (i+1));
+    // "A — 혜택형" 에서 짧게 A, B, C 만 표시
+    const shortLabel = label.charAt(0);
+    btn.className = 'var-tab' + (i === activeVar ? ' on' : '');
+    btn.textContent = shortLabel;
+    btn.title = label;
+    btn.onclick = () => selectVariation(i);
+    container.appendChild(btn);
+  });
+}
+
+// ── 배리에이션 선택 ──
+function selectVariation(idx) {
+  activeVar = idx;
+  const v = variations[idx];
+  if (!v) return;
+  currentAdData = v.adData;
+
+  // 탭 활성화
+  document.querySelectorAll('.var-tab').forEach((el, i) => el.classList.toggle('on', i === idx));
+
+  // 편집 필드 채우기
+  for (const [id, key] of Object.entries(COPY_MAP)) {
+    const el = document.getElementById(id);
+    if (el) el.value = currentAdData[key] || '';
+  }
+
+  // 검증 점수
+  const s = currentAdData.validation_score;
+  const badge = document.getElementById('scoreBadge');
+  if (typeof s === 'number') {
+    badge.textContent = '검증 ' + s + '/15';
+    badge.className = 'score ' + (s >= 12 ? 'score-hi' : s >= 8 ? 'score-mid' : 'score-lo');
+  }
+
+  // 프레임 선택 중이면 즉시 재매핑
+  if (hasSelection && textLayers.length) autoMatchLayers(currentAdData);
+}
+
+// ── 카피 필드 직접 수정 시 currentAdData 업데이트 ──
+function onCopyFieldEdit(field, val) {
+  if (currentAdData) currentAdData[field] = val;
 }
 
 // ── AI 레이어 자동 매핑 ──
@@ -407,13 +580,11 @@ async function autoMatchLayers(adData) {
     const matches = res.matches || [];
     const layerById = Object.fromEntries(textLayers.map(l => [l.id, l]));
 
-    // currentMapping 업데이트: layerId → 실제 텍스트 값
     currentMapping = {};
     matches.forEach(m => {
       if (adData[m.field]) currentMapping[m.layerId] = adData[m.field];
     });
 
-    // 결과 렌더링
     const list = document.getElementById('matchList');
     list.innerHTML = '';
     const allFields = Object.keys(FIELD_LABELS).filter(k => adData[k]);
@@ -435,7 +606,6 @@ async function autoMatchLayers(adData) {
       list.appendChild(item);
     });
 
-    // 배지
     const badge = document.getElementById('matchBadge');
     badge.textContent = matchedCount + '/' + allFields.length + ' 매핑됨';
     badge.className = 'score ' + (matchedCount >= Math.ceil(allFields.length * 0.7) ? 'score-hi' : matchedCount > 0 ? 'score-mid' : 'score-lo');
@@ -496,12 +666,10 @@ function applyBgImage() {
 function renderImgLayerSelect() {
   const sel = document.getElementById('imgLayerSelect');
   sel.innerHTML = '<option value="">— 레이어 선택 —</option>';
-  // 이미지 레이어 + 전체 레이어(이미지 fill 가능한 것들)
   const allLayers = [
     ...imageLayers,
     ...textLayers.filter(l => /bg|background|배경|image|img|photo|사진/i.test(l.name)),
   ];
-  // 중복 제거
   const seen = new Set();
   allLayers.forEach(l => {
     if (seen.has(l.id)) return;
@@ -510,7 +678,6 @@ function renderImgLayerSelect() {
     opt.value = l.id; opt.textContent = l.name;
     sel.appendChild(opt);
   });
-  // 이미지 레이어 없으면 힌트 추가
   if (seen.size === 0) {
     const opt = document.createElement('option');
     opt.value = ''; opt.textContent = '배경 레이어 없음 — 이름에 "bg/배경/image" 포함 시 감지';

@@ -864,21 +864,13 @@
               onclick="event.stopPropagation()"
               oninput="onHexInput(this.value)"
               onblur="onHexBlur(this.value)" />
-            <span class="eyedropper-icon" title="컬러 피커 열기">🎨</span>
+            <span class="eyedropper-icon" title="스포이드로 화면에서 색상 선택" onclick="event.stopPropagation();openEyeDropper()" style="cursor:pointer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;opacity:.6"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>
+            </span>
           </div>
           <div id="colorAutoNotice" class="info-purple">
             <span>🎨</span>
             <span>레퍼런스 이미지에서 자동 추출된 컬러입니다</span>
-          </div>
-          <div class="preset-dots">
-            <div class="preset-dot active" data-color="#1B5BD4" title="블루" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#0A0A1A" title="다크" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#064E3B" title="그린" style="background:#064E3B" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#C2185B" title="코랄" style="background:#C2185B" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#7C3AED" title="퍼플" style="background:#7C3AED" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#B45309" title="골드" style="background:#B45309" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#1E3A5F" title="네이비" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#1a1a1a" title="블랙" style="background:#1a1a1a;border:1px solid #555" onclick="applyPreset(this)"></div>
           </div>
         </div>
       </div>
@@ -1292,18 +1284,14 @@
         <div id="scManualColor" style="display:none">
           <div class="color-picker-wrap" onclick="document.getElementById('colorPicker').click()">
             <div class="color-swatch-btn" id="scColorSwatch" style="background:#1B5BD4"></div>
-            <span style="flex:1;font-size:13px;font-family:monospace;color:var(--tx)" id="scHexDisplay">#1B5BD4</span>
-            <span class="eyedropper-icon">🎨</span>
-          </div>
-          <div class="preset-dots" style="margin-top:8px">
-            <div class="preset-dot active" data-color="#1B5BD4" style="background:#1B5BD4" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#0A0A1A" style="background:#0A0A1A" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#064E3B" style="background:#064E3B" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#C2185B" style="background:#C2185B" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#7C3AED" style="background:#7C3AED" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#B45309" style="background:#B45309" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#1E3A5F" style="background:#1E3A5F" onclick="applyPreset(this)"></div>
-            <div class="preset-dot" data-color="#1a1a1a" style="background:#1a1a1a;border:1px solid #555" onclick="applyPreset(this)"></div>
+            <input class="hex-input" id="scHexInput" type="text" value="#1B5BD4" maxlength="7"
+              placeholder="#000000"
+              onclick="event.stopPropagation()"
+              oninput="onHexInput(this.value)"
+              onblur="onHexBlur(this.value)" />
+            <span class="eyedropper-icon" title="스포이드로 화면에서 색상 선택" onclick="event.stopPropagation();openEyeDropper()" style="cursor:pointer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;opacity:.6"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>
+            </span>
           </div>
         </div>
       </div>
@@ -1920,47 +1908,48 @@
     if (scPanel) { scPanel.style.display = 'block'; scPanel.innerHTML = panel.innerHTML; }
   }
 
-  // ── 컬러 피커 ──
-  function onColorPickerChange(val) {
+  // ── 컬러 피커 — 모든 컬러 UI 동기화 ──
+  function syncColorUI(val) {
     selectedColor = val;
     document.getElementById('colorSwatch').style.background = val;
     document.getElementById('hexInput').value = val.toUpperCase();
-    updateActiveDot(val);
+    document.getElementById('colorPicker').value = val;
+    const scSwatch = document.getElementById('scColorSwatch');
+    if (scSwatch) scSwatch.style.background = val;
+    const scHex = document.getElementById('scHexInput');
+    if (scHex) scHex.value = val.toUpperCase();
   }
 
+  function onColorPickerChange(val) { syncColorUI(val); }
+
   function onHexInput(val) {
-    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-      selectedColor = val;
-      document.getElementById('colorSwatch').style.background = val;
-      document.getElementById('colorPicker').value = val;
-      updateActiveDot(val);
-    }
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) syncColorUI(val);
   }
 
   function onHexBlur(val) {
     let v = val.trim();
     if (/^[0-9A-Fa-f]{6}$/.test(v)) v = '#' + v;
     if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
-      document.getElementById('hexInput').value = v.toUpperCase();
-      onHexInput(v);
+      syncColorUI(v);
     } else {
       document.getElementById('hexInput').value = selectedColor.toUpperCase();
+      const scHex = document.getElementById('scHexInput');
+      if (scHex) scHex.value = selectedColor.toUpperCase();
     }
   }
 
-  function applyPreset(el) {
-    const color = el.dataset.color;
-    selectedColor = color;
-    document.getElementById('colorSwatch').style.background = color;
-    document.getElementById('colorPicker').value = color;
-    document.getElementById('hexInput').value = color.toUpperCase();
-    updateActiveDot(color);
-  }
-
-  function updateActiveDot(color) {
-    document.querySelectorAll('.preset-dot').forEach(d => {
-      d.classList.toggle('active', d.dataset.color.toLowerCase() === color.toLowerCase());
-    });
+  // 스포이드: EyeDropper API → 없으면 OS 컬러 피커
+  async function openEyeDropper() {
+    if (window.EyeDropper) {
+      try {
+        const result = await new EyeDropper().open();
+        syncColorUI(result.sRGBHex);
+        const notice = document.getElementById('colorAutoNotice');
+        if (notice) notice.style.display = 'none';
+      } catch(e) { /* 사용자 취소 */ }
+    } else {
+      document.getElementById('colorPicker').click();
+    }
   }
 
   // ── 컬러 모드 토글 ──
@@ -1970,7 +1959,6 @@
     document.getElementById('colorModeManual').className = 'color-mode-btn ' + (auto ? 'inactive' : 'active');
     document.getElementById('autoColorDesc').style.display = auto ? 'block' : 'none';
     document.getElementById('manualColorSection').style.display = auto ? 'none' : 'block';
-    // sc-wrap 동기화
     const scAutoDesc = document.getElementById('scAutoColorDesc');
     if (scAutoDesc) scAutoDesc.style.display = auto ? 'block' : 'none';
     const scManual = document.getElementById('scManualColor');
@@ -1979,12 +1967,9 @@
 
   function applyExtractedColor(hex) {
     if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
-    selectedColor = hex;
-    document.getElementById('colorSwatch').style.background = hex;
-    document.getElementById('colorPicker').value = hex;
-    document.getElementById('hexInput').value = hex.toUpperCase();
-    updateActiveDot(hex);
-    document.getElementById('colorAutoNotice').style.display = 'flex';
+    syncColorUI(hex);
+    const notice = document.getElementById('colorAutoNotice');
+    if (notice) notice.style.display = 'flex';
   }
 
   // ── 탭 전환 (레퍼런스 이미지) ──
