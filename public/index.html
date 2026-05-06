@@ -351,6 +351,12 @@
     .color-hex-input { flex:1; padding:7px 10px; border:1.5px solid var(--bdr); border-radius:8px; font-size:13px; font-family:monospace; background:var(--inp-bg); color:var(--tx); }
     .color-hex-preview { width:34px; height:34px; border-radius:6px; border:1.5px solid var(--bdr); flex-shrink:0; }
 
+    /* 레이아웃 한도 초과 피드백 */
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 60%{transform:translateX(5px)} 80%{transform:translateX(-3px)} }
+    .layout-select-card.shake { animation:shake .4s ease; }
+    #layoutLimitToast { position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:9999;white-space:nowrap; }
+    #layoutLimitToast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+
     /* Figma 모달 */
     .figma-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center; }
     .figma-modal-overlay.open { display:flex; }
@@ -1126,7 +1132,7 @@
       <span class="sc-toggle-arrow" id="scVariationsArrow">▼</span>
     </div>
     <div id="scVariations" class="sc-section-body">
-      <p style="font-size:12px;color:var(--tx-sub);margin-bottom:10px">생성할 광고 레이아웃을 선택하세요. 각 레이아웃마다 3가지 카피 배리에이션이 생성됩니다.</p>
+      <p style="font-size:12px;color:var(--tx-sub);margin-bottom:10px">광고 1세트 = 레이아웃 3종. 최대 3개까지 선택할 수 있습니다.</p>
       <div id="layoutCardGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
 
         <!-- 기본형 카드 -->
@@ -2754,12 +2760,33 @@
 
   const PERSON_LAYOUTS = ['instructor', 'seminar', 'review'];
 
+  let _layoutToastTimer = null;
+  function showLayoutLimitToast() {
+    let toast = document.getElementById('layoutLimitToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'layoutLimitToast';
+      toast.textContent = '최대 3개까지 선택할 수 있어요';
+      document.body.appendChild(toast);
+    }
+    clearTimeout(_layoutToastTimer);
+    toast.classList.add('show');
+    _layoutToastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
   function toggleLayout(layoutId, cardEl) {
     if (selectedLayouts.has(layoutId)) {
       if (selectedLayouts.size <= 1) return; // 최소 1개 보장
       selectedLayouts.delete(layoutId);
       cardEl.classList.remove('selected');
     } else {
+      if (selectedLayouts.size >= 3) {
+        // 3개 초과 시 카드 흔들기 피드백
+        cardEl.classList.add('shake');
+        setTimeout(() => cardEl.classList.remove('shake'), 400);
+        showLayoutLimitToast();
+        return;
+      }
       selectedLayouts.add(layoutId);
       cardEl.classList.add('selected');
     }
@@ -2847,18 +2874,19 @@
   }
 
   function updateLayoutCount() {
-    const total = selectedLayouts.size; // 레이아웃 1개당 결과 1개
-    const names = [];
-    if (selectedLayouts.has('photo-overlay')) names.push('기본형');
-    if (selectedLayouts.has('twitter')) names.push('커뮤니티형');
-    const scVarSelCount = document.getElementById('scVarSelCount');
-    if (scVarSelCount) scVarSelCount.textContent = `${names.join(' + ')} · ${total}개 생성`;
+    const total = selectedLayouts.size;
+    const isFull = total >= 3;
+    const countText = `${total}/3`;
     const scVarCount = document.getElementById('scVarCount');
-    if (scVarCount) scVarCount.textContent = `${total}개`;
-    const btn = document.getElementById('generateBtn');
-    if (btn) btn.textContent = `✨ 광고소재 생성하기`;
+    if (scVarCount) {
+      scVarCount.textContent = isFull ? `${countText} 완료 ✓` : countText;
+      scVarCount.style.color = isFull ? 'var(--accent)' : 'var(--tx-muted)';
+      scVarCount.style.fontWeight = isFull ? '700' : 'normal';
+    }
+    const scVarSelCount = document.getElementById('scVarSelCount');
+    if (scVarSelCount) scVarSelCount.textContent = isFull ? `${total}개 레이아웃 선택 완료` : `${total}/3 선택 — 총 ${total}개 생성 예정`;
     const varSelectionCount = document.getElementById('varSelectionCount');
-    if (varSelectionCount) varSelectionCount.textContent = `${total}개 선택됨`;
+    if (varSelectionCount) varSelectionCount.textContent = `${countText} 선택됨`;
   }
 
   function getSelectedLayouts() {
@@ -2896,9 +2924,9 @@
 
   function catalogSelectAll() {
     ['photo-overlay','twitter'].forEach(id => {
-      selectedLayouts.add(id);
+      if (selectedLayouts.size < 3) selectedLayouts.add(id);
       const card = document.querySelector(`.layout-select-card[data-layout="${id}"]`);
-      if (card) card.classList.add('selected');
+      if (card) card.classList.toggle('selected', selectedLayouts.has(id));
     });
     updateLayoutCount();
   }
