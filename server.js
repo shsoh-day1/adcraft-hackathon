@@ -993,6 +993,28 @@ function nl2br(str) {
   return (str || '').replace(/\n/g, '<br>');
 }
 
+// ─── 광고 CSS 변수 빌더 ───
+// colors: { accentColor, headlineColor, subColor, ctaColor, ctaTextColor }
+function buildCssVars(bgColor = '#1B5BD4', colors = {}) {
+  const accent     = colors.accentColor   || bgColor;
+  const headline   = colors.headlineColor || '#ffffff';
+  const sub        = colors.subColor      || 'rgba(255,255,255,0.82)';
+  const ctaBg      = colors.ctaColor      || accent;
+  const ctaText    = colors.ctaTextColor  || '#ffffff';
+  return `--accent:${accent};--headline-clr:${headline};--sub-clr:${sub};--cta-bg:${ctaBg};--cta-text:${ctaText};`;
+}
+
+// ─── 밝기 판별 (SNS 다크/라이트 자동 결정) ───
+// luminance() 함수가 이미 존재하므로 활용
+function isColorDark(hex) {
+  return luminance(hex) < 128;
+}
+
+// ─── 후기 본문 **굵게** 마크 → <strong> 변환 ───
+function boldMark(str = '') {
+  return str.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--accent)">$1</strong>');
+}
+
 // ─── HTML 생성 (레이아웃 dispatcher) ───
 function generateAdHTML(d, bgColor = '#1B5BD4', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   // 포토오버레이 3종 (메인)
