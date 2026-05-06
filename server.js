@@ -851,41 +851,53 @@ async function analyzeReferenceImages(images) {
 
 // ─── 소재 기본 정보 자동 추출 ───
 async function extractPageInfo(pageContent) {
+  // 언어별 텍스트 길이 제한 (베트남어/다국어는 diacritic 많아 토큰 소모 증가)
+  const truncated = pageContent.slice(0, 2500);
+
   const prompt = `아래 상세페이지 내용을 분석해서 META 광고 소재 기본 정보를 추출하라.
 
 페이지 내용:
-${pageContent}
+${truncated}
 
-추출 항목:
-- language: 페이지의 주요 언어 (예: "ko", "vi", "en", "ja" — ISO 639-1 코드)
-- target: 이 과정/서비스의 핵심 타겟 고객 (1-2문장, 구체적으로, 페이지 언어로 작성)
-- usp1: 서비스·콘텐츠·커리큘럼 자체의 핵심 차별화 강점 1 (한 줄, 페이지 언어로 작성)
-  절대 제외: 결제 조건(무이자 할부, 카드 할인), 가격/할인율, 기간 한정 이벤트, 수강료 정보
-  포함 대상: 커리큘럼 방식, 강사 역량, 학습 성과, 취업/전환 지원, 독점 콘텐츠, 업계 인지도
-- usp2: 서비스 자체의 차별화 강점 2 (위 기준 동일 적용, 페이지 언어로 작성)
-- usp3: 서비스 자체의 차별화 강점 3 (위 기준 동일 적용, 페이지 언어로 작성)
-- ad_set_message: 이 캠페인의 전체 메시지 방향 (1문장, 페이지 언어로 작성)
-- creative_message: 이 소재에서 강조할 핵심 포인트 (1문장, 페이지 언어로 작성)
-- pain_point: 타겟이 현재 겪는 핵심 불만·결핍 (1문장, "~가 없어서 ~이 힘들다" 형태)
-- agitation: pain_point를 방치했을 때 생기는 불안·손실 (1문장, "그냥 두면 ..." 형태)
-- solution_angle: 이 서비스가 제공하는 Before→After 변화 각도 (1문장, "이 과정으로 ..." 형태)
-- usp1_benefit: usp1을 고객 관점 베네핏으로 번역 (기능→가치, 예: "12개월 무제한" → "진도 늦어져도 끝까지 완주")
-- usp2_benefit: usp2 베네핏 번역
-- usp3_benefit: usp3 베네핏 번역
+추출 항목 (각 값은 30자 이내 간결하게):
+- language: 페이지 주요 언어 ISO 코드 ("ko"/"vi"/"en" 등)
+- target: 핵심 타겟 고객 (1문장, 페이지 언어로)
+- usp1: 핵심 차별화 강점 1 (한 줄, 페이지 언어로) — 가격/할인 제외
+- usp2: 핵심 차별화 강점 2 (한 줄, 페이지 언어로)
+- usp3: 핵심 차별화 강점 3 (한 줄, 페이지 언어로)
+- ad_set_message: 캠페인 전체 메시지 방향 (1문장)
+- creative_message: 이 소재에서 강조할 핵심 포인트 (1문장)
+- pain_point: 타겟의 핵심 불만·결핍 (1문장)
+- agitation: pain_point 방치 시 불안·손실 (1문장)
+- solution_angle: Before→After 변화 각도 (1문장)
+- usp1_benefit: usp1의 고객 가치 번역 (기능→베네핏)
+- usp2_benefit: usp2 베네핏
+- usp3_benefit: usp3 베네핏
 
-JSON만 반환:
+JSON만 반환 (다른 텍스트 없이):
 {"language":"","target":"","usp1":"","usp2":"","usp3":"","ad_set_message":"","creative_message":"","pain_point":"","agitation":"","solution_angle":"","usp1_benefit":"","usp2_benefit":"","usp3_benefit":""}`;
 
-  const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 900,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,   // 900→1500: 베트남어 등 다국어 diacritic 토큰 대응
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-  const raw = msg.content[0].text.trim();
-  const match = raw.match(/\{[\s\S]+\}/);
-  if (!match) throw new Error('소재 정보 자동 추출 실패');
-  return JSON.parse(match[0]);
+    const raw = msg.content[0].text.trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) {
+      if (attempt === 2) throw new Error('페이지 정보 추출 실패 — 페이지 내용이 충분하지 않을 수 있습니다');
+      console.warn('[extractPageInfo] JSON 없음, 재시도...');
+      continue;
+    }
+    try {
+      return JSON.parse(match[0]);
+    } catch (parseErr) {
+      if (attempt === 2) throw new Error('페이지 정보 파싱 실패 — 다시 시도해주세요');
+      console.warn('[extractPageInfo] JSON 파싱 오류, 재시도:', parseErr.message);
+    }
+  }
 }
 
 // ─── 카피 배리에이션 3종 생성 ───
