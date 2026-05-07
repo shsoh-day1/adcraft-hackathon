@@ -725,7 +725,10 @@
       </div>
 
       <div class="form-group">
-        <label>상세페이지 URL *</label>
+        <label style="display:flex;align-items:center;gap:6px">
+          상세페이지 URL
+          <span style="font-size:10px;background:var(--bdr);color:var(--tx-muted);border-radius:4px;padding:1px 6px;font-weight:500">선택</span>
+        </label>
         <input type="url" id="urlInput" placeholder="https://example.com/product/..." />
       </div>
 
@@ -736,6 +739,15 @@
         </label>
         <input type="url" id="gdocsUrlInput" placeholder="Google Docs 또는 Drive 링크 (공개 공유 필요)" style="font-size:12px" />
         <p style="font-size:11px;color:var(--tx-muted);margin-top:4px;line-height:1.5">입력하면 상세페이지보다 CR 문서 내용이 우선 반영됩니다. 문서 공유 설정을 "링크가 있는 모든 사용자"로 변경해주세요.</p>
+      </div>
+
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px">
+          직접 프롬프트 입력
+          <span style="font-size:10px;background:var(--bdr);color:var(--tx-muted);border-radius:4px;padding:1px 6px;font-weight:500">선택</span>
+        </label>
+        <textarea id="directPromptInput" rows="4" placeholder="광고 만들 제품/서비스 정보를 자유롭게 입력하세요&#10;예: 30대 직장인 대상 데이터 분석 온라인 강의. 12개월 무제한 수강. 실무 현업 강사진. 수강료 39만원에서 20% 할인 중."></textarea>
+        <p style="font-size:11px;color:var(--tx-muted);margin-top:4px;line-height:1.5">URL 없이 직접 제품/서비스 정보를 입력하면 AI가 광고 카피를 생성합니다. URL과 함께 입력하면 추가 컨텍스트로 활용됩니다.</p>
       </div>
 
       <!-- AI 디자인 제안 버튼 -->
@@ -969,7 +981,7 @@
       </div>
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       <div class="step-list">
-        <div class="step-item" id="step1"><div class="step-dot"></div>상세페이지 크롤링</div>
+        <div class="step-item" id="step1"><div class="step-dot"></div>소스 로드 (URL / 문서 / 프롬프트)</div>
         <div class="step-item" id="step2"><div class="step-dot"></div>레퍼런스 이미지 스타일 분석</div>
         <div class="step-item" id="step3"><div class="step-dot"></div>소재 정보 추출 & 구조화</div>
         <div class="step-item" id="step4"><div class="step-dot"></div>카피 배리에이션 9종 생성 (A1~C3)</div>
@@ -1085,23 +1097,33 @@
   <!-- 헤더 -->
   <div class="sc-header-area">
     <h1>AdCraft</h1>
-    <p>상세페이지 URL을 입력하면 META 인스타그램 광고소재를 자동 생성합니다</p>
+    <p>URL, CR 문서, 또는 직접 프롬프트 입력으로 META 인스타그램 광고소재를 자동 생성합니다</p>
   </div>
 
   <!-- 메인 입력 카드 -->
   <div class="sc-card">
 
-    <!-- ① URL + 생성 버튼 -->
-    <div class="sc-url-row">
-      <input type="url" id="scUrlProxy" placeholder="https://example.com/product/..."
-        oninput="document.getElementById('urlInput').value=this.value" />
-      <button class="btn-generate" onclick="document.getElementById('urlInput').value=document.getElementById('scUrlProxy').value;startGeneration()">✨ 광고소재 생성하기</button>
+    <!-- 소스 입력 안내 -->
+    <div style="font-size:12px;color:var(--tx-muted);margin-bottom:8px;padding:8px 10px;background:var(--step-idle);border-radius:8px;line-height:1.5">
+      아래 3가지 중 <strong style="color:var(--accent)">하나 이상</strong> 입력 후 생성하기를 누르세요
     </div>
 
-    <!-- CR 문서 URL (선택) -->
-    <div style="margin-top:8px">
+    <!-- ① 상세페이지 URL (선택) -->
+    <div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-        <span style="font-size:12px;color:var(--tx-sub);font-weight:600">CR 문서 URL</span>
+        <span style="font-size:12px;color:var(--tx-sub);font-weight:600">① 상세페이지 URL</span>
+        <span style="font-size:10px;background:var(--bdr);color:var(--tx-muted);border-radius:4px;padding:1px 6px">선택</span>
+      </div>
+      <input type="url" id="scUrlProxy" placeholder="https://example.com/product/..."
+        style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;transition:border-color .15s;box-sizing:border-box"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'"
+        oninput="document.getElementById('urlInput').value=this.value" />
+    </div>
+
+    <!-- ② CR 문서 URL (선택) -->
+    <div style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <span style="font-size:12px;color:var(--tx-sub);font-weight:600">② CR 문서 URL</span>
         <span style="font-size:10px;background:var(--bdr);color:var(--tx-muted);border-radius:4px;padding:1px 6px">선택</span>
       </div>
       <input type="url" id="scGdocsProxy" placeholder="Google Docs 링크 붙여넣기 (공개 공유 필요)"
@@ -1109,6 +1131,22 @@
         onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'"
         oninput="document.getElementById('gdocsUrlInput').value=this.value" />
     </div>
+
+    <!-- ③ 직접 프롬프트 입력 (선택) -->
+    <div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <span style="font-size:12px;color:var(--tx-sub);font-weight:600">③ 직접 프롬프트 입력</span>
+        <span style="font-size:10px;background:var(--bdr);color:var(--tx-muted);border-radius:4px;padding:1px 6px">선택</span>
+      </div>
+      <textarea id="scDirectPromptProxy" rows="4" placeholder="광고 만들 제품/서비스 정보를 자유롭게 입력하세요&#10;예: 30대 직장인 대상 데이터 분석 온라인 강의. 12개월 무제한 수강. 실무 현업 강사진. 수강료 39만원에서 20% 할인 중."
+        style="width:100%;border:1.5px solid var(--inp-bdr);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--tx);background:var(--inp-bg);font-family:inherit;outline:none;resize:vertical;transition:border-color .15s;box-sizing:border-box;line-height:1.5"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--inp-bdr)'"
+        oninput="document.getElementById('directPromptInput').value=this.value"></textarea>
+      <p style="font-size:11px;color:var(--tx-muted);margin-top:4px;line-height:1.5">URL 없이 제품/서비스 정보를 직접 입력해도 광고 생성이 가능합니다</p>
+    </div>
+
+    <!-- 생성 버튼 -->
+    <button class="btn-generate" onclick="syncScProxies();startGeneration()" style="width:100%;margin-bottom:0">✨ 광고소재 생성하기</button>
 
     <!-- ② 소재 정보 토글 — 기본 펼침 -->
     <div class="sc-toggle-header" onclick="toggleSection('scBasic')">
@@ -1258,12 +1296,23 @@
           <button class="color-panel-tab" data-color-el="headlineColor" onclick="switchColorTab(this)">헤드라인</button>
           <button class="color-panel-tab" data-color-el="subColor" onclick="switchColorTab(this)">서브카피</button>
         </div>
-        <div class="color-swatches" id="colorSwatches"></div>
-        <div class="color-hex-row">
-          <span style="font-size:13px;font-weight:600;color:var(--tx-sub)">#</span>
-          <input class="color-hex-input" id="colorHexInput" maxlength="6" placeholder="1877f2" oninput="onColorHexInput(this.value)">
-          <div class="color-hex-preview" id="colorHexPreview"></div>
+
+        <!-- 컬러 피커: 스와치 버튼 + 헥스 입력 + 스포이드 -->
+        <div class="color-picker-wrap" id="colorPanelPickerWrap" onclick="document.getElementById('colorPanelNativePicker').click()">
+          <input type="color" id="colorPanelNativePicker" value="#1877f2"
+            style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+            oninput="onColorPanelNativeChange(this.value)" />
+          <div class="color-swatch-btn" id="colorPanelSwatch" style="background:#1877f2"></div>
+          <span style="font-size:13px;font-weight:600;color:var(--tx-sub);margin-right:2px">#</span>
+          <input class="hex-input" id="colorHexInput" type="text" maxlength="6" placeholder="1877f2"
+            onclick="event.stopPropagation()"
+            oninput="onColorHexInput(this.value)" />
+          <span class="eyedropper-icon" title="스포이드로 화면에서 색상 선택"
+            onclick="event.stopPropagation();openColorPanelEyeDropper()" style="cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;opacity:.6"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>
+          </span>
         </div>
+
         <div style="margin-top:8px;font-size:11px;color:var(--tx-muted)">색상을 바꾸면 미리보기에 즉시 반영됩니다. 재생성 없이 색만 교체합니다.</div>
         <button onclick="resetColors()" style="margin-top:8px;font-size:12px;padding:5px 12px;border:1px solid var(--bdr);border-radius:6px;background:var(--panel-bg);color:var(--tx-sub);cursor:pointer">↺ 기본값으로 초기화</button>
       </div>
@@ -1382,7 +1431,7 @@
     </div>
     <div class="progress-track"><div class="progress-fill" id="scProgressFill"></div></div>
     <div class="step-list">
-      <div class="step-item" id="scStep1"><div class="step-dot"></div>상세페이지 크롤링</div>
+      <div class="step-item" id="scStep1"><div class="step-dot"></div>소스 로드 (URL / 문서 / 프롬프트)</div>
       <div class="step-item" id="scStep2"><div class="step-dot"></div>레퍼런스 이미지 스타일 분석</div>
       <div class="step-item" id="scStep3"><div class="step-dot"></div>소재 정보 추출 &amp; 구조화</div>
       <div class="step-item" id="scStep4"><div class="step-dot"></div>카피 배리에이션 9종 생성 (A1~C3)</div>
@@ -2940,9 +2989,23 @@
     });
   }
 
+  function syncScProxies() {
+    const scUrl = document.getElementById('scUrlProxy');
+    if (scUrl) document.getElementById('urlInput').value = scUrl.value;
+    const scGdocs = document.getElementById('scGdocsProxy');
+    if (scGdocs) document.getElementById('gdocsUrlInput').value = scGdocs.value;
+    const scPrompt = document.getElementById('scDirectPromptProxy');
+    if (scPrompt) document.getElementById('directPromptInput').value = scPrompt.value;
+  }
+
   async function startGeneration() {
     const url = document.getElementById('urlInput').value.trim();
-    if (!url) { alert('URL을 입력해주세요.'); return; }
+    const gdocs = document.getElementById('gdocsUrlInput')?.value.trim() || '';
+    const directPrompt = document.getElementById('directPromptInput')?.value.trim() || '';
+    if (!url && !gdocs && !directPrompt) {
+      alert('상세페이지 URL, CR 문서 URL, 직접 프롬프트 중 하나 이상 입력해주세요.');
+      return;
+    }
     const btn = document.getElementById('generateBtn');
     btn.disabled = true;
     document.getElementById('placeholder').style.display = 'none';
@@ -2979,6 +3042,7 @@
         body: JSON.stringify({
           url,
           gdocs_url: document.getElementById('gdocsUrlInput')?.value.trim() || '',
+          direct_prompt: document.getElementById('directPromptInput')?.value.trim() || '',
           target: document.getElementById('targetInput').value.trim(),
           usp1: document.getElementById('usp1Input').value.trim(),
           usp2: document.getElementById('usp2Input').value.trim(),
@@ -3219,7 +3283,7 @@
   // ── AI 디자인 제안 ──
   async function fetchDesignSuggestion() {
     const url = document.getElementById('urlInput').value.trim();
-    if (!url) { alert('URL을 먼저 입력해주세요.'); return; }
+    if (!url) { alert('AI 디자인 제안은 상세페이지 URL이 필요합니다. URL을 먼저 입력해주세요.'); return; }
     const btn = document.getElementById('btnSuggest');
     const icon = document.getElementById('suggestBtnIcon');
     const text = document.getElementById('suggestBtnText');
@@ -3939,50 +4003,78 @@
   };
 
   function initColorPanel() {
-    const container = document.getElementById('colorSwatches');
-    if (!container) return;
-    container.innerHTML = COLOR_PALETTE.map(c =>
-      `<div class="color-swatch-item" style="background:${c}" data-color="${c}" onclick="selectSwatch('${c}')"></div>`
-    ).join('');
-    updateHexInput(adColors[activeColorEl] || '');
+    updateColorPanelPicker(adColors[activeColorEl] || '#1877f2');
   }
 
   function switchColorTab(btn) {
     document.querySelectorAll('.color-panel-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeColorEl = btn.dataset.colorEl;
-    updateHexInput(adColors[activeColorEl] || '');
-    document.querySelectorAll('.color-swatch-item').forEach(el => {
-      el.classList.toggle('selected', el.dataset.color === (adColors[activeColorEl] || ''));
-    });
-  }
-
-  function selectSwatch(hex) {
-    applyColor(activeColorEl, hex);
-    updateHexInput(hex.replace('#',''));
-    document.querySelectorAll('.color-swatch-item').forEach(el => {
-      el.classList.toggle('selected', el.dataset.color === hex);
-    });
+    updateColorPanelPicker(adColors[activeColorEl] || '');
   }
 
   function onColorHexInput(val) {
     const clean = val.replace(/[^0-9a-fA-F]/g,'').slice(0,6);
     document.getElementById('colorHexInput').value = clean;
-    if (clean.length === 6) applyColor(activeColorEl, '#' + clean);
+    if (clean.length === 6) {
+      const hex = '#' + clean;
+      applyColor(activeColorEl, hex);
+      const swatch = document.getElementById('colorPanelSwatch');
+      if (swatch) swatch.style.background = hex;
+      const picker = document.getElementById('colorPanelNativePicker');
+      if (picker) picker.value = hex;
+    }
   }
 
-  function updateHexInput(hex) {
-    const clean = (hex || '').replace('#','');
+  // 컬러 패널 네이티브 피커 변경 시
+  function onColorPanelNativeChange(hex) {
+    applyColor(activeColorEl, hex);
+    const clean = hex.replace('#','');
     const input = document.getElementById('colorHexInput');
-    const preview = document.getElementById('colorHexPreview');
     if (input) input.value = clean;
-    if (preview) preview.style.background = clean.length === 6 ? '#' + clean : 'transparent';
+    const swatch = document.getElementById('colorPanelSwatch');
+    if (swatch) swatch.style.background = hex;
+  }
+
+  // 컬러 패널 스포이드 (EyeDropper API)
+  async function openColorPanelEyeDropper() {
+    if (window.EyeDropper) {
+      try {
+        const result = await new EyeDropper().open();
+        const hex = result.sRGBHex;
+        applyColor(activeColorEl, hex);
+        const clean = hex.replace('#','');
+        const input = document.getElementById('colorHexInput');
+        if (input) input.value = clean;
+        const swatch = document.getElementById('colorPanelSwatch');
+        if (swatch) swatch.style.background = hex;
+        const picker = document.getElementById('colorPanelNativePicker');
+        if (picker) picker.value = hex;
+      } catch(e) { /* 사용자 취소 */ }
+    } else {
+      document.getElementById('colorPanelNativePicker').click();
+    }
+  }
+
+  // 컬러 패널 UI 전체 동기화
+  function updateColorPanelPicker(hex) {
+    const clean = (hex || '').replace('#','');
+    const validHex = /^[0-9a-fA-F]{6}$/.test(clean) ? '#' + clean : '#1877f2';
+    const input = document.getElementById('colorHexInput');
+    if (input) input.value = clean.length === 6 ? clean : '';
+    const swatch = document.getElementById('colorPanelSwatch');
+    if (swatch) swatch.style.background = validHex;
+    const picker = document.getElementById('colorPanelNativePicker');
+    if (picker) picker.value = validHex;
+  }
+
+  // 하위 호환: 기존 updateHexInput 호출 있을 경우 대비
+  function updateHexInput(hex) {
+    updateColorPanelPicker(hex);
   }
 
   function applyColor(element, hex) {
     adColors[element] = hex;
-    const preview = document.getElementById('colorHexPreview');
-    if (preview) preview.style.background = hex;
     localStorage.setItem('adcraft_colors', JSON.stringify(adColors));
     const cssVar = CSS_VAR_MAP[element];
     if (!cssVar) return;
@@ -3997,8 +4089,7 @@
   function resetColors() {
     adColors = { accentColor:null, ctaColor:null, ctaTextColor:null, headlineColor:null, subColor:null };
     localStorage.removeItem('adcraft_colors');
-    updateHexInput('');
-    document.querySelectorAll('.color-swatch-item').forEach(el => el.classList.remove('selected'));
+    updateColorPanelPicker('');
     Object.values(CSS_VAR_MAP).forEach(cssVar => {
       document.querySelectorAll('iframe').forEach(iframe => {
         try {

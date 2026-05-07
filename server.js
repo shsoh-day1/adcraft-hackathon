@@ -194,10 +194,11 @@ app.post('/api/generate-ad', async (req, res) => {
     event_badge = '무료 LIVE',
     colors = {},
     gdocs_url = '',
+    direct_prompt = '',        // 직접 입력 프롬프트 (URL 없이도 생성 가능)
     use_gpt_catalog = false,  // true일 때만 GPT 카탈로그 HTML 생성 (Vercel 60초 제한으로 기본 OFF)
   } = req.body;
 
-  if (!url) return res.status(400).json({ error: 'URL이 필요합니다' });
+  if (!url && !gdocs_url && !direct_prompt) return res.status(400).json({ error: 'URL, CR 문서, 또는 직접 프롬프트 중 하나를 입력해주세요' });
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' });
   }
@@ -205,18 +206,29 @@ app.post('/api/generate-ad', async (req, res) => {
   try {
     global._reqStart = Date.now();
     console.log('\n' + '─'.repeat(50));
-    console.log('[🚀 생성 시작]', url);
+    console.log('[🚀 생성 시작]', url || (direct_prompt ? '직접 프롬프트' : gdocs_url || '(소스 없음)'));
     console.log('─'.repeat(50));
 
     // ── STEP 1: 페이지 크롤링 + Google Docs 병렬 fetch ──
-    const [{ text: rawPageContent, themeColor: pageThemeColor, ogImageUrl, personImageUrl: autoPersonImageUrl }, gdocsText] = await Promise.all([
-      fetchPageContent(url),
+    // url이 없으면 크롤링 건너뜀 (direct_prompt 또는 gdocs만으로도 생성 가능)
+    const [crawlResult, gdocsText] = await Promise.all([
+      url ? fetchPageContent(url) : Promise.resolve({ text: '', themeColor: null, ogImageUrl: null, personImageUrl: null }),
       gdocs_url ? fetchGoogleDocsContent(gdocs_url).catch(err => { console.warn('[Google Docs 경고]', err.message); return ''; }) : Promise.resolve(''),
     ]);
-    const pageContent = gdocsText
-      ? `[CR 문서]\n${gdocsText}\n\n[상세페이지]\n${rawPageContent}`
-      : rawPageContent;
-    console.log('[크롤링 완료] 텍스트', pageContent.length, 'chars | 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X', '| 인물:', autoPersonImageUrl ? 'O' : 'X', '| Docs:', gdocsText ? gdocsText.length + 'chars' : 'X');
+    const { text: rawPageContent, themeColor: pageThemeColor, ogImageUrl, personImageUrl: autoPersonImageUrl } = crawlResult;
+
+    // 소스 우선순위: direct_prompt > gdocs > 상세페이지 (복수 소스 시 모두 합산)
+    let pageContent;
+    if (direct_prompt) {
+      pageContent = `[직접 입력 프롬프트]\n${direct_prompt}`;
+      if (gdocsText) pageContent += `\n\n[CR 문서]\n${gdocsText}`;
+      if (rawPageContent) pageContent += `\n\n[상세페이지]\n${rawPageContent}`;
+    } else if (gdocsText) {
+      pageContent = `[CR 문서]\n${gdocsText}\n\n[상세페이지]\n${rawPageContent}`;
+    } else {
+      pageContent = rawPageContent;
+    }
+    console.log('[소스 로드 완료] 텍스트', pageContent.length, 'chars | 소스:', url ? 'URL' : '', gdocsText ? '+Docs' : '', direct_prompt ? '+직접프롬프트' : '', '| 테마:', pageThemeColor || '없음', '| OG:', ogImageUrl ? 'O' : 'X', '| 인물:', autoPersonImageUrl ? 'O' : 'X');
 
     // ── STEP 2: 이미지 에이전트(레퍼런스 분석만) + 소재정보 추출 병렬 실행 ──
     // → 이미지 에이전트: 레퍼런스 스타일 분석만 (배경 생성은 카피 완료 후 STEP 4.5)
