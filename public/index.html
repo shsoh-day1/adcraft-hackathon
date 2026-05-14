@@ -3489,15 +3489,15 @@
       v.html = data.html;
       if (scCurrentAiImageData) { leftAiBgImg = scCurrentAiImageData; leftAiBgCss = null; }
       else { leftAiBgCss = scCurrentCssBg; leftAiBgImg = null; }
-      document.getElementById('previewFrame').srcdoc = data.html;
+      writeToIframe(document.getElementById('previewFrame'), data.html, activateClickEdit);
       document.getElementById('codeBox').textContent = data.html;
       const scFrame2 = document.getElementById('scPreviewFrame');
-      if (scFrame2) scFrame2.srcdoc = data.html;
+      if (scFrame2) writeToIframe(scFrame2, data.html, activateScClickEdit);
       const scCodeBox2 = document.getElementById('scCodeBox');
       if (scCodeBox2) scCodeBox2.textContent = data.html;
       // 카탈로그 썸네일도 업데이트
       const catIframe = document.getElementById(`catIframe${activeVariation}`);
-      if (catIframe) catIframe.srcdoc = data.html;
+      if (catIframe) writeToIframe(catIframe, data.html);
       btn.textContent = '✅ 적용 완료!';
     } catch (e) {
       alert('적용 실패: ' + e.message);
@@ -3571,10 +3571,10 @@
       const applyData = await applyRes.json();
       if (!applyRes.ok) throw new Error(applyData.error);
       v.html = applyData.html;
-      document.getElementById('previewFrame').srcdoc = applyData.html;
+      writeToIframe(document.getElementById('previewFrame'), applyData.html, activateClickEdit);
       document.getElementById('codeBox').textContent = applyData.html;
       const scFrame = document.getElementById('scPreviewFrame');
-      if (scFrame) scFrame.srcdoc = applyData.html;
+      if (scFrame) writeToIframe(scFrame, applyData.html, activateScClickEdit);
       const scCodeBox = document.getElementById('scCodeBox');
       if (scCodeBox) scCodeBox.textContent = applyData.html;
       setAllStatus('✅ 적용 완료!');

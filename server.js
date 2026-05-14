@@ -2297,9 +2297,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
   const isDark = lum < 140;
   // 배경이 없으면 다크 시네마틱 그라디언트
   const bgBase = isDark ? bgColor : '#1a1a1a';
-  const bgStyle = bgImageBase64
-    ? `background:#000`
-    : cssBackground
+  const bgStyle = cssBackground
     ? `background:${cssBackground}`
     : `background:linear-gradient(155deg,${bgBase} 0%,#060606 100%)`;
 
@@ -2363,9 +2361,7 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
 function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const bgBase = bgColor || '#1a1a1a';
-  const bgStyle = bgImageBase64
-    ? `background:#000`
-    : cssBackground
+  const bgStyle = cssBackground
     ? `background:${cssBackground}`
     : `background:linear-gradient(155deg,${bgBase} 0%,#050505 100%)`;
 
@@ -2433,9 +2429,7 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
 function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard', ctaColor = null) {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
   const bgBase = bgColor || '#1a1a1a';
-  const bgStyle = bgImageBase64
-    ? `background:#000`
-    : cssBackground
+  const bgStyle = cssBackground
     ? `background:${cssBackground}`
     : `background:linear-gradient(135deg,${bgBase} 0%,#080808 100%)`;
 
