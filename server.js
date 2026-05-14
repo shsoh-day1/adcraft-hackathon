@@ -1370,7 +1370,7 @@ ${figmaStylesContent}
 - hook: 서브카피·상황공감 (최대 28자, 의문문 권장)
 - headline_line1: 메인카피 1줄 (최대 14자, 임팩트 강하게)
 - headline_line2: 메인카피 2줄 (최대 14자, 핵심 키워드)
-- cta_badge: CTA 뱃지 (이모지+최대 12자)
+- cta_badge: CTA 뱃지 (이모지+최대 12자, 선택사항 — 뱃지가 없는 게 더 나으면 빈 문자열 ""로 설정)
 - cta_text: CTA 문구 (최대 24자, "→"로 끝)
 - visual_stat1_value: 핵심 수치 (예: "4만명+", "92%", "3일 남음")
 - visual_stat1_label: 수치 설명 (예: "누적 수강생", "취업 성공률")
@@ -2077,12 +2077,6 @@ function generateHeadlineBandHTML(d, bgColor = '#FFB300', font = 'Pretendard') {
 <body>
 <div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:linear-gradient(168deg,#F0E8D5 0%,#F0E8D5 36%,#FFBE00 58%,#FF9500 100%)">
 
-  <!-- 브랜드 태그 -->
-  <div data-brand-block style="position:absolute;left:52px;top:42px;display:flex;align-items:center;gap:12px;z-index:10">
-    <div style="width:30px;height:30px;background:#1a1a1a;border-radius:6px"></div>
-    <span data-field="brand" style="font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px">${d.brand || '브랜드'}</span>
-  </div>
-
   <!-- 헤드라인 밴드 1 (검정 + 시안) -->
   <div style="position:absolute;left:0;top:110px;width:100%;background:#000;padding:12px 52px;z-index:5">
     <div data-field="headline_line1" style="font-size:${hl1Size}px;font-weight:900;color:#00E5FF;letter-spacing:-2.5px;line-height:1.06;white-space:nowrap;overflow:hidden;text-overflow:clip">${hl1}</div>
@@ -2251,12 +2245,6 @@ function generateImageMosaicHTML(d, bgColor = '#1A1A2E', bgImageBase64 = null, c
   <!-- 도트 그리드 배경 패턴 -->
   <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);background-size:32px 32px;z-index:0;pointer-events:none"></div>
 
-  <!-- 브랜드 태그 -->
-  <div data-brand-block style="position:absolute;left:52px;top:36px;display:flex;align-items:center;gap:12px;z-index:10">
-    <div style="width:28px;height:28px;background:rgba(255,255,255,0.85);border-radius:6px"></div>
-    <span data-field="brand" style="font-size:24px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
-  </div>
-
   <!-- 상단 텍스트 영역 (35%) -->
   <div style="position:absolute;top:80px;left:52px;right:52px;z-index:10">
 
@@ -2347,12 +2335,6 @@ function generatePhotoOverlayHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, 
   <!-- 하단 다크 오버레이 (텍스트 가독성 — 피그마 디자인 핵심) -->
   <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.12) 35%,rgba(0,0,0,0.62) 52%,rgba(0,0,0,0.90) 68%,rgba(0,0,0,0.97) 82%,#000 100%);z-index:1;pointer-events:none"></div>
 
-  <!-- 브랜드 태그 (상단) -->
-  <div data-brand-block style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
-    <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
-    <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">${d.brand || '브랜드'}</span>
-  </div>
-
   <!-- 서브카피 (피그마: 42px, top≈688 비율 기준) -->
   <div data-field="hook" style="position:absolute;left:62px;top:634px;right:80px;z-index:10;font-size:40px;font-weight:700;color:rgba(255,255,255,0.82);letter-spacing:-0.84px;line-height:1.28;text-shadow:0 2px 8px rgba(0,0,0,0.6)">
     ${nl2br(d.hook)}
@@ -2417,12 +2399,6 @@ function generatePhotoCenterPanelHTML(d, bgColor = '#1a1a1a', bgImageBase64 = nu
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,0.55) 62%,rgba(0,0,0,0.88) 100%);z-index:1;pointer-events:none"></div>
   <!-- 상단 추가 어둠 -->
   <div style="position:absolute;top:0;left:0;right:0;height:200px;background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);z-index:1;pointer-events:none"></div>
-
-  <!-- 브랜드 태그 (상단) -->
-  <div data-brand-block style="position:absolute;left:64px;top:54px;display:flex;align-items:center;gap:10px;z-index:10">
-    <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
-    <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 6px rgba(0,0,0,0.6)">${d.brand || '브랜드'}</span>
-  </div>
 
   <!-- 중앙 글래스모픽 패널 -->
   <div style="position:absolute;left:64px;right:64px;top:50%;transform:translateY(-54%);z-index:10;
@@ -2493,12 +2469,6 @@ function generatePhotoSideHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, css
   <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.94) 0%,rgba(0,0,0,0.82) 38%,rgba(0,0,0,0.48) 62%,rgba(0,0,0,0.1) 80%,transparent 100%);z-index:1;pointer-events:none"></div>
   <!-- 하단 어둠 (CTA 영역) -->
   <div style="position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,0.6));z-index:1;pointer-events:none"></div>
-
-  <!-- 브랜드 태그 (상단 좌) -->
-  <div data-brand-block style="position:absolute;left:64px;top:56px;display:flex;align-items:center;gap:10px;z-index:10">
-    <div style="width:24px;height:24px;background:rgba(255,255,255,0.9);border-radius:4px;flex-shrink:0"></div>
-    <span data-field="brand" style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px">${d.brand || '브랜드'}</span>
-  </div>
 
   <!-- 훅 (중상단) -->
   <div data-field="hook" style="position:absolute;left:64px;top:200px;right:420px;z-index:10;
@@ -2591,12 +2561,6 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:${fontFamily}}
 
   <!-- 콘텐츠 -->
   <div style="flex:1;display:flex;flex-direction:column;padding:56px 64px 24px;position:relative;z-index:1">
-
-    <!-- 브랜드 -->
-    <div data-brand-block style="font-size:26px;font-weight:700;color:#fff;margin-bottom:32px;display:flex;align-items:center;gap:10px">
-      <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
-      <span data-field="brand">${d.brand || '브랜드'}</span>
-    </div>
 
     <!-- 훅 -->
     <div data-field="hook" style="font-size:30px;font-weight:500;color:${pal.hook};margin-bottom:14px;letter-spacing:-0.5px">${nl2br(d.hook)}</div>
@@ -2727,10 +2691,6 @@ function generateHeadlineCopyHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
 <div style="width:1080px;height:1080px;background:${pal.bg};position:relative;display:flex;flex-direction:column;overflow:hidden">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,${pal.burst} 0%,transparent 60%);pointer-events:none"></div>
   <div style="flex:1;display:flex;flex-direction:column;padding:68px 80px 24px;position:relative;z-index:1">
-    <div data-brand-block style="font-size:26px;font-weight:700;color:#fff;margin-bottom:40px;display:flex;align-items:center;gap:10px">
-      <div style="width:28px;height:28px;background:rgba(255,255,255,0.9);border-radius:6px;flex-shrink:0"></div>
-      <span data-field="brand">${d.brand || '브랜드'}</span>
-    </div>
     <div data-field="hook" style="font-size:28px;font-weight:500;color:${pal.hook};margin-bottom:18px;letter-spacing:-0.3px">${nl2br(d.hook)}</div>
     <div data-field="headline" style="font-size:96px;font-weight:900;line-height:1.02;color:${pal.headline};letter-spacing:-4px;margin-bottom:56px">${d.headline || ''}</div>
     <div style="display:flex;flex-direction:column;gap:22px">
@@ -2806,11 +2766,9 @@ function generateCommunityHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
 function generateFigmaPhotoHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cssBackground = null, font = 'Pretendard') {
   const { link: fontLink, family: fontFamily } = getAdFontCSS(font);
 
-  // 배경: 이미지 우선, 없으면 다크 그라디언트
+  // 배경: cssBackground 우선, 없으면 bgColor 그라디언트 (이미지가 있어도 그라디언트를 fallback으로 유지해 검은 flash 방지)
   const hasBg = !!bgImageBase64;
-  const bgStyle = hasBg
-    ? `background:#000`
-    : cssBackground
+  const bgStyle = cssBackground
     ? `background:${cssBackground}`
     : `background:linear-gradient(150deg,${bgColor} 0%,#060606 100%)`;
 
@@ -2831,12 +2789,6 @@ function generateFigmaPhotoHTML(d, bgColor = '#1a1a1a', bgImageBase64 = null, cs
   <!-- 피그마 그라디언트 오버레이 레이어 (하단→중앙 다크) -->
   <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.97) 0%,rgba(0,0,0,0.92) 12%,rgba(0,0,0,0.72) 38%,rgba(0,0,0,0.30) 58%,rgba(0,0,0,0.05) 75%,transparent 100%);z-index:1;pointer-events:none"></div>
   <div style="position:absolute;left:0;right:0;bottom:0;height:560px;background:linear-gradient(to top,rgba(0,0,0,0.95) 0%,rgba(0,0,0,0.6) 40%,transparent 100%);z-index:1;pointer-events:none"></div>
-
-  <!-- 브랜드 태그 (상단 좌) -->
-  <div data-brand-block style="position:absolute;left:62px;top:52px;display:flex;align-items:center;gap:10px;z-index:10">
-    <div style="width:26px;height:26px;background:rgba(255,255,255,0.92);border-radius:5px;flex-shrink:0"></div>
-    <span data-field="brand" style="font-size:23px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 6px rgba(0,0,0,0.6)">${d.brand || '브랜드'}</span>
-  </div>
 
   <!-- 훅 문구 (피그마 top≈502px, 50px Regular) -->
   <div data-field="hook" style="position:absolute;left:75px;top:502px;right:80px;z-index:10;font-size:42px;font-weight:400;color:rgba(255,255,255,0.88);letter-spacing:-0.84px;line-height:1.4;text-shadow:0 2px 8px rgba(0,0,0,0.5)">
@@ -2883,18 +2835,6 @@ function generateFigmaTwitterHTML(d, bgColor = '#1B5BD4', font = 'Pretendard') {
 </head>
 <body>
 <div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:#171f2a">
-
-  <!-- 브랜드 블록 표시 여부 토글 영역 (상단 프로필) -->
-  <div data-brand-block>
-    <!-- 프로필 원형 아바타 (피그마 left:47, top:49, 190px) -->
-    <div style="position:absolute;left:47px;top:49px;width:190px;height:190px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
-      <span style="font-size:84px;font-weight:900;color:#fff">${brandInitial}</span>
-    </div>
-    <!-- 유저명 (피그마: 60px, top≈66px) -->
-    <div data-field="brand" style="position:absolute;left:264px;top:56px;font-size:52px;font-weight:600;color:rgba(255,255,255,0.92);letter-spacing:-0.5px;white-space:nowrap;line-height:1.2">${d.brand || '브랜드'}</div>
-    <!-- @핸들 (피그마: 60px gray, top≈142px) -->
-    <div style="position:absolute;left:264px;top:134px;font-size:46px;font-weight:400;color:#858d98;white-space:nowrap;line-height:1.2">${twitterHandle}</div>
-  </div>
 
   <!-- 더보기 점 (우상단, 피그마 right:159px top:33px) -->
   <div style="position:absolute;right:47px;top:52px;font-size:40px;color:#858d98;letter-spacing:5px">···</div>

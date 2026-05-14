@@ -547,13 +547,6 @@
     .var-chip input[type=checkbox] { display:none; }
     .var-chip-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
 
-    /* 브랜드 토글 버튼 */
-    .btn-brand-toggle { border:1.5px solid var(--bdr);background:var(--panel-bg);color:var(--tx);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px; }
-    .btn-brand-toggle:hover { border-color:#f59e0b;color:#f59e0b;background:#fffbeb; }
-    .btn-brand-toggle.hidden-brand { border-color:#ef4444;color:#ef4444;background:#fff5f5; }
-    [data-theme="dark"] .btn-brand-toggle:hover { background:#2d2510; }
-    [data-theme="dark"] .btn-brand-toggle.hidden-brand { background:#2d1010; }
-
     /* 스티커 이미지 추가 버튼 */
     .btn-sticker { border:1.5px solid var(--bdr);background:var(--panel-bg);color:var(--tx);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:5px; }
     .btn-sticker:hover { border-color:#8b5cf6;color:#8b5cf6;background:#f5f3ff; }
@@ -960,7 +953,6 @@
         <button class="btn-action btn-download" onclick="downloadPNG()" id="btnDownloadPNG">📸 PNG</button>
         <button class="btn-action" onclick="copyHTML()" id="btnCopyHTML">📋 복사</button>
         <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
-        <button class="btn-brand-toggle" id="btnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
         <button class="btn-sticker" id="btnAiImage" onclick="toggleAiImagePanel()">✨ AI 이미지 생성</button>
         <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
         <input type="file" id="stickerFileInput" accept="image/*" onchange="addStickerImage(event)">
@@ -1463,7 +1455,6 @@
       <button class="btn-action btn-download" onclick="downloadPNG()" id="scBtnDownloadPNG">📸 PNG</button>
       <button class="btn-action" id="scBtnCopyHTML" onclick="copyHTML()">📋 복사</button>
       <button class="btn-figma" onclick="openInFigma()">🎨 Figma</button>
-      <button class="btn-brand-toggle" id="scBtnBrandToggle" onclick="toggleBrandBlock()">🏷 브랜드 숨기기</button>
       <button class="btn-sticker" id="scBtnAiImage" onclick="toggleScAiImagePanel()">✨ AI 이미지 생성</button>
       <button class="btn-sticker" onclick="document.getElementById('stickerFileInput').click()">🖼 이미지 추가</button>
     </div>
@@ -1728,6 +1719,17 @@
 
   renderPresetDropdown();
 
+  // ── iframe에 HTML을 flash 없이 주입하는 헬퍼 ──
+  // srcdoc 대신 document.write()를 사용해 재로드 flash(검은 화면)를 방지하고,
+  // 즉시 편집 활성화(activateClickEdit)도 동기적으로 호출 가능하게 함
+  function writeToIframe(iframe, html, onReady) {
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open('text/html', 'replace');
+    doc.write(html);
+    doc.close();
+    if (onReady) onReady();
+  }
+
   // ── 배리에이션 탭 전환 ──
   function switchVariation(idx) {
     if (!variations[idx]) return;
@@ -1736,26 +1738,20 @@
     document.querySelectorAll('.catalog-card-item').forEach((c, i) => c.classList.toggle('active', i === idx));
     const v = variations[idx];
     const iframe = document.getElementById('previewFrame');
-    // srcdoc 설정 전에 load 리스너 등록 (race condition 방지)
-    iframe.addEventListener('load', activateClickEdit, { once: true });
-    iframe.srcdoc = v.html;
+    writeToIframe(iframe, v.html, activateClickEdit);
     document.getElementById('jsonBox').textContent = JSON.stringify(v.adData, null, 2);
     document.getElementById('codeBox').textContent = v.html;
     document.getElementById('varBadge').textContent = v.adData.variation_label || `버전 ${idx + 1}`;
     if (v.ctaColor) selectedCtaColor = v.ctaColor;
     renderValidationPanel(v.adData);
     renderCopyEditPanel(v.adData);
-    // 탭 전환 시 브랜드 숨김 상태로 초기화
-    brandHidden = false;
-    toggleBrandBlock();
     // 편집 힌트 표시
     const hint = document.getElementById('editHint');
     if (hint) hint.style.display = 'inline';
     // sc-wrap 결과 동기화
     const scIframe = document.getElementById('scPreviewFrame');
     if (scIframe) {
-      scIframe.addEventListener('load', activateScClickEdit, { once: true });
-      scIframe.srcdoc = v.html;
+      writeToIframe(scIframe, v.html, activateScClickEdit);
       scaleMainPreview();
       setTimeout(scaleMainPreview, 100);
     }
@@ -1818,7 +1814,7 @@
         { key: 'visual_stat1_label', label: '수치 1 설명 (예: 누적 수강생)', rows: 1 },
         { key: 'visual_stat2_value', label: '수치 2 값', rows: 1 },
         { key: 'visual_stat2_label', label: '수치 2 설명', rows: 1 },
-        { key: 'cta_badge', label: 'CTA 뱃지 (이모지 포함)', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지 (선택 — 비우면 미표시)', rows: 1 },
         { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
       ];
     } else if (layout === '헤드카피형') {
@@ -1828,7 +1824,7 @@
         { key: 'sub_copy1', label: '서브카피 1 (엔터로 줄바꿈)', rows: 2 },
         { key: 'sub_copy2', label: '서브카피 2 (엔터로 줄바꿈)', rows: 2 },
         { key: 'sub_copy3', label: '서브카피 3 (엔터로 줄바꿈)', rows: 2 },
-        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지 (선택 — 비우면 미표시)', rows: 1 },
         { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
       ];
     } else {
@@ -1836,7 +1832,7 @@
         { key: 'hook', label: '서브카피/훅 (엔터로 줄바꿈)', rows: 2 },
         { key: 'headline_line1', label: '메인카피 1줄 (최대 14자)', rows: 1 },
         { key: 'headline_line2', label: '메인카피 2줄 (최대 14자)', rows: 1 },
-        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지 (선택 — 비우면 미표시)', rows: 1 },
         { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
       ];
     }
@@ -1902,7 +1898,8 @@
 
       // 현재 variation 업데이트
       variations[activeVariation] = { adData: updatedAdData, html: data.html, ctaColor: selectedCtaColor };
-      document.getElementById('previewFrame').srcdoc = data.html;
+      const pf = document.getElementById('previewFrame');
+      writeToIframe(pf, data.html, activateClickEdit);
       document.getElementById('jsonBox').textContent = JSON.stringify(updatedAdData, null, 2);
       document.getElementById('codeBox').textContent = data.html;
       status.textContent = '✅ 업데이트 완료';
@@ -2322,7 +2319,7 @@
       if (!res.ok) throw new Error(data.error);
 
       variations[activeVariation].html = data.html;
-      document.getElementById('previewFrame').srcdoc = data.html;
+      writeToIframe(document.getElementById('previewFrame'), data.html, activateClickEdit);
       document.getElementById('codeBox').textContent = data.html;
 
       btn.textContent = '✅ 적용 완료!';
@@ -2503,7 +2500,7 @@
         { key: 'headline_line2', label: '헤드라인 2줄 (최대 12자)', rows: 1 },
         { key: 'visual_stat1_value', label: '수치 1 값', rows: 1 },
         { key: 'visual_stat1_label', label: '수치 1 설명', rows: 1 },
-        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지 (선택 — 비우면 미표시)', rows: 1 },
         { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
       ];
     } else {
@@ -2511,7 +2508,7 @@
         { key: 'hook', label: '서브카피/훅 (엔터로 줄바꿈)', rows: 2 },
         { key: 'headline_line1', label: '메인카피 1줄 (최대 14자)', rows: 1 },
         { key: 'headline_line2', label: '메인카피 2줄 (최대 14자)', rows: 1 },
-        { key: 'cta_badge', label: 'CTA 뱃지', rows: 1 },
+        { key: 'cta_badge', label: 'CTA 뱃지 (선택 — 비우면 미표시)', rows: 1 },
         { key: 'cta_text', label: 'CTA 문구 (→로 끝)', rows: 1 },
         { key: 'visual_stat1_value', label: '핵심 수치 값', rows: 1 },
         { key: 'visual_stat1_label', label: '수치 설명', rows: 1 },
@@ -2580,7 +2577,7 @@
       if (!res.ok) throw new Error(data.error);
 
       variations[activeVariation] = { adData: updatedAdData, html: data.html, ctaColor: selectedCtaColor };
-      document.getElementById('scPreviewFrame').srcdoc = data.html;
+      writeToIframe(document.getElementById('scPreviewFrame'), data.html, activateScClickEdit);
       const scJsonBox = document.getElementById('scJsonBox');
       if (scJsonBox) scJsonBox.textContent = JSON.stringify(updatedAdData, null, 2);
       const scCodeBox = document.getElementById('scCodeBox');
@@ -2817,41 +2814,6 @@
 
   // sc 버전 (scCopyEditFields textarea에서 호출)
   function scLiveUpdatePreview(el) { liveUpdatePreview(el); }
-
-  // ── 브랜드 태그 ON/OFF 토글 ──
-  let brandHidden = false;
-  function toggleBrandBlock() {
-    brandHidden = !brandHidden;
-
-    // 보이는 iframe(scPreviewFrame) + 숨겨진 iframe(previewFrame) 모두 처리
-    ['scPreviewFrame', 'previewFrame'].forEach(frameId => {
-      const iframe = document.getElementById(frameId);
-      if (!iframe) return;
-      const doc = iframe.contentDocument;
-      if (!doc) return;
-      doc.querySelectorAll('[data-brand-block]').forEach(el => {
-        el.style.display = brandHidden ? 'none' : '';
-      });
-      // HTML 저장 (scPreviewFrame 기준)
-      if (frameId === 'scPreviewFrame') {
-        const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-        if (variations[activeVariation]) {
-          variations[activeVariation].html = html;
-          const scCodeBox = document.getElementById('scCodeBox');
-          if (scCodeBox) scCodeBox.textContent = html;
-        }
-      }
-    });
-
-    // 버튼 텍스트 업데이트 (sc + 기존 둘 다)
-    const label = brandHidden ? '🏷 브랜드 보이기' : '🏷 브랜드 숨기기';
-    ['scBtnBrandToggle', 'btnBrandToggle'].forEach(btnId => {
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
-      btn.textContent = label;
-      btn.classList.toggle('hidden-brand', brandHidden);
-    });
-  }
 
   // ── 드래그 스티커 이미지 추가 ──
   function addStickerImage(event) {
@@ -3734,7 +3696,7 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       variations[activeVariation].html = data.html;
-      document.getElementById('previewFrame').srcdoc = data.html;
+      writeToIframe(document.getElementById('previewFrame'), data.html, activateClickEdit);
       document.getElementById('codeBox').textContent = data.html;
       btn.textContent = '✅ 적용 완료!';
       setTimeout(() => { btn.textContent = '✅ 이 배경을 광고에 적용'; btn.disabled = false; }, 2500);
